@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>JelE Clipper</title>
+<!-- OBS dock: Docks -> Custom Browser Docks, URL: file:///C:/JelE/clipper/dock.html -->
+<style>
+body{margin:0;background:#0b101a;color:#F8FAFC;font:500 13px/1.45 Segoe UI,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center}
+.c{padding:22px;max-width:320px}.l{width:44px;height:44px;margin:0 auto 12px;border-radius:11px;background:linear-gradient(135deg,#ffab33,#ef7d00);display:grid;place-items:center}
+h1{font:italic 900 20px "Arial Black",Arial;margin:0 0 6px}h1 span{color:#ff9200}p{color:#8f9bb3;margin:6px 0}b{color:#fff}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px;animation:p 1.2s infinite}@keyframes p{50%{opacity:.3}}
+</style></head><body><div class="c">
+<div class="l"><svg width="24" height="24" viewBox="0 0 512 512"><path d="M280 96 L352 96 L352 376 C352 456 136 456 136 376 L136 320 L280 320 Z" fill="#fff"/></svg></div>
+<h1>JelE <span>Clipper</span></h1>
+<p><span class="dot"></span>The clipper is not running yet.</p>
+<p>Double-click <b>start.bat</b> in <b>C:\JelE\clipper</b>, or let it start with OBS through the script <b>jele_clipper.lua</b>.</p>
+<p>This dock loads by itself once the clipper is running.</p></div>
+<script>
+async function check(){ try{ await fetch('http://localhost:8765/api/status',{mode:'no-cors',cache:'no-store'}); location.href='http://localhost:8765/?dock=1'; }catch(e){ setTimeout(check,3000); } }
+check();
+</script></body></html>

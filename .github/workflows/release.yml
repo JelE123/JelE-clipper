@@ -1,0 +1,60 @@
+name: Release
+
+# Makes a release by itself as soon as clipper.py has a new version.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove the old release (one time: it still held the stream assets)
+        run: |
+          for t in v6.16; do
+            gh release delete "$t" --cleanup-tag -y 2>/dev/null && echo "removed release $t" || true
+            git push origin ":refs/tags/$t" 2>/dev/null && echo "removed tag $t" || true
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Read version
+        id: v
+        run: |
+          V=$(grep -m1 -oP "^VERSION = '\K[0-9.]+" JelE/clipper/clipper.py)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" >/dev/null 2>&1; then echo "exists=1" >> "$GITHUB_OUTPUT"; else echo "exists=0" >> "$GITHUB_OUTPUT"; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Safety check
+        if: steps.v.outputs.exists == '0'
+        run: |
+          test ! -e JelE/mascotte/config.js || { echo "config.js does not belong in the repository"; exit 1; }
+          if grep -rIEn "eyJ[A-Za-z0-9_-]{30,}\.|ghp_[A-Za-z0-9]{20,}|github_pat_|sk-[A-Za-z0-9]{24,}|@gmail\.com|oauth:[a-z0-9]{20,}|streamelements\.com/overlay/[0-9a-f]{24}|\{[0-9.]+\}\.\{[0-9a-f-]{36}\}" JelE; then echo "There seems to be a secret or email address in the files"; exit 1; fi
+
+      - name: Make zip and release notes
+        if: steps.v.outputs.exists == '0'
+        run: |
+          rm -rf JelE/clipper/tests
+          zip -qr JelE_update.zip JelE -x "*/__pycache__/*" "*/data/*"
+          python3 - <<'PY'
+          import re
+          s = open('JelE/clipper/CHANGELOG.md', encoding='utf-8').read()
+          top = re.split(r'(?m)^## ', s)[1]
+          body = top.split('\n', 1)[1].strip()
+          body += "\n\n**Install:** download JelE_update.zip, extract it over C:\\ and start the Clipper. On 6.0 or newer you can also update with one click through Settings > Updates."
+          open('notes.md', 'w', encoding='utf-8').write(body)
+          PY
+
+      - name: Create release
+        if: steps.v.outputs.exists == '0'
+        run: gh release create "v${{ steps.v.outputs.version }}" JelE_update.zip --target "$GITHUB_SHA" --title "JelE Clipper ${{ steps.v.outputs.version }}" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

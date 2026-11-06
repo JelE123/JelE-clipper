@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f18"><link rel="manifest" href="/m/manifest.json?k=__K__"><link rel="apple-touch-icon" href="/m/icon.png?k=__K__"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>JelE Clipper</title><style>
+*{box-sizing:border-box}body{margin:0;background:#080b12;color:#eef2f8;font:500 15px system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;padding:14px 16px 10px;background:rgba(8,11,18,.92);backdrop-filter:blur(10px);display:flex;align-items:center;gap:10px}
+header b{font:800 italic 26px "Arial Narrow",Impact,sans-serif}header b span{color:#ff9200}header small{margin-left:auto;color:#8b97ac;font-size:12px}
+.c{background:#111723;border:1px solid #1f2939;border-radius:18px;margin:12px;overflow:hidden}video{width:100%;max-height:62vh;background:#000;display:block}.b{padding:12px 14px 14px}
+.t{font-weight:800;font-size:17px;outline:none;border-radius:6px}.t:focus{box-shadow:0 0 0 2px #ff9200}.d{color:#8b97ac;font-size:13px;margin:4px 0 10px}
+.tags{width:100%;background:#0b101a;border:1px solid #2b384d;border-radius:10px;color:#eef2f8;padding:9px 10px;font:500 13px system-ui;margin-bottom:10px}
+.r{display:flex;gap:8px;margin-top:8px}a.btn,button{flex:1;text-align:center;padding:13px 6px;border-radius:12px;border:0;font:700 14px system-ui;text-decoration:none;color:#eef2f8;background:#182131;border:1px solid #2c3a52}
+.pri{background:#ff9200!important;color:#111827!important;border-color:#ff9200!important}.ok{background:#16a34a!important;border-color:#16a34a!important}.bad{color:#f87171!important}
+.n{background:#ff9200;color:#111827;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;margin-left:6px;vertical-align:2px}.q{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;margin-left:6px;background:#16a34a;vertical-align:2px}
+.vw{display:flex;align-items:center;gap:8px;margin-top:10px;color:#8b97ac;font-size:13px}.vw input{flex:1;background:#0b101a;border:1px solid #2b384d;border-radius:10px;color:#eef2f8;padding:9px;font:600 14px system-ui}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b0f18;border-top:1px solid #1f2939;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}nav button{background:none;border:0;color:#8b97ac;font-size:13px;padding:10px 4px}nav button.on{color:#ff9200}
+p.e{color:#8b97ac;text-align:center;padding:40px 24px;line-height:1.5}.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1f2a3d;padding:10px 16px;border-radius:99px;font-weight:700;opacity:0;transition:.2s}.toast.on{opacity:1}
+</style></head><body><header><b>JelE <span>Clipper</span></b><small id="cnt"></small></header><div id="l"></div><div class="toast" id="toast"></div>
+<nav><button data-v="inbox" class="on">Inbox</button><button data-v="all">All shorts</button><button data-v="views">Views</button></nav>
+<script>
+const K=new URLSearchParams(location.search).get('k'); let L=[], V='inbox';
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=t=>{const e=document.getElementById('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1800);};
+const act=(file,action,extra)=>fetch('/m/act?k='+K,{method:'POST',body:JSON.stringify(Object.assign({file,action},extra||{}))}).then(r=>r.json());
+function load(){ fetch('/m/list?k='+K).then(r=>r.json()).then(x=>{L=x;draw();}); }
+function draw(){ let list=V==='inbox'?L.filter(s=>s.status==='nieuw'):V==='views'?L.filter(s=>s.status==='gepost'&&!s.views):L;
+  document.getElementById('cnt').textContent=V==='inbox'?list.length+' new':list.length+' shorts';
+  const want=decodeURIComponent((location.hash.match(/f=([^&]+)/)||[])[1]||''); if(want){ const w=L.find(s=>s.file===want); if(w&&!list.includes(w)) list=[w].concat(list); }
+  document.getElementById('l').innerHTML=list.length?list.map(s=>{ const p=s.post||{}; return `<div class="c" id="c_${esc(s.file)}"><video src="/m/v?k=${K}&f=${encodeURIComponent(s.file)}" controls playsinline preload="metadata"></video><div class="b">
+    <div class="t" contenteditable="true" data-f="${esc(s.file)}">${esc(p.title||s.title||s.file)}</div>${s.status==='nieuw'?'<span class="n">new</span>':''}${s.q?`<span class="q" style="background:${s.q>=85?'#16a34a':s.q>=70?'#d97706':'#dc2626'}">${s.q}</span>`:''}
+    <div class="d">${esc((p.description||'').split('\n')[0]).slice(0,120)}</div><input class="tags" data-h="${esc(s.file)}" value="${esc(p.hashtags||'')}">
+    ${s.status==='nieuw'?`<div class="r"><button class="ok" data-a="keep" data-f="${esc(s.file)}">Keep</button><button class="bad" data-a="gone" data-f="${esc(s.file)}">Remove</button></div>`:''}
+    <div class="r"><a class="btn pri" href="/m/v?k=${K}&dl=1&f=${encodeURIComponent(s.file)}" download>Save</a><button data-a="copy" data-f="${esc(s.file)}">Copy text</button><button data-a="${s.status==='gepost'?'unposted':'posted'}" data-f="${esc(s.file)}" title="${s.status==='gepost'?'Tap to undo':'Tap when you posted it'}">${s.status==='gepost'?'Posted ✓':'Mark as posted'}</button></div>
+    ${s.status==='gepost'?`<label class="vw">Views<input type="number" inputmode="numeric" data-v="${esc(s.file)}" value="${s.views||''}" placeholder="how many?"></label>`:''}</div></div>`; }).join('')
+    :`<p class="e">${V==='inbox'?'Nothing new. After your next stream your best shorts show up here.':V==='views'?'All filled in. Nice!':'No shorts yet.'}</p>`;
+  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{ const f=b.dataset.f, a=b.dataset.a, s=L.find(x=>x.file===f)||{}, p=s.post||{};
+    if(a==='copy'){ const t=[p.title,p.description,p.hashtags].filter(Boolean).join('\n\n'); try{ await navigator.clipboard.writeText(t); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); } toast('Text copied'); return; }
+    await act(f,a); toast({keep:'Kept: ready to post',gone:'Removed',posted:'Marked as posted',unposted:'No longer marked as posted'}[a]||'Saved'); load(); });
+  document.querySelectorAll('.t[data-f]').forEach(e=>e.onblur=()=>act(e.dataset.f,'meta',{title:e.textContent.trim()}).then(()=>toast('Title saved')));
+  document.querySelectorAll('[data-h]').forEach(e=>e.onchange=()=>act(e.dataset.h,'meta',{hashtags:e.value.trim()}).then(()=>toast('Hashtags saved')));
+  document.querySelectorAll('[data-v]').forEach(e=>{ if(e.tagName==='INPUT') e.onchange=()=>act(e.dataset.v,'views',{views:+e.value||0}).then(()=>toast('Views saved, I learn from it')); });
+  if(want){ const el=document.getElementById('c_'+want); if(el) el.scrollIntoView(); } }
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{ V=b.dataset.v; document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b)); location.hash=''; draw(); });
+if(/views/.test(location.hash)){ V='views'; document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.v==='views')); }
+load();
+</script></body></html>

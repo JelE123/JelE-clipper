@@ -1,0 +1,61 @@
+# Lines from the game that should NEVER end up in your captions.
+# One line per row. Capitals and punctuation do not matter.
+# If the clipper hears a line that (almost) matches one here, it leaves it out.
+# Still see a voiceline in a short? Add it here and save.
+# Lines starting with # are skipped.
+
+# Announcer
+spike planted
+spike defused
+spike detonated
+the spike has been planted
+the spike has been defused
+last player standing
+last man standing
+one enemy remaining
+two enemies remaining
+three enemies remaining
+match point
+team match point
+enemy match point
+round won
+round lost
+victory
+defeat
+buy phase
+thrifty
+flawless
+team ace
+switching sides
+final round
+ten seconds remaining
+thirty seconds remaining
+enemy spotted
+enemy spike carrier spotted
+spike down
+spike dropped
+we have the spike
+
+# Agent ultimates and fixed lines (feel free to add more)
+fire in the hole
+nowhere to run
+the hunt begins
+joke's over you're dead
+open up the sky
+prepare for hellfire
+you want to play let's play
+i will not let you die
+your duty is not over
+no one walks away
+welcome to my world
+initiating lockdown
+they will cower
+i've got your trail
+they are so dead
+here comes the party
+let's go hunting
+my lockdown is on
+the rift is open
+off your feet
+i am the hunter
+the earth will heed me

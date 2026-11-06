@@ -1,0 +1,60 @@
+JelE Clipper
+============
+
+What it does
+- While you stream and record, it remembers your clip markers and what happens in chat.
+- After your stream it finds the best moments by itself: where you pressed Clip, where chat went off,
+  where it suddenly got loud, and your multikills, aces and clutches.
+- It makes vertical shorts (9:16) from them: your cam on top, your game below, with captions, zooms and a title.
+  The best ones are waiting in your inbox. You only choose: keep or remove.
+
+Install once
+1. Double-click install.bat and wait until it says "Done!".
+2. Start the Clipper with start.bat and go through the setup wizard (Settings > Setup wizard).
+
+Every stream
+1. Start start.bat (or let OBS start it with the script jele_clipper.lua). Leave the black window open.
+2. Record in OBS while you stream. Tip: Settings > Output > Recording format MKV, and
+   Settings > Advanced > "Automatically record when streaming".
+3. Good moment? Press Ctrl+Alt+K, "Clip!" in your JelE panel, or let a mod type !clip.
+4. Stop recording. A few minutes later your shorts are in your inbox.
+
+Your shorts are in the "shorts" folder next to this file.
+
+CAPTIONS WITHOUT VOICELINES AND MUSIC
+The captions should only pick up your voice. That works best with your mic on its own audio track:
+1. OBS > Edit > Advanced Audio Properties: tick Track 3 for your Mic (and leave 1 on).
+   Desktop Audio and music NOT on Track 3.
+2. Settings > Output > Output Mode: Advanced > Recording tab > Audio Track: tick 1 and 3.
+3. Settings > Output > Audio tab > Track 3 > Name: Mic
+The clipper then finds that track by itself. Under Settings > Which audio you can listen to each track.
+Without a separate track the clipper filters out music and the lines in voicelines.txt.
+
+KEYS AND PRIVACY
+- Passwords and keys (OBS, HenrikDev, Twitch) go in Settings > Keys. They are only stored on this PC
+  (in C:\JelE\mascotte\config.js) and never go into an error report or onto GitHub.
+- Your Twitch name, Riot name and team name are there too.
+
+UPDATES
+- Settings > Updates. New versions come from GitHub by themselves. If a new version does not start
+  properly, the Clipper puts the previous one back. You can go back yourself too:
+  Settings > Updates > Restore, or double-click herstel.bat.
+- Something odd after an update? Start veilig.bat: then it makes shorts without effects and music.
+
+WHAT IS WHERE
+- Inbox: your automatic shorts after every stream. Keep, edit or remove (Y / E / X).
+- Streams: all your recordings. Open one to see the moments, or look through the video yourself.
+  "Add video" takes a link (Twitch VOD or clip, Medal, YouTube), a file or a whole folder.
+- Editor: tabs on the right (Layout, Text, Effects, Audio, Export). Preview shows the result in seconds.
+  Shift+click words to cut a part. "Cut silences" removes all pauses. Tab walks through unsure words.
+- Shorts: search, tags, favourites, archive and a recycle bin (7 days). The folder icon has the export
+  pack and extras: Discord, GIF, stills, meme, 4:5 feed and team folder.
+- Insights: what works, based on the views you fill in.
+- Settings > Brand: your colour, logo, watermark, font and end screen. Several profiles are possible;
+  pick one per short in the editor (Export tab).
+- Settings > Live clips: clips during your stream with the OBS replay buffer. Stream Deck: let a button
+  open http://localhost:8765/api/clip
+- Phone: turn on phone access, scan the QR code and choose "Add to home screen".
+- System: self-test, error report, storage, log and the speech model.
+
+Shortcuts: press ? in the app for the overview.

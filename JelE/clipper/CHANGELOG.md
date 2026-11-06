@@ -1,0 +1,295 @@
+# JelE Clipper: changelog
+
+Everything that changed per version. The newest version is at the top.
+
+## 6.17 · 6 November 2026
+
+### Changed
+- The GitHub repository and the updates now only hold the Clipper app. The mascot, stingers, overlays, sounds and OBS scene collection are no longer in it. The ones on your PC stay exactly where they are: an update does not touch them, and the Clipper works without them
+
+## 6.16 · 6 November 2026
+
+### Privacy
+- The team logo is gone from the mascot: the poster in the room backgrounds and the badge on the game frame now show the JelE logo, and the jersey has the JelE logo and colours
+- Leftover channel emote names removed from the code
+
+## 6.15 · 6 November 2026
+
+### Changed
+- Making a short no longer means it counts as posted. Every short now goes through clear steps: To review (made automatically) → Ready to post (made or kept by you) → Scheduled (when you pick a date) → Posted (only when you mark it)
+- Mark per platform where you posted it: TikTok, YouTube or Instagram, right on the short. Click again to undo. The views box only shows up once a short is posted
+- Shorts has its own lists for To review, Ready to post, Scheduled and Posted
+- Insights and your weekly goal count posted shorts, by the day you posted them. Made but not posted yet is shown next to it, plus how many shorts are in each step
+- On your phone: "Mark as posted", and tap again to undo
+- Older shorts with views filled in are counted as posted
+
+## 6.14 · 6 November 2026
+
+### Better
+- One story per short. The opening glimpse now shows the second just before the payoff (not the payoff itself), and the replay at the end shows that same payoff again. Both only appear when there is a real payoff (a multikill, a big shout or your Clip button) and when the clip does not already open with the action
+- The title is there from the first frame: over the opening glimpse and on into the clip, instead of "wait for it" first and then a second text
+- Cut boring bits is much more careful. A gap only goes out when you say nothing, the game is quiet AND the picture hardly moves (aiming and fights stay in). The run-up to the payoff, kills, clip presses, the first second and the last part are never cut, and at most a quarter of the clip goes out
+- You now see those cuts in the editor: striped yellow on the timeline, and the video skips them while you play. Click a striped part to keep it in. What you see is exactly what gets exported
+- Seamless loop really loops: no opening glimpse, replay or end screen any more when it is on, so the end flows straight into the start
+- No more little clicks in the sound where pieces are glued together
+- Captions: viewers never see a "..." for words that were not understood, and fewer words are given up on
+- Settings: the captions are explained in three steps (listen, fix words, you check), with the word list right below them
+- Keys are grouped by what they are for (OBS, Twitch, Valorant), with what each one adds and step-by-step how to get the Twitch and HenrikDev keys. Test Twitch now also shows your current category
+
+## 6.13 · 6 November 2026
+
+### New
+- The clipper knows which game you play: Valorant, Counter-Strike 2, Fortnite, Minecraft, or "other / Just Chatting". It looks at the game in front on your PC while you record (every 3 minutes, so a switch from Valorant to Minecraft is noted too), then your Twitch category, your OBS capture, the name of the recording and what you say
+- The editor follows the game: its own colour, title ideas ("I FOUND DIAMONDS", "VICTORY ROYALE", "ONE DEAG"), sticker texts with one-click picks, example texts, and the Killfeed button only for games that have one
+- Finding moments listens for the big moments of that game: "victory royale" and "one pump" in Fortnite, "diamonds" and "MLG" in Minecraft, "one deag" and "noscope" in CS2
+- Captions use the words of that game: CS2 weapons and maps, Fortnite items and moves, Minecraft mobs and items, each with its own fixes for common mishearings
+- Titles and hashtags per game, also in the export packs per platform. Set your own hashtags per game in Settings > Games
+- Valorant match data is only looked up for Valorant streams
+- Wrong game? Change it at the top of a stream or the editor. "Find out by itself" lets the clipper decide again
+
+## 6.12 · 6 November 2026
+
+### New
+- The speech recognition understands much more of how players talk about utility and fights: seized, naded, molly'd, flashed, stunned, caged, suppressed, nearsighted, tagged, dinked, beamed, one-way, lineup, satchel, TP, "he's in the smoke", "he's one", "lit for 140", "spike's down", anti-eco and about 300 more
+- The speech model now gets a short example sentence in streamer speech, so it expects these words in the right way
+- More mishearings fixed by themselves: "nated" becomes naded, "mollied" becomes molly'd, "ceased" becomes seized, "spikes down" becomes spike's down
+
+## 6.11 · 6 November 2026
+
+### New
+- The speech recognition knows far more game words. Built in now: all Valorant agents (up to Miks and Hush) with every ability and ultimate, all weapons, maps, ranks, modes, callouts, skins, pro teams and players, Twitch emotes and words from other big games like CS2 and Fortnite
+- Game words are put in their right spelling by themselves: "kill joy" becomes Killjoy, "kayo" becomes KAY/O, "blade storm" becomes Blade Storm, "diffuse the spike" becomes defuse. Everyday words like "split" or "ghost" are left alone
+- Your own word list always fits now: the built-in list makes room for it, so your words are never cut off
+
+## 6.10 · 6 November 2026
+
+### Fixed
+- "Phone cannot find the PC?" showed its tips as a squashed strip of text in a strange place. It borrowed the style of the playhead line from the editor; it now has its own neat box under the button
+
+## 6.9 · 6 November 2026
+
+### Fixed
+- Updating with one click could fail and put the old version back. The updater replaces start.bat while that file is still running, and Windows then went on reading the new file at the wrong spot. start.bat is now built so this can not happen any more, also when you update from an older version
+- The .bat files had the wrong line endings for Windows since 6.6
+
+## 6.8 · 6 November 2026
+
+### Fixed
+- Clicking a video could leave you stuck: it opened native controls and full screen, and in the OBS dock you could not always get out again. A video now opens in a small player with a Close button, and Esc or a click outside closes it
+- Full screen is turned off for videos in the dock, so you can no longer get trapped in it
+- The bottom navigation in a wide dock: the orange line was far too wide, the keyboard hint showed up as a stray "1" under Inbox, and Live sat lower than the other buttons
+- Every window (help, changelog, preview and so on) now closes with X, Esc or a click outside it, and the video inside stops playing
+- In a small dock the Close button of a long window could fall off the screen; the title bar with the button now stays at the top
+- "Look through shorts" in a low dock pushed the video off the top of the screen; it now sits side by side in a wide dock and scrolls in a narrow one
+
+## 6.7 · 6 November 2026
+
+### Fixed
+- Live clips showed up between your streams, and the number of shorts per stream also counted test renders and deleted shorts
+- "Search again" on a stream made the same automatic shorts a second time
+- The bars in the post-ready score stayed at a quarter even at 100
+- "Automatic" under Effects in the editor could give an error when an effect was selected
+- In the dock, the "Stream done" overview could show up while you were still live, and live clips are now always newest first
+- The word list fields and the speech model choice in Settings ran off the screen; the filter buttons above Shorts scroll in the dock
+- Shorts this week no longer counts shorts in the recycle bin
+- The last Dutch bits in the mascot control panel and the editor are now English
+
+## 6.6 · 6 November 2026
+
+### New
+- The whole app is now in English: every screen, button, message, post text, the phone page and the mascot control panel
+
+### Better
+- File names still accept the old Dutch fields ({titel}, {datum}, {tijd}, {indeling}), next to the new {title}, {date}, {time} and {layout}
+
+### Fixed
+- The OBS scenes Starting soon, BRB, Queue, Agent select and Ending did not load in 6.5
+
+## 6.5 · 6 November 2026
+
+### New
+- Get the speech model for captions in advance, with a progress bar (setup wizard and System). Your first short does not have to wait
+- The setup wizard checks whether you have a Twitch VOD track without music in OBS, and tells you in a few steps how to set it up
+- "Phone cannot find the PC?": the Clipper works out why (for example wifi set to Public, or a guest network) and tells you what to do
+- A 4:5 version of every short for the Instagram and Facebook feed
+- Fill in your Twitch name and team name under Settings > Keys
+
+### Better
+- Your channel, Valorant name and team name are no longer in the app files, only in your own config.js. After the update the Clipper puts them there by itself
+- Without a channel name, a short no longer shows an empty label
+
+## 6.4 · 6 November 2026
+
+### New
+- Brand profiles: your own colour, logo, font, channel name and end screen text, in one place (Settings, Brand)
+- Upload a logo and pick a colour from it in one click
+- Watermark: your logo small in a corner, for the whole short or only at the end
+- Several profiles, for example for your team or a friend. In the editor you pick a profile per short
+- Share profiles: export one as a file and load it at a teammate's
+- Two sides: your view and a teammate's view stacked. The Clipper finds the moment by the sound
+- More from every short: a Discord version under 10 MB, a GIF, 4 stills for Instagram and a meme version with a text bar
+- Team folder: approved shorts go to a shared folder by themselves (or with one click)
+- Stream recap: a text with your best moments, ready to paste in Discord or on X
+
+### Better
+- Text on your brand colour picks dark or white by itself, so it is always readable
+- The preview in the editor shows your brand colour and channel right away
+
+### Fixed
+- The Export short button had become very narrow in 6.3
+- "Made with JelE Clipper" overlapped your channel name
+
+## 6.3 · 6 November 2026
+
+### New
+- Taste model: after 30 choices (keep or remove) the Clipper picks moments on your taste instead of fixed rules
+- "Not like this again" in your inbox: moments like that rank much lower from now on
+- Story detection: "watch this" followed by a hit within 15 seconds counts as the best kind of clip
+- Every moment shows when it is the kind of clip you often keep
+- Search everything you ever said, across all your streams, with a button to make a clip right away
+- Shorts: search, tags (also automatic: ace, clutch, funny, live), favourites, archive and status (draft, done, scheduled, posted)
+- Tag, mark as posted, archive, delete or export several shorts at once
+- Recycle bin: deleted shorts can be restored for 7 days
+- Insights: shorts and views per week, your best shorts, what works (layout, kind of moment, teaser, length, score, day and hour) and the best hour to post
+- Weekly goal with progress, and a weekly report on your phone every Sunday
+- Two days after posting, a notification asks for the views
+- The Clipper learns from your edits and suggests a better default ("You often remove the teaser...")
+- Problems you never fix count less in the post-ready score
+- Phone: installable as an app, inbox with keep and remove, edit title and hashtags, tick posted and fill in views
+- A notification on your phone opens the right short right away
+
+### Better
+- Live clips no longer show up between your streams
+- Backups now also contain what the Clipper learned about your taste and edits
+
+## 6.2 · 6 November 2026
+
+### New
+- Live clips: press Clip during your stream, OBS saves the last seconds (replay buffer) and the short is in your dock within a minute
+- Stream Deck button: a "Website" button to http://localhost:8765/api/clip
+- "!clip 30" in chat for a longer clip
+- No clips on scenes like Starting soon, BRB, Pause and End
+- Same moment clipped several times (you, a mod, !clip)? Then it becomes one clip
+- Hype meter in the dock: how busy chat is now compared to normal
+- Warning when OBS drops frames during your stream
+- Overview after your stream in the dock: live clips, ready and marked
+- Your mascot shows "CLIPPED!" when something gets clipped
+- Post-ready score: every short is checked on picture, sound and editing, with a score from 0 to 100
+- Fix per problem (opens the editor with the improvement) and "Fix everything and make it again"
+- Export pack: per platform the video, post text with its own hashtags, cover and captions (SRT) in one folder
+- Seamless loop: the end flows into the start
+- Safe zones of TikTok, Shorts and Reels in the preview
+- Custom file names with {title}, {date}, {time} and {layout}
+
+### Better
+- Clips during your stream are made with low priority, so your game and stream do not stutter
+- An OBS replay is only used once it has been fully written
+
+## 6.1 · 6 November 2026
+
+### New
+- Editor with tabs: Layout, Text, Effects, Audio and Export, with the export button always in view
+- Preview of the result: a quick, small version with teaser, replay and music before you export
+- Cut through the text: shift+click a piece of text and choose Cut out, or Back to restore it
+- Cut silences with one button (longer than 0.6, 0.8 or 1.2 seconds)
+- Magnet: the edges of your clip snap to the start or end of a word
+- Autosave: your edit is back when you return later, undo too
+- Drag the ratio between cam and game in the preview itself
+- Whole frame: blurred, solid or gradient background, with rounded corners and a border in your colour
+- Line between cam and game on or off
+- Preview without the phone frame or full screen
+- Caption animations: pop, bounce, typewriter, per word or none
+- Unsure words with a yellow dotted line; Tab jumps from unsure word to unsure word
+- Find and replace in the captions, with "always fix like this"
+- Word list for names and emotes, and edit the voiceline list in the app
+- Put a piece of text on the voiceline list in one click
+- Bleep swearing, with asterisks in the captions
+- Caption timing in one slider
+
+### Better
+- Never a single lonely word on a caption line again
+- Changelog in the app: click the version number at the bottom left
+- Updates come from JelE123/JelE-clipper on GitHub by default
+- Clear message when there is no release on GitHub yet
+
+## 6.0 · 6 November 2026
+
+### New
+- Update with one click through GitHub, and go back to a previous version with one click
+- If a new version does not start properly, the Clipper puts the previous one back by itself
+- Error report with one click, without passwords or keys
+- Self-test on every start: if your graphics card does not work, it switches to your processor by itself
+- Warning in the dock when you go live without recording, with a button to start recording
+- Warning when your disk is almost full, with how many hours of recording still fit
+- MKV recordings become MP4 by themselves after the stream; the MKV goes to the recycle bin
+- A backup of your settings, library and taste every day
+- Fill in keys (OBS, HenrikDev, Twitch) in the app instead of in Notepad
+- Setup wizard: OBS, your mic, cam and killfeed, post text, phone
+- Safe mode (veilig.bat): shorts without effects and music
+- "What's new" after every update, and this changelog
+
+### Better
+- New design: the same buttons, cards and spacing everywhere, soft transitions and loading placeholders
+- Light working copy of your recording: the editor jumps through the video much faster
+- Make two shorts at the same time, and the queue continues after a crash or restart
+- During your stream the heavy work waits, so your stream does not stutter
+- Time estimate that learns how long things take on your PC
+- Settings in Basic and Advanced, with a question mark and explanation for every part
+- Tour the first time, and shortcuts everywhere (press ? for the overview)
+- Clear error messages in plain language instead of Python errors
+- Phone access only through your own wifi, and it turns off by itself after a week of not using it
+- The app can only be opened from your own PC
+
+### Fixed
+- If you started the Clipper twice, the second one could mess up the queue of the first
+- Passwords with a quote in them were not read correctly from config.js
+
+## 5.0 · 6 November 2026
+
+### New
+- Effects as blocks under the timeline: zoom, killfeed, stickers, teaser and replay, all draggable
+- Music from your own folder, which gets quieter by itself when you talk
+- Saying "clip that" during your stream counts as the Clip button
+- Highlights: a landscape YouTube summary with chapters
+- Thumbnails, scheduling posts with a notification on your phone, and quick pick (Y keep, X remove)
+- Add a video through a link (Twitch, Medal, YouTube), a file, a whole folder or by dragging it into the window
+- Storage: see how much space your recordings take and move old ones to the recycle bin
+- Set the killfeed box under Where is your cam
+
+## 4.0 · 5 November 2026
+
+### New
+- Match data: your 3Ks, 4Ks, aces and clutches from your Valorant matches become clips
+- Twitch clips from viewers count too
+- Cut boring bits, sound effects, montages per stream and per week, three titles to choose from
+- Notification on your phone when your shorts are ready (ntfy)
+- Fill in views, so it learns what really scores
+- Save styles in the editor
+- Undo and redo (Ctrl+Z and Ctrl+Y)
+
+## 3.0 · 5 November 2026
+
+### New
+- Looks in the editor: size and height of the captions, position of the game, size of the cam, progress bar and end screen
+- Text to post with every short
+- Your shorts on your phone through a QR code
+- System: a check of everything that can go wrong, a test short and the log
+
+### Better
+- The dock in OBS has been redesigned
+
+## 2.0 · 5 November 2026
+
+### New
+- Inbox: after every stream the Clipper makes your best shorts by itself, and learns from what you keep
+- Zoom in on hype at "no way", "let's go" or the Clip button
+- The cam frame is taken from OBS on every recording
+- Look through the video yourself and make your own clips
+
+### Better
+- Better speech model for the captions; what it does not understand becomes "..."
+- Voicelines and music stay out of the captions
+
+### Fixed
+- Searching only took the first 20 seconds of a recording
+- Errors making shorts and captions with newer ffmpeg versions

@@ -1,0 +1,14 @@
+# Geheimen: nooit uploaden
+JelE/mascotte/config.js
+config.js
+.env
+
+# Eigen data van de Clipper
+JelE/clipper/data/
+JelE/clipper/shorts/
+JelE/clipper/opnames/
+JelE/clipper/muziek/
+JelE/clipper/models/
+__pycache__/
+*.pyc
+*.log
