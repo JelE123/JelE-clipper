@@ -15,15 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Remove the old release (one time, it still held the stream assets)
-        run: |
-          for t in v6.16; do
-            gh release delete "$t" --cleanup-tag -y 2>/dev/null && echo "removed release $t" || true
-            git push origin ":refs/tags/$t" 2>/dev/null && echo "removed tag $t" || true
-          done
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Read version
         id: v
         run: |
