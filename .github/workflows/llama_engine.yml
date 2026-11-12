@@ -5,6 +5,10 @@ name: Local AI engine
 # "Install local AI" (Settings > Captions). Before that it is tested on Linux with the real model. Started by hand.
 on:
   workflow_dispatch:
+    inputs:
+      size:
+        description: 'Which model to test: small (1 GB) or smart (4.7 GB)'
+        default: 'small'
 
 permissions:
   contents: write
@@ -56,9 +60,13 @@ jobs:
           BIN=$(dirname "$(find ../../lnx -name llama-server -type f | head -1)")
           cp -a "$BIN"/. engine/llama/
           chmod +x engine/llama/llama-server
-          curl -sSL -o data/models/qwen2.5-1.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          if [ "${{ inputs.size }}" = "smart" ]; then
+            curl -sSL -o data/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf
+          else
+            curl -sSL -o data/models/qwen2.5-1.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          fi
           ls -la data/models engine/llama | head -40
-          LD_LIBRARY_PATH=$PWD/engine/llama python tests/llm_ci.py
+          LLM_SIZE=${{ inputs.size }} LD_LIBRARY_PATH=$PWD/engine/llama python tests/llm_ci.py
 
       - name: Publish
         run: |

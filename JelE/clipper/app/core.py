@@ -98,6 +98,7 @@ DEFAULTS = {
     'friends_track': 0,                 # plan F2.3: OBS track with your friends (Discord). 0 = none. their words get their own colour
     'friends_caps': True,               # show what your friends say in the captions
     'learn_timing': {'lead': 0.0, 'tail': 0.0},   # learned from your feedback: start earlier/later, end later/earlier (seconds)
+    'llm_size': 'auto', 'llm_judge': True, 'llm_judge_n': 20,   # the local AI: small/smart/auto, and judging the moments after a stream
     'sounds': True, 'vision': True, 'vision_auto_done': False, 'face_follow': True, 'voice_up': True,
     'loud': True,                       # make the short as loud as other TikToks/Shorts
     'auto_shorts': True,                # make shorts of the best moments by itself after a stream (they land in the inbox)

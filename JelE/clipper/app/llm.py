@@ -4,8 +4,19 @@
 # the editor commands also work without the model: simple sentences are understood by fixed rules first.
 
 LLM_TAG = 'engine-llama'
-LLM_MODEL = 'qwen2.5-1.5b-instruct-q4_k_m.gguf'
-LLM_MODEL_URL = 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/' + LLM_MODEL
+# two sizes: small runs on any pc, smart needs a real graphics card (it is far better at judging moments and writing titles)
+LLM_MODELS = {
+    'small': {'file': 'qwen2.5-1.5b-instruct-q4_k_m.gguf', 'url': 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf', 'mb': 1100, 'min': 300e6},
+    'smart': {'file': 'Qwen2.5-7B-Instruct-Q4_K_M.gguf', 'url': 'https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf', 'mb': 4700, 'min': 4.0e9},
+}
+def llm_size():
+    """which model: the one you chose, else smart when there is a real graphics card (not built into the processor)"""
+    ch = SET.get('llm_size') or 'auto'
+    if ch in LLM_MODELS: return ch
+    try: g = ' '.join(gpu_names()).lower()
+    except Exception: g = ''
+    return 'smart' if re.search(r'rtx|gtx|radeon rx|rx \d{4}|arc a\d|arc b\d', g) else 'small'
+LLM_MODEL = LLM_MODELS['small']['file']; LLM_MODEL_URL = LLM_MODELS['small']['url']
 LLM = {'busy': False, 'error': '', 'pct': 0, 'step': '', 'proc': None, 'port': 0, 'lock': threading.Lock()}
 
 def llm_dir(): return os.path.join(HERE, 'engine', 'llama')
@@ -14,10 +25,18 @@ def llm_exe():
         p = os.path.join(llm_dir(), n)
         if os.path.exists(p): return p
     return os.path.join(llm_dir(), 'llama-server.exe')
-def llm_model(): return os.path.join(DATA, 'models', LLM_MODEL)
+def llm_model(size=None):
+    """the model file: the chosen size if it is there, else any size that is there"""
+    want = os.path.join(DATA, 'models', LLM_MODELS[size or llm_size()]['file'])
+    if size or os.path.exists(want): return want
+    for k in ('smart', 'small'):
+        p_ = os.path.join(DATA, 'models', LLM_MODELS[k]['file'])
+        if os.path.exists(p_) and os.path.getsize(p_) > LLM_MODELS[k]['min']: return p_
+    return want
 def llm_ready(): return os.path.exists(llm_exe()) and os.path.exists(llm_model()) and os.path.getsize(llm_model()) > 300e6
 def llm_status():
-    return {'ready': llm_ready(), 'busy': LLM['busy'], 'error': LLM['error'], 'pct': LLM['pct'], 'step': LLM['step'], 'on': SET.get('llm', True) is not False,
+    have = {k: os.path.exists(os.path.join(DATA, 'models', v['file'])) and os.path.getsize(os.path.join(DATA, 'models', v['file'])) > v['min'] for k, v in LLM_MODELS.items()}
+    return {'ready': llm_ready(), 'size': llm_size(), 'have': have, 'mb': LLM_MODELS[llm_size()]['mb'], 'using': os.path.basename(llm_model()) if llm_ready() else '', 'busy': LLM['busy'], 'error': LLM['error'], 'pct': LLM['pct'], 'step': LLM['step'], 'on': SET.get('llm', True) is not False,
             'running': bool(LLM['proc'] and LLM['proc'].poll() is None), 'win': os.name == 'nt'}
 
 def _llm_get(url, dst, label, lo, hi):
@@ -34,7 +53,7 @@ def _llm_get(url, dst, label, lo, hi):
     os.replace(tmp, dst)
 
 def llm_install():
-    """download llama-server (about 30 MB) and the model (about 1 GB). runs in the background"""
+    """download llama-server (about 30 MB) and the model (1 or 4.7 GB). runs in the background"""
     import zipfile
     if LLM['busy']: return
     LLM.update(busy=True, error='', pct=0, step='Starting')
@@ -43,14 +62,17 @@ def llm_install():
         repo = re.sub(r'^(https?://)?(www\.)?github\.com/', '', (SET.get('update_repo') or 'JelE123/JelE-clipper')).strip('/')
         os.makedirs(llm_dir(), exist_ok=True); os.makedirs(os.path.dirname(llm_model()), exist_ok=True)
         z = os.path.join(llm_dir(), 'llama.zip')
-        _llm_get(f'https://github.com/{repo}/releases/download/{LLM_TAG}/llama_win64.zip', z, 'Downloading the AI engine', 0, 4)
-        with zipfile.ZipFile(z) as zf:
-            for n in zf.namelist():
-                if n.endswith('/') or '..' in n: continue
-                with zf.open(n) as src, open(os.path.join(llm_dir(), os.path.basename(n)), 'wb') as dst: shutil.copyfileobj(src, dst)
-        os.remove(z)
-        if not os.path.exists(llm_model()) or os.path.getsize(llm_model()) < 300e6:
-            _llm_get(LLM_MODEL_URL, llm_model(), 'Downloading the AI model', 4, 100)
+        if not os.path.exists(llm_exe()): _llm_get(f'https://github.com/{repo}/releases/download/{LLM_TAG}/llama_win64.zip', z, 'Downloading the AI engine', 0, 4)
+        if os.path.exists(z):
+            with zipfile.ZipFile(z) as zf:
+                for n in zf.namelist():
+                    if n.endswith('/') or '..' in n: continue
+                    with zf.open(n) as src, open(os.path.join(llm_dir(), os.path.basename(n)), 'wb') as dst: shutil.copyfileobj(src, dst)
+            os.remove(z)
+        M = LLM_MODELS[llm_size()]; dst = llm_model(llm_size())
+        if not os.path.exists(dst) or os.path.getsize(dst) < M['min']:
+            _llm_get(M['url'], dst, 'Downloading the AI model', 4, 100)
+        llm_stop()   # the next question starts the new model
         LLM.update(step='Ready', pct=100); log('The local AI model is installed')
     except Exception as e:
         LLM['error'] = str(e)[:200]; log('The local AI model could not be installed:', e)
@@ -64,7 +86,7 @@ def llm_start():
         if STATE.get('live') or CUR.get('id'): return 0   # your stream comes first
         import socket
         s_ = socket.socket(); s_.bind(('127.0.0.1', 0)); port = s_.getsockname()[1]; s_.close()
-        args = [llm_exe(), '-m', llm_model(), '--host', '127.0.0.1', '--port', str(port), '-c', '4096', '-t', str(max(2, CORES // 2)), '-ngl', '99']
+        args = [llm_exe(), '-m', llm_model(), '--host', '127.0.0.1', '--port', str(port), '-c', '8192', '-t', str(max(2, CORES // 2)), '-ngl', '99']
         try:
             LLM['proc'] = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=(0x08000000 | 0x00004000) if os.name == 'nt' else 0)
         except Exception as e: LLM['error'] = str(e)[:200]; return 0
@@ -117,6 +139,30 @@ def llm_titles(text, reasons, game='', lang='en', n=3, port=None):
         t = ' '.join(w)
         if t not in out and not t.startswith(('HERE ARE', 'SURE')): out.append(t)
     return out[:n]
+
+# ---------------------------------------------------------------- the AI judges the moments (after the stream)
+def llm_judge(c, words, game='', lang='en', port=None):
+    """one moment -> {'score': 1..10, 'why': short reason, 'title': hook} from what was said and what happened, or {}"""
+    said = ' '.join(w[2] for w in words if c['start'] - 1 <= w[0] <= c['end'] + 1)[:900]
+    sig = ', '.join(c.get('reasons') or []) or 'a loud moment'
+    ev = ', '.join(f"{e.get('kind')} at {e.get('t', 0) - c['start']:.0f}s" for e in (c.get('events') or [])[:6]) if c.get('events') else ''
+    lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
+    msg = [{'role': 'system', 'content': 'You judge clips from a gaming stream for TikTok and YouTube Shorts. A great clip has a clear payoff: a funny line, a big reaction, '
+            'an insane play, a fail, a story with an ending, or chat going wild. A bad clip is just talking, waiting, a menu, or nothing happening. '
+            'Answer only with JSON: {"score": 1-10, "why": "max 8 words", "title": "hook of max 6 words in capitals, in ' + lang_name + ', only what really happened"}.'},
+           {'role': 'user', 'content': 'Game: Valorant. Signals: you said "no way", chat went off, a kill. Duration 18s. What was said: "wait wait he is one hp no way NO WAY I got him with the knife chat did you see that"'},
+           {'role': 'assistant', 'content': '{"score": 9, "why": "knife kill at one hp, huge reaction", "title": "KNIFED HIM AT ONE HP"}'},
+           {'role': 'user', 'content': 'Game: Valorant. Signals: it suddenly got loud. Duration 25s. What was said: "yeah so I think we should buy now uh what do you guys want okay"'},
+           {'role': 'assistant', 'content': '{"score": 2, "why": "just buy phase talk", "title": "BUY PHASE TALK"}'},
+           {'role': 'user', 'content': f'Game: {game or "unknown"}. Signals: {sig}.' + (f' Game events: {ev}.' if ev else '') + f' Duration {c["end"] - c["start"]:.0f}s. What was said: "{said}"'}]
+    a = llm_chat(msg, 90, 0.2, port)
+    m = re.search(r'\{.*\}', a, re.S)
+    if not m: return {}
+    try: d = json.loads(m.group(0))
+    except Exception: return {}
+    try: sc = max(1, min(10, int(round(float(d.get('score'))))))
+    except Exception: return {}
+    return {'score': sc, 'why': str(d.get('why') or '')[:60], 'title': str(d.get('title') or '')[:40].upper()}
 
 # ---------------------------------------------------------------- "make it shorter": a sentence -> editor actions
 # rules first (English and Dutch, many ways to say it, several commands in one sentence), the local model only for the rest.

@@ -495,6 +495,25 @@ def analyse(sid):
                     if r_ not in c['reasons']: c['reasons'].append(r_)
             log('Looked at the picture of ' + str(len(cands)) + ' moments')
         except Exception: log('Looking at the picture did not work'); traceback.print_exc()
+    # the AI judges the best candidates (local model, only after the stream): a mark from 1 to 10, why, and a better title
+    if cands and SET.get('llm_judge', True) and llm_ready():
+        try:
+            top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 20)]
+            port = llm_start(); gid = GAME_TL.v or ''
+            gname = (GP.get(gid) or {}).get('name', gid) if GP else gid
+            for n, c in enumerate(top):
+                if not port: break
+                prog('The AI is judging the moments', 90 + 9 * (n + 1) / len(top))
+                j = llm_judge(c, ALL or c.get('words') or [], gname, SET.get('language') or 'en', port)
+                if not j: continue
+                c['ai'] = j; c['score'] = round(c['score'] * (0.45 + 0.11 * j['score']), 1)
+                if j['score'] >= 8 and j.get('why'): c['reasons'].insert(0, 'AI: ' + j['why'].lower())
+                elif j['score'] <= 3: c['reasons'].append('AI: ' + (j.get('why') or 'not much happens').lower())
+                t_ = tidy_title(j.get('title') or '')
+                if t_ and title_fits(t_, c) and j['score'] >= 5:
+                    c['title'] = t_; c['hooks'] = [t_] + [h for h in (c.get('hooks') or []) if h != t_][:2]
+            log(f'The AI judged {len(top)} moments')
+        except Exception: log('The AI could not judge the moments'); traceback.print_exc()
     try: story_bonus(ALL, cands, s)
     except Exception: traceback.print_exc()
     for c in cands:
