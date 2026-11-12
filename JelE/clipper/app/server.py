@@ -442,6 +442,15 @@ class H(BaseHTTPRequestHandler):
                 i = int(b.get('i', -1))
                 if 0 <= i < len(vis): JOBS.remove(vis[i])
             return self.j({'ok': True})
+        if p == '/api/story-short':   # two moments that belong together, in one short
+            s_ = load_sess(b['sid']); st_ = next((x for x in s_.get('stories', []) if x['id'] == b.get('id')), None)
+            if not st_: return self.j({'ok': False, 'why': 'This story is gone. Search again.'})
+            pre = next((x for x in SET.get('presets', []) if x.get('name') == SET.get('auto_preset')), {})
+            hook = (b.get('hook') or st_.get('title') or 'WAIT FOR THE END').upper()
+            JOBS.put(('render', {'sid': b['sid'], 'start': 0, 'end': sum(p_['b'] - p_['a'] for p_ in st_['parts']), 'parts': st_['parts'], 'chapters': True, 'kind': 'story',
+                                 'title': hook.lower().replace(' ', '_')[:40], 'hook': hook, 'captions': SET['captions'], 'jumpcut': False,
+                                 **{k: v for k, v in pre.items() if k in ('layout', 'style', 'cap_scale', 'progress', 'sfx')}}))
+            return self.j({'ok': True})
         if p == '/api/montage':   # best moments of one stream, or of the week, in one video
             sids = [b['sid']] if b.get('sid') else week_stats()['sids']
             parts = montage_parts(sids, int(b.get('n', 5)))

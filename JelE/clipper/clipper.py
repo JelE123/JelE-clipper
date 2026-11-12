@@ -15,7 +15,7 @@ SESS = os.path.join(DATA, 'sessies')
 OUT = os.path.join(HERE, 'shorts')
 for d in (DATA, SESS, OUT): os.makedirs(d, exist_ok=True)
 PORT = 8765
-VERSION = '6.52'
+VERSION = '6.53'
 
 # the app lives in clipper/app/, split by topic. every part runs in this one namespace (same as one big file),
 # so a part can use everything from the parts before it. the order matters.

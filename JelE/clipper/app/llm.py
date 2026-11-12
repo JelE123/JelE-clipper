@@ -481,3 +481,75 @@ def brief_merge(ai, rules, items):
         if x['t'] < b['end'] < x['e'] and x['e'] - b['payoff'] <= 10: b['end'] = round(x['e'] + 0.5, 1)
     b['zoom'] = [z for z in (b.get('zoom') or []) if b['payoff'] - 3 <= z <= b['end']][:2] or [b['payoff']]
     return b
+
+# ---------------------------------------------------------------- stories: moments that belong together (a setup now, the payoff minutes later)
+PROMISE = re.compile(r"\b(i'?m gonna|i am going to|i will|i'll|watch me|watch this|let me|i bet|ik ga|let op|kijk maar|you'?ll see|this round i)\b.{0,40}\b(ace|clutch|win|kill|one ?tap|carry|drop|destroy|1v\d|get him|get them|beat|revenge|wraak)", re.I)
+RESULT = re.compile(r"\b(i told you|told you|i did it|i said it|zei het toch|did it|called it|as promised|revenge|payback|wraak|got him back|remember him|that guy again)\b", re.I)
+STORY_STOP = set('''the a an and or but to of in on at for is are was were be been it its this that i you he she we they me my your his her our their with as so just like what
+oh god yeah okay ok no yes bro dude man guys chat wait why how who when where there here then than now really very got get go going gonna want know think did do does not dont can cant
+one two three kill kills killed dead died round game team enemy enemies shot shots head nice good bad gg lets let'''.split())
+
+def _story_toks(texts):
+    out = set()
+    for t in texts:
+        for w in re.findall(r"[A-Za-z][A-Za-z0-9_']{3,}", t or ''):
+            lw = w.lower().strip("'")
+            if lw not in STORY_STOP: out.add(lw)
+    return out
+
+def link_stories(moments, words, max_gap=2400):
+    """pairs of moments that tell one story together: a promise and its result, a toxic player and getting him back,
+    a name or a joke that comes back. -> [{'a': mid, 'b': mid, 'why': ..., 'label': ...}]"""
+    if len(moments) < 2: return []
+    cnt = collections.Counter(w[2].lower().strip(".,!?'\"") for w in words)
+    def text_of(m):
+        ws = [w[2] for w in words if m['start'] - 1 <= w[0] <= m['end'] + 1]
+        br = m.get('brief') or {}
+        return ' '.join(ws), [br.get('about') or '', (br.get('focus') or {}).get('text') or '', m.get('title') or '']
+    info = []
+    for m in moments:
+        t, extra = text_of(m)
+        toks = {x for x in _story_toks([t] + extra) if cnt.get(x, 0) <= 4}   # rare words: names, things only said here
+        info.append((m, t, extra, toks))
+    out = []
+    for i, (ma, ta, xa, ka) in enumerate(info):
+        for mb, tb, xb, kb in info[i + 1:]:
+            gap = mb['start'] - ma['end']
+            if gap < 15 or gap > max_gap: continue
+            why = None; label = None
+            if PROMISE.search(ta) and ((mb.get('vision') or {}).get('events') or any(r in ' '.join(mb.get('reasons', [])) for r in ('won', 'ace', 'clutch', 'kill', 'fight'))):
+                why = 'you said you would do it, and you did'; label = 'AND THEN...'
+            elif RESULT.search(tb) and (ka & kb or PROMISE.search(ta)):
+                why = 'you come back to it later'; label = 'LATER...'
+            elif ka & kb:
+                shared = sorted(ka & kb, key=lambda x: cnt.get(x, 0))[:3]
+                focus_a = ((ma.get('brief') or {}).get('focus') or {}).get('text') or ''
+                if any(x in focus_a.lower() for x in shared): why = f'"{shared[0]}" shows up again'; label = 'GUESS WHO...'
+                elif len(shared) >= 2: why = 'the same thing comes back: ' + ', '.join(shared[:2]); label = 'LATER...'
+            if why: out.append({'a': ma['id'], 'b': mb['id'], 'why': why, 'label': label, 'gap': round(gap)})
+    return out[:8]
+
+def llm_link(moments, port=None):
+    """the AI reads one line per moment and says which ones belong to one story"""
+    if len(moments) < 2: return []
+    rows = [f"{i}: at {int(m['t'] // 60)}:{int(m['t'] % 60):02d} - {((m.get('brief') or {}).get('about') or m.get('title') or '')[:80]} | said: {' '.join((m.get('text') or '').split()[:18])}" for i, m in enumerate(moments[:24])]
+    msg = [{'role': 'system', 'content': 'You get moments from one gaming stream. Find pairs that tell ONE story together when you put them after each other: a promise and the result, '
+            'a toxic player and getting revenge on him, a fail and doing it right later, a joke or a name that comes back. Only real links. Answer only with JSON: '
+            '[{"a": index, "b": index, "why": "max 10 words"}], or [] when there are none.'},
+           {'role': 'user', 'content': '0: at 3:10 - says he will ace this round | said: watch me ace this round chat\n1: at 9:40 - toxic player insults him in chat | said: he said I am trash\n2: at 4:02 - gets four kills and the ace | said: ACE I TOLD YOU\n3: at 15:20 - kills the toxic player | said: remember me xToxicGuy'},
+           {'role': 'assistant', 'content': '[{"a": 0, "b": 2, "why": "promised an ace and got it"}, {"a": 1, "b": 3, "why": "revenge on the toxic player"}]'},
+           {'role': 'user', 'content': '\n'.join(rows)}]
+    a = llm_chat(msg, 200, 0.1, port)
+    m = re.search(r'\[.*\]', a, re.S)
+    if not m: return []
+    try: d = json.loads(m.group(0))
+    except Exception: return []
+    out = []
+    for x in d if isinstance(d, list) else []:
+        try:
+            ia, ib = int(x['a']), int(x['b'])
+            if 0 <= ia < len(moments) and 0 <= ib < len(moments) and ia != ib:
+                A, Bm = sorted([moments[ia], moments[ib]], key=lambda m: m['t'])
+                if Bm['start'] - A['end'] >= 15: out.append({'a': A['id'], 'b': Bm['id'], 'why': str(x.get('why') or '')[:80], 'label': 'LATER...', 'by': 'ai'})
+        except Exception: continue
+    return out[:6]

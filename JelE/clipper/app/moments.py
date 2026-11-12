@@ -356,7 +356,7 @@ def analyse(sid):
             if 0 <= i < T: cnt[i] += 1
         rate = np.convolve(cnt, np.ones(int(6 / step)), mode='same') / 6.0
         for i in range(T):
-            if rate[i] > 3.2: score[i] += (rate[i] - 3.2) * 0.8
+            if rate[i] > 3.2: score[i] += (rate[i] - 3.2) * 0.4; why[i]['talk'] = 1   # talking fast alone is weak: it needs a reason close by (see below)
     # 2. chat going off (shifted back: chat reacts a few seconds after the moment)
     chat = load_chat(sid); delay = float(SET.get('chat_delay', 6))
     if chat:
@@ -542,6 +542,16 @@ def analyse(sid):
                     if r_ not in c['reasons']: c['reasons'].append(r_)
             log('Looked at the picture of ' + str(len(cands)) + ' moments')
         except Exception: log('Looking at the picture did not work'); traceback.print_exc()
+    # every moment needs something that really happened, not only words: the game (a kill, an event), gunshots, laughing or screaming,
+    # chat going off, a marker, a Twitch clip, or something on screen (round won, you died). talking alone ("oh my god", "bro", "what") is out,
+    # unless the AI later says it is really good (7 or more)
+    EVID = ('game', 'sound', 'chat', 'marker', 'tclip')
+    for c in cands:
+        st_, en_ = c.get('start', c['t'] - 10), c.get('end', c['t'] + 5)
+        ev_ = any(k in why[i] for i in range(max(0, int(st_ / step)), min(T, int(en_ / step) + 1)) for k in EVID)
+        vi_ = c.get('vision') or {}
+        if vi_.get('events') or vi_.get('dead_at'): ev_ = True
+        if not ev_ and not c.get('said'): c['no_evidence'] = True
     # what is this moment about? a timeline of everything that happens (what you say, shots, laughing, the screen, chat),
     # then the story: where it starts making sense, the payoff, where the reaction is over, and the edit that belongs to it
     if cands and SET.get('brief', True):
@@ -617,6 +627,8 @@ def analyse(sid):
         if tm_ >= 1.2: c['reasons'].append('you often keep clips like this')
         if not c.get('title'): c['title'] = fallback_title(c, load_sess(sid))
         if not c.get('hooks'): c['hooks'] = hook_options([], [], c, load_sess(sid))   # learn from what you kept before
+    for c in cands:   # only words, nothing happened: out, unless the AI says it is really good
+        if c.get('no_evidence') and not ((c.get('ai') or {}).get('score', 0) >= 7): c['drop'] = True
     # what the AI threw out stays out (when it threw out everything, the best one stays, so you can see why)
     kept_ = [c for c in cands if not c.get('drop')]
     if len(kept_) < len(cands): log(f'The AI threw out {len(cands) - len(kept_)} moments that are not good enough')
@@ -632,7 +644,39 @@ def analyse(sid):
     for m in moments:
         th = os.path.join(sdir(sid), f"thumb_{m['id']}.jpg")
         run(['-y', '-ss', str(m['t']), '-i', path, '-frames:v', '1', '-vf', 'scale=480:-2', th])
-    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['duration'] = dur; s['status'] = 'klaar'; save_sess(s)   # keep clips you picked yourself
+    # stories: moments that belong together (a promise and the result, a toxic player and getting him back, something that comes back)
+    stories = []
+    try:
+        links = link_stories(moments, ALL)
+        # a promise you made ("watch me ace this round") is often not a moment by itself: look for it in everything you said
+        for k_, w_ in enumerate(ALL):
+            ph_ = ' '.join(x[2] for x in ALL[k_:k_ + 10] if x[0] - w_[0] < 4)
+            if PROMISE.match(ph_) or (PROMISE.search(ph_) and PROMISE.search(ph_).start() == 0):
+                res_ = next((m for m in moments if 15 <= m['start'] - w_[0] <= 1200 and ((m.get('vision') or {}).get('events') or (m.get('vision') or {}).get('dead_at')
+                             or any(r in ' '.join(m.get('reasons', [])) for r in ('won', 'ace', 'clutch', 'fight', 'kill', 'died', 'lost')))), None)
+                if res_ and not any(l_['b'] == res_['id'] for l_ in links):
+                    fail_ = any(r in ' '.join(res_.get('reasons', [])) for r in ('died', 'lost')) or (res_.get('brief') or {}).get('type') == 'fail'
+                    links.append({'a': None, 'a_t': (max(0, w_[0] - 3), min(dur, w_[0] + 6)), 'b': res_['id'], 'gap': round(res_['start'] - w_[0]),
+                                  'why': 'famous last words: you said you would do it, and then this' if fail_ else 'you said you would do it, and you did', 'label': 'FAMOUS LAST WORDS...' if fail_ else 'AND THEN...'})
+        if llm_ready() and SET.get('llm_judge', True) and len(moments) >= 2:
+            for l_ in llm_link(sorted(moments, key=lambda m: m['t']), llm_start()):
+                if not any(x.get('a') == l_['a'] and x['b'] == l_['b'] for x in links): links.append(l_)
+        byid = {m['id']: m for m in moments}
+        def part_of(m):
+            br_ = m.get('brief') or {}; pk_ = br_.get('cause') or m['t']
+            return max(m['start'], pk_ - 14), min(m['end'], max(pk_, m['t']) + 8)
+        for l_ in links[:6]:
+            B_ = byid.get(l_['b']); A_ = byid.get(l_['a']) if l_.get('a') else None
+            if not B_: continue
+            a1, a2 = part_of(A_) if A_ else l_['a_t']; b1, b2 = part_of(B_)
+            gap_ = b1 - a2; gl = f'{int(gap_ // 60)} MINUTES LATER' if gap_ >= 120 else 'LATER...' if gap_ >= 30 else 'THEN...'
+            if l_.get('label') and l_['label'] not in ('LATER...', 'THEN...'): gl = l_['label']
+            stories.append({'id': uuid.uuid4().hex[:8], 'why': l_['why'], 'by': l_.get('by', 'rules'), 'title': (B_.get('title') or '')[:40], 'hook': l_.get('label') or '',
+                            'parts': [{'sid': sid, 'a': round(a1, 1), 'b': round(a2, 1), 'label': ''}, {'sid': sid, 'a': round(b1, 1), 'b': round(b2, 1), 'label': gl}],
+                            'mids': [A_['id'] if A_ else None, B_['id']]})
+        if stories: log(f'Found {len(stories)} stories: moments that belong together')
+    except Exception: traceback.print_exc()
+    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['stories'] = stories; s['duration'] = dur; s['status'] = 'klaar'; save_sess(s)   # keep clips you picked yourself
     log(f'Done: {len(moments)} moments found in {s["title"]}')
     made = [(float(x.get('start') or 0), float(x.get('end') or 0)) for x in s.get('shorts', [])]
     def has_short(m):   # searching again must not make the same shorts twice

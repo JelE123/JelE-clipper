@@ -2,6 +2,13 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.53 · 12 November 2026
+
+- **No more moments from just talking.** Saying "oh my god", "what", "no way" or talking fast is no longer enough on its own. A moment now needs something real around it: a kill, a death, a scream, a laugh, chat, a marker or a clip. Only when the AI is very sure (7 out of 10 or more) does a talk-only moment stay.
+- **Stories.** The app now links moments that belong together, like "watch me clutch this" and what happened next, a toxic message and your answer later, or a joke that comes back. You see them above the moments under **Stories**.
+- **Make story short.** One click makes one short out of the linked pieces, with a "LATER..." or "FAMOUS LAST WORDS..." card between them.
+- When you say you will do something and then die, the app now sees that as a story too (a fail can be gold).
+
 ## 6.52 · 12 November 2026
 
 ### I find what you react to
