@@ -12,6 +12,22 @@ def font(size, kind='caption'):
         if os.path.exists(f): return ImageFont.truetype(f, size)
     return ImageFont.load_default()
 
+FUNC = re.compile(r"^(the|a|an|to|of|and|or|in|on|at|my|your|his|her|their|is|for|with|this|that|de|het|een|en|of|in|op|te|naar|met|mijn|je|jouw|zijn|haar|die|dat|is|van|voor|om)$", re.I)
+EMPH_TL = threading.local()   # words you said loud in this short (start times): they get the highlight colour
+def loud_words(path, start, end, words, work):
+    """the words you shout: louder than how you normally talk in this clip"""
+    import wave, numpy as np
+    wav = os.path.join(work, 'loud.wav'); extract_wav(path, start, end - start, wav)
+    with wave.open(wav, 'rb') as wf: x = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
+    sr = 16000; db = []
+    for w in words:
+        a, b = int((w[0] - start) * sr), int((w[1] - start) * sr)
+        seg = x[max(0, a):max(a + 1, b)]
+        db.append(20 * np.log10(np.sqrt((seg ** 2).mean()) + 1e-6) if len(seg) > 160 else -90)
+    ok = [d for d in db if d > -80]
+    if len(ok) < 5: return set()
+    thr = float(np.median(ok)) + 7
+    return {round(w[0], 2) for w, d in zip(words, db) if d > thr and len(re.sub(r'\W', '', w[2])) >= 2}
 EMPH = re.compile(r"^(no+|what|wow|omg|yes+|nice+|insane|crazy|ace|clutch|bro+|let'?s|lets|go+|w|holy|why|how|wait|god|sheesh|gg|perfect|unreal|nasty|sick|one|tap)\W*$", re.I)
 FILLERS = re.compile(r"^(u+h+m*|u+m+|e+r+m+|e+h+m*|h+m+|mm+|ehm|uhm)[.,!?]*$", re.I)
 def drop_fillers(words):
@@ -46,6 +62,11 @@ def caption_groups(words):
             groups.append(cur); cur = []
         cur.append(w)
     if cur: groups.append(cur)
+    # never a little word like "the", "de" or "to" alone at the end of a line when the sentence goes on: it moves to the next line
+    for i in range(len(groups) - 1):
+        g, h = groups[i], groups[i + 1]
+        if len(g) >= 2 and (i + 1) not in forced and FUNC.match(g[-1][2]) and h[0][0] - g[-1][1] <= 0.35 and len(h) <= 2 and sum(len(x[2]) + 1 for x in h) + len(g[-1][2]) <= 19 and h[0][2] != UNCLEAR:
+            groups[i + 1] = [g[-1]] + h; groups[i] = g[:-1]
     # 6.1: a lonely word joins its neighbour when they belong together (close in time, still short enough). never over your own line break
     def fits(a, b): return len(a) + len(b) <= 4 and sum(len(x[2]) + 1 for x in a + b) <= 21 and b[0][0] - a[-1][1] <= 0.45 and UNCLEAR not in [x[2] for x in a + b] and not re.search(r'[.!?]$', a[-1][2])
     i = 0
@@ -82,8 +103,9 @@ def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):
     img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(6 if style == 'clean' else 5)))
     d = ImageDraw.Draw(img); x = (W - total) / 2
     friend = len(words[0]) > 3 and words[0][3] == 'f'   # plan F3.5: your friends (Discord) in their own colour
+    loud = getattr(EMPH_TL, 'v', None) or set()
     for i, (t, w) in enumerate(zip(txt, widths)):
-        on = i == active; emph = bool(EMPH.match(t))
+        on = i == active; emph = bool(EMPH.match(t)) or round(words[i][0], 2) in loud
         if style == 'jele':
             col = BC() if on else ((255, 228, 92, 255) if emph else (255, 255, 255, 255)); sc = BI()
             if on:

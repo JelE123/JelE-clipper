@@ -248,6 +248,9 @@ def raw_transcribe(audio, wav, purpose, on_prog, mic):
     own = [w.strip() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip()]
     try: own += [w for w in learned_words() if w not in own][:40]   # words you fixed in the editor
     except Exception: pass
+    try: own += [w for w in (SET.get('friends_names') or '').replace('\n', ',').split(',') if w.strip()][:20]   # your friends' names
+    except Exception: pass
+    own = [x for x in (getattr(PROMPT_TL, 'v', None) or [])] + own   # listening again: the words around it and names from the screen
     if use_wcpp() and not SPEECH.broken:   # graphics card of any brand
         base = gamewords.prompt_words(cur_game()) if gamewords else []
         req = {'cmd': 'wcpp', 'exe': wcpp_exe(), 'model_path': wcpp_model(), 'wav': wav, 'lang': cur_lang(), 'threads': speech_threads(),
@@ -332,6 +335,31 @@ def is_voiceline(text):
         if ' ' in vl and len(t.split()) <= 10 and difflib.SequenceMatcher(None, t, vl).ratio() > 0.82: return True
     return False
 
+PROMPT_TL = threading.local()   # extra hint words for one listen (the doubt check sets these)
+# whisper makes these up in silence (it learned them from subtitles of videos)
+HALLU = re.compile(r"(thanks?( you)?( so much)? for watching|please subscribe|like and subscribe|don'?t forget to subscribe|see you (in the )?next (video|time)|subtitles? by|"
+                   r"ondertiteld door|ondertiteling door|amara\.org|bedankt voor het kijken|tot de volgende (keer|video)|vergeet niet te abonneren|www\.|\.com\b)", re.I)
+def snap_onsets(words, audio, sr=16000):
+    """a word that starts after a pause begins exactly where your voice begins (not a bit early or late)"""
+    try:
+        import numpy as np
+        fr = int(sr * 0.01); n = len(audio) // fr
+        if n < 10: return words
+        e = 20 * np.log10(np.sqrt((audio[:n * fr].reshape(n, fr) ** 2).mean(1)) + 1e-6)
+        floor = float(np.percentile(e, 20)); thr = floor + 9
+        out = []; prev_end = -9
+        for w in words:
+            a, b = w[0], w[1]
+            if w[2] != UNCLEAR and a - prev_end > 0.12:
+                i0, i1 = max(0, int((a - 0.15) * 100)), min(n - 1, int((a + 0.12) * 100))
+                hit = next((i for i in range(i0, i1 + 1) if e[i] > thr), None)
+                if hit is not None:
+                    na = round(max(prev_end + 0.01, hit / 100.0), 2)
+                    if na < b - 0.05: a = na
+            out.append((a, b) + tuple(w[2:])); prev_end = b
+        return out
+    except Exception: return words
+
 UNCLEAR = '\u2026'
 PREVIEW_DIR = os.path.join(DATA, 'voorbeeld')   # shown as ... in the captions when you said something the model could not understand
 UNSURE_TL = threading.local()   # words the model was not quite sure about (start times), for the yellow marks in the editor
@@ -357,6 +385,8 @@ def transcribe(wav, purpose='captions', on_prog=None):
                 unclear.append((sg.start, sg.end))   # someone spoke, but it was too unclear to write down
             dropped += 1; continue
         if is_voiceline(txt): dropped += 1; continue
+        if HALLU.search(txt) and len(txt.split()) <= 10 and (getattr(sg, 'no_speech_prob', 0) > 0.15 or not vad or not any(a < sg.end and b > sg.start for a, b in vad)):
+            dropped += 1; continue   # made up in a quiet bit
         for w in (sg.words or []):
             if getattr(w, 'probability', 1) < 0.2:   # not sure what was said: show that something was said
                 if words and words[-1][2] == UNCLEAR and w.start - words[-1][1] < 0.6: words[-1] = (words[-1][0], round(w.end, 2), UNCLEAR)
@@ -374,5 +404,7 @@ def transcribe(wav, purpose='captions', on_prog=None):
     for a, b in unclear:
         if not any(w[0] < b and w[1] > a for w in words): words.append((round(a, 2), round(b, 2), UNCLEAR))
     words.sort(key=lambda w: w[0])
+    old_ = [w[0] for w in words]; words = snap_onsets(words, audio); mv_ = {round(o, 2): round(w[0], 2) for o, w in zip(old_, words)}
+    UNSURE_TL.v = [mv_.get(u, u) for u in UNSURE_TL.v]
     if dropped: log(f'{dropped} bits of game audio or music removed from the captions')
     return apply_fixes(words)

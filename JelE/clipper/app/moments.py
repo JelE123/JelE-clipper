@@ -566,6 +566,14 @@ def analyse(sid):
                 if n < int(SET.get('screen_text_n') or 15) and vision_ok():   # the text on screen around it: chat messages, killfeed
                     try: texts_ = screen_texts(path, max(0, c['t'] - 45), min(dur, c['t'] + 12))
                     except Exception: traceback.print_exc()
+                    nm_ = []   # names on the screen (chat, killfeed): the doubt check uses them to spell names right
+                    for g_ in texts_ or []:
+                        tx_ = g_.get('text') or ''
+                        if g_.get('region') == 'chat':
+                            m_ = re.match(r"\s*(?:\([^)]*\)\s*|\[[^\]]*\]\s*)?([\w#.-]{3,20})\s*:", tx_)
+                            if m_: nm_.append(m_.group(1).split('#')[0])
+                        elif g_.get('region') == 'killfeed': nm_ += [x for x in re.findall(r'[A-Za-z][\w.-]{2,15}', tx_) if x.upper() != x or len(x) > 4]
+                    if nm_: c['screen_names'] = list(dict.fromkeys(nm_))[:20]
                 lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd, max(0, c['t'] - 45), c['t'] + 15, texts_)
                 rb_ = brief_rules(c, items, a0, c['t'])
                 b_ = brief_merge(llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}, rb_, items)
@@ -641,6 +649,19 @@ def analyse(sid):
         if dup: dup['reasons'] = list(dict.fromkeys(dup['reasons'] + c['reasons']))[:5]; continue
         best.append(c)
     moments = sorted(best[:want], key=lambda m: m['t'])
+    # the doubt check: words the speech model was not sure about, inside the moments you get, are heard again and filled in
+    if ALL and moments and SET.get('doubt_check', True):
+        try:
+            prog('Checking unsure words', 99)
+            nms_ = [n_ for m in moments for n_ in (m.get('screen_names') or [])]
+            new_, left_, opts_, nfix_ = doubt_pass(sid, path, ALL, load_unsure(sid), [(m['start'] - 1, m['end'] + 1) for m in moments], nms_, budget=150)
+            if nfix_ or opts_:
+                ALL = new_
+                json.dump(ALL, open(os.path.join(sdir(sid), 'transcript.json'), 'w', encoding='utf-8'))
+                json.dump(left_, open(os.path.join(sdir(sid), 'twijfel.json'), 'w', encoding='utf-8')); save_opts(sid, opts_)
+                for m in moments:
+                    m['words'] = [w for w in ALL if m['start'] - 1 <= w[0] <= m['end'] + 1]; m['text'] = ' '.join(w[2] for w in m['words'])[:400]
+        except Exception: log('The doubt check did not work'); traceback.print_exc()
     for m in moments:
         th = os.path.join(sdir(sid), f"thumb_{m['id']}.jpg")
         run(['-y', '-ss', str(m['t']), '-i', path, '-frames:v', '1', '-vf', 'scale=480:-2', th])

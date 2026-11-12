@@ -94,6 +94,7 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': bool(u.get('info')), 'current': VERSION, 'latest': (u.get('info') or {}).get('version'), 'notes': (u.get('info') or {}).get('notes', ''), 'newer': bool(u.get('newer')),
                            'why': u.get('error'), 'repo': SET.get('update_repo', ''), 'has_source': bool(SET.get('update_repo') or CFG.get('UPDATE_URL')), 'versions': versions_list(), 'busy': busy_reason()})
         if p == '/api/unsure': return self.j(load_unsure(q['sid'][0]))
+        if p == '/api/unsure-opts': return self.j(load_opts(q['sid'][0]))
         if p == '/api/search': return self.j(search_said(q.get('q', [''])[0]))
         if p == '/api/insights': return self.j(dict(insights(), best_hour=best_post_hour()))
         if p == '/api/trash': return self.j(trash_list())
@@ -382,6 +383,9 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': True})
         if p == '/api/trash-restore': restore_short(os.path.basename(b.get('file', ''))); return self.j({'ok': True})
         if p == '/api/feedback': return self.j(feedback_add(b))
+        if p == '/api/doubt':   # the editor's 'Check unsure words'
+            try: return self.j(doubt_range(b['sid'], float(b['a']), float(b['b'])))
+            except Exception as e: traceback.print_exc(); return self.j({'ok': False, 'why': str(e)[:120]})
         if p == '/api/word-learn':
             if b.get('forget'):
                 d = word_learn(); d.pop(_wk(b['forget']), None); json.dump(d, open(LEARN_F, 'w', encoding='utf-8'), indent=1)

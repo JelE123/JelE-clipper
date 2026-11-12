@@ -219,6 +219,10 @@ def _render(job):
                     fw = [(float(w[0]), float(w[1]), censor(str(w[2])) if job.get('bleep') and SWEAR.match(str(w[2])) else str(w[2]), 'f') for w in job['friend_words'] if w[2] != UNCLEAR and start <= float(w[0]) < end and (replay_at is None or float(w[0]) - start < replay_at)]
                     mine = [w for w in cws if not any(f_[0] - 0.15 <= w[0] <= f_[1] + 0.15 and w[2].lower() == f_[2].lower() for f_ in fw)]   # the same word heard on both tracks: keep it once, as theirs
                     cws = sorted(mine + fw, key=lambda w: w[0])
+                EMPH_TL.v = set()
+                if SET.get('cap_loud', True) and not prepared and not job.get('parts'):   # the words you shout get the highlight colour
+                    try: EMPH_TL.v = loud_words(path, start, end, cws, work)
+                    except Exception: traceback.print_exc()
                 prog('Drawing the captions', 32)
                 cap_scale = float(job.get('cap_scale') or SET.get('cap_scale') or 1.0)
                 ec_on = job.get('endcard', SET.get('endcard', True)) and dur > 6 and not job.get('loop')

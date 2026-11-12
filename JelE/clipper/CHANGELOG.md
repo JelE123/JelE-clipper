@@ -2,6 +2,18 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.54 · 12 November 2026
+
+- **Unsure words get filled in for you.** After a search, every word the speech model was not sure about inside your moments is heard again, with a better model and the sentence around it as a hint. It then picks what fits best: what it heard the second time, words you corrected before, game names (Viper, not piper) and names on the screen (chat, killfeed). With the local AI on, the AI picks too.
+- **Did you say...?** Still unsure? Double-click the word in the editor and you get 2 or 3 options to click.
+- **Fill in unsure** button in the editor: does the same check for the clip you are working on.
+- Dutch and English mixed: an unsure bit is also tried in English.
+- Made-up sentences in quiet bits ("thanks for watching", "ondertiteld door...") are thrown out.
+- Words start exactly where your voice starts.
+- Little words like "the", "de" or "to" no longer hang alone at the end of a caption line.
+- Words you shout get the highlight colour in the captions.
+- Your friends' names help the speech model too (setting friends_names).
+
 ## 6.53 · 12 November 2026
 
 - **No more moments from just talking.** Saying "oh my god", "what", "no way" or talking fast is no longer enough on its own. A moment now needs something real around it: a kill, a death, a scream, a laugh, chat, a marker or a clip. Only when the AI is very sure (7 out of 10 or more) does a talk-only moment stay.

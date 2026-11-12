@@ -330,3 +330,17 @@ def soundalike(words, unclear='...', game='valorant'):
 def all_words():
     """every word in this file, for the settings page"""
     return len(CANON)
+
+def similar(word, game='valorant', extra=(), n=3):
+    """game names (and extra names, for example from the screen) that sound like this word, best first"""
+    import difflib
+    core = re.sub(r"^[^\w]+|[^\w']+$", '', word or '')
+    if len(core) < 3 or not core.replace("'", '').isalpha(): return []
+    k = _snd(core); out = []
+    for nm in list(_names(game)) + [e for e in extra if e]:
+        if nm.lower() == core.lower() or ' ' in nm: continue
+        r = difflib.SequenceMatcher(None, core.lower(), nm.lower()).ratio()
+        if _snd(nm) == k: r = max(r, 0.9)
+        if r >= 0.72: out.append((r, nm))
+    out.sort(reverse=True)
+    return [nm for r, nm in out[:n]]
