@@ -224,6 +224,9 @@ def cmd_rules(text):
     if not acts:
         r = _one(raw.lower(), raw)
         if r: acts = [r]
+    timed = [a for a in acts if a['action'] in TIME_ACTS]
+    if len(timed) == 1 and re.search(r'\d', raw) and not any(re.search(r'\d', p) and _one(p.lower(), p) == timed[0] for p in parts):
+        timed[0]['value'] = _secs(raw.lower(), timed[0]['value'])   # "a bit snappier, like 4 seconds": the number belongs to it
     return acts or None
 
 def cmd_parse(text):

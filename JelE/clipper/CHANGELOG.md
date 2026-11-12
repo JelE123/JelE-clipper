@@ -2,6 +2,11 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.47 · 12 November 2026
+
+### Editor
+- "Trim it a bit, like 4 seconds": the number now belongs to the change, also when it comes later in the sentence
+
 ## 6.46 · 12 November 2026
 
 ### The editor understands you much better
