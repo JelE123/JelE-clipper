@@ -2,6 +2,14 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.34 · 12 November 2026
+
+### Your mic on track 6 (or any track)
+- Fixed: the Clipper counted the audio tracks in the recording file, not the OBS track numbers. When OBS records for example tracks 1, 2 and 6, the file has 3 tracks and your track 6 showed up as "Track 3", and "Track 6" in Settings pointed at nothing
+- The Clipper now remembers which OBS tracks every recording has, so Track 6 in Settings and in the setup is really your OBS track 6
+- Is the track you picked not in a recording? Then the Clipper finds your mic itself instead of giving no captions
+- "Set up OBS for me" now keeps the track you already use for your mic (for example 6), instead of moving it to track 2
+
 ## 6.33 · 12 November 2026
 
 ### OBS without a password

@@ -123,8 +123,40 @@ def find_mic(path):
     log('Audio:', why)
     return _MIC[path]
 
+# OBS track numbers are not the same as the audio streams in the file: when OBS records tracks 1, 2 and 6,
+# the file has 3 audio streams and OBS track 6 is the 3rd. The Clipper remembers which tracks OBS recorded.
+_TMAP = {}
+def track_map(path):
+    """the OBS track number of every audio stream in this recording, e.g. [1, 2, 6]. None = unknown"""
+    if path in _TMAP: return _TMAP[path]
+    m = None
+    try:
+        for s_ in list_sess():
+            if path in (s_.get('path'), s_.get('live_path')) and s_.get('rec_tracks'): m = s_['rec_tracks']; break
+    except Exception: pass
+    n = len(audio_tracks(path)) if os.path.exists(path) else 0
+    if m and n and len(m) != n: m = None          # the file does not match what OBS said: do not guess
+    if not m and n and obs.ok:
+        cur = obs_rec_tracks()
+        if cur and len(cur) == n: m = cur
+    _TMAP[path] = m
+    return m
+def obs_track_of(path, stream):
+    m = track_map(path); return m[stream - 1] if m and 0 < stream <= len(m) else stream
+def stream_of(path, track):
+    """the audio stream in the file for an OBS track number, or None when that track is not in this recording"""
+    m = track_map(path)
+    if m: return m.index(track) + 1 if track in m else None
+    n = len(audio_tracks(path))
+    return track if 0 < track <= n else None
+
 def mic_map(path):
     mt = int(SET.get('mic_track') or 0)
+    if mt > 0:
+        st = stream_of(path, mt)
+        if st: return ['-map', f'0:a:{st-1}']
+        if not _TMAP.get(('said', path)): _TMAP[('said', path)] = True; log(f'Track {mt} is not in this recording, finding your mic myself')
+        mt = 0
     if mt == 0: mt = find_mic(path)[0]
     return ['-map', f'0:a:{mt-1}'] if mt > 0 else []
 
@@ -198,7 +230,7 @@ def analyse(sid):
         mt = int(SET.get('mic_track') or 0)
         if mt > 0: s['mic'] = {'track': mt, 'why': f'you picked track {mt} in Settings'}
         elif mt < 0: s['mic'] = {'track': 0, 'why': 'you picked all audio in Settings'}
-        else: pk, wy, _ = find_mic(path); s['mic'] = {'track': pk, 'why': wy}
+        else: pk, wy, _ = find_mic(path); s['mic'] = {'track': obs_track_of(path, pk) if pk else 0, 'why': wy}
         save_sess(s)
     except Exception: pass
     T = int(dur / step) + 1

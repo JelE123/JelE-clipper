@@ -173,7 +173,10 @@ class OBS:
             st = d.get('outputState')
             if st == 'OBS_WEBSOCKET_OUTPUT_STARTED':
                 s = new_session(); CUR['id'] = s['id']; log('Recording started, logging along:', s['title'])
-                if d.get('outputPath'): s['live_path'] = d['outputPath']; save_sess(s)   # for listening along during the stream
+                if d.get('outputPath'): s['live_path'] = d['outputPath']
+                try: s['rec_tracks'] = obs_rec_tracks()   # which OBS audio tracks this recording has (track 6 can be the 3rd stream in the file)
+                except Exception: pass
+                save_sess(s)
                 threading.Thread(target=remember_cam, args=(s['id'],), daemon=True).start()
                 threading.Thread(target=remember_game, args=(s['id'],), daemon=True).start()
             elif st == 'OBS_WEBSOCKET_OUTPUT_STOPPED' and CUR['id']:
@@ -205,9 +208,19 @@ obs = OBS()
 MIC_KINDS = ('wasapi_input_capture', 'coreaudio_input_capture', 'pulse_input_capture', 'alsa_input_capture')
 def _pp(cat, name):
     return (obs.req('GetProfileParameter', {'parameterCategory': cat, 'parameterName': name}) or {}).get('parameterValue')
+def obs_rec_tracks():
+    """the OBS audio tracks that go into a recording, e.g. [1, 2, 6]"""
+    mode = _pp('Output', 'Mode') or 'Simple'
+    if mode == 'Advanced': cat = 'AdvOut'
+    elif (_pp('SimpleOutput', 'RecQuality') or 'Stream') == 'Stream': return [1]
+    else: cat = 'SimpleOutput'
+    try: bits = int(_pp(cat, 'RecTracks') or 1)
+    except ValueError: bits = 1
+    return [i + 1 for i in range(6) if bits & (1 << i)] or [1]
+
 def obs_auto_setup():
-    """your mic on audio track 2 (and 1), the rest off track 2, recording with tracks 1 and 2, as MKV.
-    then the captions only listen to track 2: your voice, no game, no music, no Discord"""
+    """your mic on its own audio track (the one you use already, else 2) and on 1, the rest off that track, recording with both, as MKV.
+    then the captions only listen to your mic track: your voice, no game, no music, no Discord"""
     if not obs.ok: return {'ok': False, 'why': 'OBS is not connected. Start OBS and fill in your OBS password first.'}
     if (obs.req('GetRecordStatus') or {}).get('outputActive'): return {'ok': False, 'why': 'You are recording now. Stop the recording first, OBS does not allow these changes while it records.'}
     sp = obs.req('GetSpecialInputs') or {}
@@ -217,32 +230,38 @@ def obs_auto_setup():
     if not mics: return {'ok': False, 'why': 'I found no mic in OBS. Add your mic in OBS (Settings > Audio > Mic/Auxiliary Audio) and try again.'}
     changes, notes = [], []
     names = list(dict.fromkeys(mics + [sp[k] for k in ('desktop1', 'desktop2') if sp.get(k)] + [i['inputName'] for i in inputs]))
-    for n in names:
-        tr = (obs.req('GetInputAudioTracks', {'inputName': n}) or {}).get('inputAudioTracks')
-        if not tr: continue   # no sound in this source
+    T = {n: (obs.req('GetInputAudioTracks', {'inputName': n}) or {}).get('inputAudioTracks') for n in names}
+    T = {n: t for n, t in T.items() if t}   # only sources with sound
+    # which track is for your mic: the one you picked, else the track your mic already has on its own, else 2
+    mt = int(SET.get('mic_track') or 0)
+    if mt < 2:
+        mt = next((k for k in range(2, 7) if any(T.get(m, {}).get(str(k)) for m in mics) and not any(t.get(str(k)) for n, t in T.items() if n not in mics)), 2)
+    k_ = str(mt)
+    for n, tr in T.items():
         want = dict(tr)
-        if n in mics: want['1'] = True; want['2'] = True
-        else: want['2'] = False
+        if n in mics: want['1'] = True; want[k_] = True
+        else: want[k_] = False
         if want != tr:
             obs.req('SetInputAudioTracks', {'inputName': n, 'inputAudioTracks': want})
-            changes.append(f'"{n}": on tracks 1 and 2' if n in mics else f'"{n}": off track 2 (track 2 is only for your mic)')
+            changes.append(f'"{n}": on tracks 1 and {mt}' if n in mics else f'"{n}": off track {mt} (track {mt} is only for your mic)')
     mode = _pp('Output', 'Mode') or 'Simple'
     cat = 'AdvOut' if mode == 'Advanced' else 'SimpleOutput'
+    need = 1 | (1 << (mt - 1))
     if cat == 'SimpleOutput' and (_pp('SimpleOutput', 'RecQuality') or 'Stream') == 'Stream':
         notes.append('In OBS, Settings > Output > Recording: set "Recording Quality" to "High Quality" (not "Same as stream"), then click this button again. Only then can OBS record your mic on its own track.')
     else:
         try: cur = int(_pp(cat, 'RecTracks') or 1)
         except ValueError: cur = 1
-        if cur & 3 != 3:
-            obs.req('SetProfileParameter', {'parameterCategory': cat, 'parameterName': 'RecTracks', 'parameterValue': str(cur | 3)})
-            changes.append('Recording: audio tracks 1 and 2 on')
+        if cur & need != need:
+            obs.req('SetProfileParameter', {'parameterCategory': cat, 'parameterName': 'RecTracks', 'parameterValue': str(cur | need)})
+            changes.append(f'Recording: audio tracks 1 and {mt} on')
     fk = 'RecFormat2' if _pp(cat, 'RecFormat2') else 'RecFormat'
     if (_pp(cat, fk) or '').lower() in ('mp4', 'mov', 'flv'):
         obs.req('SetProfileParameter', {'parameterCategory': cat, 'parameterName': fk, 'parameterValue': 'mkv'})
         changes.append('Recording format: MKV (does not break when your pc crashes, I turn it into MP4 myself)')
     if not notes:
-        SET['mic_track'] = 2; save_settings(SET)
-        changes.append('Clipper: captions only listen to track 2 (your mic)')
+        if int(SET.get('mic_track') or 0) != mt: SET['mic_track'] = mt; save_settings(SET)
+        changes.append(f'Clipper: captions only listen to track {mt} (your mic)')
         if any(c.startswith('Recording') for c in changes): notes.append('Restart OBS once, so it uses the new recording settings.')
     log('OBS set up: ' + ('; '.join(changes) or 'everything was already right'))
     return {'ok': True, 'changes': changes, 'notes': notes, 'mics': mics}
