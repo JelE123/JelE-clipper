@@ -751,6 +751,23 @@ details.more .morebox .card{margin:0}
 .bact{display:flex;gap:4px;margin-top:auto}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body.dock .board{grid-template-columns:1fr}
+
+/* settings: menu left, one group right */
+.setwrap{display:grid;grid-template-columns:260px minmax(0,860px);gap:var(--s4);align-items:start}
+.setnav{position:sticky;top:84px;display:flex;flex-direction:column;gap:4px}
+.setnav input{margin-bottom:8px;width:100%}
+.setnav>button{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--tx);cursor:pointer;font:inherit}
+.setnav>button:hover{background:var(--card)}.setnav>button.on{background:var(--orS);border-color:rgba(255,146,0,.35)}
+.setnav>button svg.i{flex:none;margin-top:2px;color:var(--mut)}.setnav>button.on svg.i{color:var(--or)}
+.setnav>button b{display:block;font-size:13.5px;font-weight:600}.setnav>button small{display:block;color:var(--dim);font-size:12px;line-height:1.35;margin-top:2px}
+.setnavft{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.sethead h2{margin:0 0 2px;font-size:20px}.sethead p{margin:0 0 var(--s3)}
+.sets.setcards{display:flex;flex-direction:column;align-items:stretch;gap:var(--s3)}.sets.setcards>.card{width:auto;max-width:none;align-self:stretch}.setcards>.card{margin:0}
+.sgtag{display:inline-block;font-size:11px;font-weight:600;color:var(--or);background:var(--orS);border-radius:6px;padding:2px 8px;margin-bottom:8px}
+.btn.advtog{margin-top:var(--s3);width:100%;justify-content:center;border-style:dashed}
+@media(max-width:1000px){.setwrap{grid-template-columns:1fr}.setnav{position:static;flex-direction:row;flex-wrap:wrap}.setnav>button small{display:none}.setnav input{flex:1 1 100%}}
+body.dock .libbar{flex-wrap:wrap}body.dock .libbar .seg{flex-wrap:wrap;max-width:100%}
+body.dock .setwrap{grid-template-columns:1fr}body.dock .setnav{position:static}body.dock .setnav>button small{display:none}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
@@ -1134,19 +1151,47 @@ function renderTodo(){ const el=$('todoBox'); if(!el||!ST||!Array.isArray(SHORTS
     else if(a==='upd'){ tab('sys'); } }); }
 
 
-// ---------- F1.7: settings in 5 groups + search (search also finds Advanced settings)
-const SET_GROUPS={'Where is your cam?':'video','Default for new shorts':'video','Default look':'video','Styles':'video','Brand':'video',
-  'Captions':'cap','Captions: words':'cap','Automatic':'clips','Finding moments':'clips','Live clips':'clips','Games':'clips',
+// ---------- settings: a menu on the left with one group at a time, search over everything (replaces the 6.22 group chips)
+const SET_GROUPS={'Automatic':'clips','Finding moments':'clips','Live clips':'clips','Games':'clips',
+  'Captions':'cap','Captions: words':'cap',
+  'Where is your cam?':'video','Default for new shorts':'video','Default look':'video','Styles':'video','Brand':'video',
   'Platforms':'post','Export':'post','On your phone':'post','Notification on your phone':'post',
-  'Keys':'app','Your matches and Twitch':'app','Updates':'app','Speed and safety':'app','Backups':'app'};
-function setFilter(){ const g=($('setGrp').querySelector('.on')||{}).dataset?.g||'', q=($('setFind').value||'').trim().toLowerCase(); let n=0;
-  $('set').classList.toggle('srch',!!q);
-  $$('#set .sets .card').forEach(c=>{ const h=(c.querySelector('h3')||{}).textContent||'', grp=SET_GROUPS[h.trim().replace(/\?$/,'').trim()]||'app';
-    const ok=(!g||grp===g)&&(!q||c.textContent.toLowerCase().includes(q)); c.classList.toggle('sfhide',!ok);
-    if(ok&&(q||!c.classList.contains('adv')||$('set').classList.contains('adv'))) n++; });
-  $('setNone').style.display=n?'none':''; }
-$$('#setGrp button').forEach(b=>b.onclick=()=>{ $$('#setGrp button').forEach(x=>x.classList.toggle('on',x===b)); setFilter(); });
-$('setFind').oninput=setFilter;
+  'Keys':'app','Your matches and Twitch':'app','Speed and safety':'app','Updates':'app','Backups':'app'};
+const SET_NAV=[['clips','spark','Finding clips','What counts as a moment, automatic shorts, live clips and games'],
+  ['cap','text','Captions','Which audio, the speech model, language and your own words'],
+  ['video','film','Video and look','Where your cam is, layout, caption style and your brand'],
+  ['post','down','Posting and phone','Platforms, export and your phone'],
+  ['app','cog','Connections and app','OBS, keys, speed and safety, updates and backups']];
+let SETG='clips';
+const ctitle=c=>((c.querySelector('h3')||{}).textContent||'').trim().replace(/\?$/,'').trim();
+(function setLayout(){ const sec=$('set'); if(!sec||$('setNav')) return; const sets=sec.querySelector('.sets'); if(!sets) return;
+  const cards=[...sets.querySelectorAll(':scope > .stack > .card')]; const og=sec.querySelector('.setgroups'); if(og) og.remove();
+  const wrap=document.createElement('div'); wrap.className='setwrap';
+  wrap.innerHTML=`<nav class="setnav" id="setNav"><input id="setFind" type="search" placeholder="Search settings" autocomplete="off">
+    ${SET_NAV.map(([k,i,t,d])=>`<button data-g="${k}"><svg class="i"><use href="#i-${i}"/></svg><span><b>${t}</b><small>${d}</small></span></button>`).join('')}
+    <button data-g="sys"><svg class="i"><use href="#i-pulse"/></svg><span><b>System</b><small>What works and what does not</small></span></button>
+    <div class="setnavft"><button class="btn sm" id="setWiz2">${ic('check')}Setup wizard</button><button class="btn sm ghost" id="setTour2">Tour</button></div></nav>
+    <div class="setmain"><div class="sethead"><h2 id="setH"></h2><p class="dim" id="setP"></p></div><div class="sets setcards" id="setCards"></div>
+    <div class="empty" id="setNone2" style="display:none"><b>No setting found</b>Try another word.</div>
+    <button class="btn advtog" id="advTog"></button></div>`;
+  sets.parentNode.insertBefore(wrap, sets);
+  const box=wrap.querySelector('#setCards'); const ORD=Object.keys(SET_GROUPS), oi=c=>{ const i=ORD.indexOf(ctitle(c)); return i<0?99:i; };
+  SET_NAV.forEach(([k])=>cards.filter(c=>(SET_GROUPS[ctitle(c)]||'app')===k).sort((a,b)=>oi(a)-oi(b)).forEach(c=>box.appendChild(c)));
+  cards.filter(c=>!box.contains(c)).forEach(c=>box.appendChild(c));
+  sets.remove(); const sb=sec.querySelector('.setbar'); if(sb) sb.style.display='none'; const n0=$('setNone'); if(n0) n0.remove();
+  $('setWiz2').onclick=()=>$('setWiz')&&$('setWiz').click(); $('setTour2').onclick=()=>$('setTour')&&$('setTour').click();
+  wrap.querySelectorAll('#setNav [data-g]').forEach(b=>b.onclick=()=>{ if(b.dataset.g==='sys') return tab('sys'); SETG=b.dataset.g; $('setFind').value=''; setFilter(); wrap.querySelector('.setmain').scrollIntoView({block:'start'}); });
+  $('advTog').onclick=()=>{ const adv=!$('set').classList.contains('adv'); setMode(adv); api('/api/seen',{adv}); SETS.adv=adv; setFilter(); };
+  $('setFind').oninput=setFilter; })();
+function setFilter(){ const q=(($('setFind')||{}).value||'').trim().toLowerCase(), sec=$('set'); if(!sec||!$('setCards')) return;
+  sec.classList.toggle('srch',!!q); const adv=sec.classList.contains('adv'); let n=0, nAdv=0;
+  $$('#setCards > .card').forEach(c=>{ const g=SET_GROUPS[ctitle(c)]||'app'; const inG=q?c.textContent.toLowerCase().includes(q):g===SETG;
+    c.classList.toggle('sfhide',!inG); if(inG&&c.classList.contains('adv')&&!q) nAdv++; if(inG&&(q||adv||!c.classList.contains('adv'))) n++;
+    let tag=c.querySelector('.sgtag'); if(q){ if(!tag){ tag=document.createElement('span'); tag.className='sgtag'; c.prepend(tag); } tag.textContent=(SET_NAV.find(x=>x[0]===g)||[0,0,''])[2]; } else if(tag) tag.remove(); });
+  $$('#setNav [data-g]').forEach(b=>b.classList.toggle('on',!q&&b.dataset.g===SETG));
+  const G=SET_NAV.find(x=>x[0]===SETG); $('setH').textContent=q?'Search':G[2]; $('setP').textContent=q?`Everything with "${q}"`:G[3];
+  $('setNone2').style.display=n?'none':''; const t=$('advTog'); t.style.display=(!q&&nAdv)?'':'none'; t.textContent=adv?'Hide advanced settings':`Show ${nAdv} advanced setting${nAdv===1?'':'s'}`; }
+setFilter();
 
 
 // ---------- F3.6: make shorts again (newest version, keep or redo the captions, pick the language)
@@ -2022,7 +2067,7 @@ $('wzNext').onclick=async()=>{ const st=WSTEPS[WZ.i]; if(st.save) await st.save(
   if(WZ.i<WSTEPS.length-1){ WZ.i++; wizShow(); } else { $('wzM').classList.remove('on'); await api('/api/seen',{wizard_done:true}); SETS.wizard_done=true; toast('Everything is set'); if(PAGE==='set') fillSet(); } };
 
 // ---- settings: basic / advanced, keys, updates, back-ups, speed
-function setMode(adv){ $('set').classList.toggle('adv',adv); $$('#setMode button').forEach(b=>b.classList.toggle('on',(b.dataset.m==='adv')===adv)); }
+function setMode(adv){ $('set').classList.toggle('adv',adv); $$('#setMode button').forEach(b=>b.classList.toggle('on',(b.dataset.m==='adv')===adv)); try{ setFilter(); }catch(e){} }
 $$('#setMode button').forEach(b=>b.onclick=()=>{ const adv=b.dataset.m==='adv'; setMode(adv); api('/api/seen',{adv}); SETS.adv=adv; });
 $('setWiz').onclick=()=>wizOpen(0); $('setTour').onclick=()=>{ tab('home'); setTimeout(()=>tourStart(true),300); };
 const KEY_GROUPS=[

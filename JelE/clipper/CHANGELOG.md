@@ -2,6 +2,15 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.38 · 12 November 2026
+
+### A clearer Settings page
+- Settings now has a menu on the left: Finding clips, Captions, Video and look, Posting and phone, Connections and app, and System. You see one group at a time, in one readable column, instead of 20 cards in two columns
+- Every group starts with what is in it. The most used settings come first
+- Advanced settings are folded away per group ("Show 2 advanced settings")
+- Search finds settings in every group, and shows which group each one is in
+- In the OBS dock the Shorts filters no longer run off the screen
+
 ## 6.37 · 12 November 2026
 
 ### OBS dock (plan F4.6, first part)
