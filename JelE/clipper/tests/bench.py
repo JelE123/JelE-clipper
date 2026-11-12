@@ -46,6 +46,8 @@ def make_video(path, minutes=4):
 
 
 def main():
+    try: sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # the Windows console cannot show every sign
+    except Exception: pass
     out = sys.argv[1] if len(sys.argv) > 1 else None
     R = {}
     R['page'] = timed(lambda: urllib.request.urlopen(BASE + '/', timeout=30).read())
