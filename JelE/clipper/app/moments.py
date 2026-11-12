@@ -245,6 +245,20 @@ def analyse(sid):
                 if i < skip_a or i > skip_b: continue
                 if z[i] > 2.0: score[i] += 0.7 * (z[i] - 2.0); why[i]['audio'] = 1
     except Exception: log('Audio analysis failed'); traceback.print_exc()
+    # 1a. what you hear without words: laughing, screaming, cheering, a fight (plan F2.5)
+    if SET.get('sounds', True):
+        try:
+            prog('Listening for laughing, screams and fights', 3)
+            snd = sound_events(path, dur, step, lambda f: prog(None, 3 + 2 * f))
+            ssc, swhy = sound_moments(snd, step)
+            for i in range(min(T, len(ssc))):
+                if ssc[i] > 0 and (i < int(10 / step) or i > T - int(4 / step)): continue
+                score[i] += ssc[i]
+                if swhy[i]: why[i]['sound'] = swhy[i]
+            cnt_ = {k: int(sum(1 for w_ in swhy if w_ and w_.startswith(k))) for k in ('you laughed', 'you screamed', 'cheering', 'a fight')}
+            s = load_sess(sid); s['sounds'] = {k.split()[-1]: v for k, v in cnt_.items()}; save_sess(s)
+            log('Heard without words: ' + ', '.join(f'{k} {v // 2}s' for k, v in cnt_.items() if v) if any(cnt_.values()) else 'Heard without words: nothing special')
+        except Exception: log('Listening for sounds did not work'); traceback.print_exc()
     # 1b. what you say, over the whole recording (always with an NVIDIA card or a strong processor, else up to 30 min)
     ALL = []
     if SET.get('smart', True) and whisper_ok() and (dur <= 1800 or has_cuda() or (CORES >= 8 and dur <= 5 * 3600)):
@@ -379,7 +393,8 @@ def analyse(sid):
         if mk: reasons.insert(0, (f'you said "clip that" at {fmt(said[0])}' if said else {'paneel': 'Clip button', 'sneltoets': 'Clip hotkey', 'chat': '!clip in chat', 'website': 'Clip button', 'streamdeck': 'Stream Deck', 'stem': 'you said "clip that"'}.get(w['marker'], 'Clip button')))
         if w.get('chat'): reasons.append(f"chat went off ({w['chat']} messages in 10 sec)")
         if w.get('hype'): reasons.append(f"{w['hype']}x LUL, W, clip and the like")
-        if w.get('audio'): reasons.append('it suddenly got loud')
+        if w.get('sound'): reasons.append(w['sound'])
+        if w.get('audio') and not w.get('sound'): reasons.append('it suddenly got loud')
         if w.get('say'): reasons.append(f'you said "{w["say"].strip(".,!?")}"')
         cands.append({'id': uuid.uuid4().hex[:8], 't': round(t, 1), 'score': round(float(score[i]), 1), 'reasons': reasons or ['standout moment'], 'marker': mk, 'game': g, 'said': said})
     # fine pass: listen to what you say around each moment
@@ -478,6 +493,8 @@ def fallback_title(c, s=None):
         if near: return near[0]['note'].strip()[:36]
     ks = reason_keys(c.get('reasons'))
     if 'laugh' in ks: return "I CAN'T STOP LAUGHING"
+    if 'scream' in ks: return 'I LOST IT'
+    if 'fight' in ks: return 'WHAT A FIGHT'
     if 'chat' in ks: return 'CHAT WENT CRAZY'
     if 'marker' in ks: return 'WAIT FOR IT...'
     return 'WATCH THIS'
@@ -579,7 +596,7 @@ def live_cache(sid, path):
         if os.path.normcase(os.path.abspath(c.get('path') or '')) != os.path.normcase(os.path.abspath(path)): return None
         return c
     except Exception: return None
-LISTEN = {'sid': None, 'done': 0, 'why': '', 'at': 0}
+LISTEN = {'sid': None, 'done': 0, 'why': '', 'at': 0, 'found': []}
 def live_listen_ok():
     if not SET.get('live_listen', True) or not whisper_ok() or SET.get('smart', True) is False: return 'off'
     if not (has_cuda() or CORES >= 8): return 'this pc is not strong enough to do it during the stream'
@@ -608,12 +625,34 @@ def live_listen_once():
             if not extract_wav(path, a0, LIVE_CHUNK + 2, wav): LISTEN['why'] = 'the recording cannot be read yet'; return
             words = [(round(a + a0, 2), round(b + a0, 2), w) for a, b, w in transcribe(wav, 'scan')]
         finally: LIVE_TL.on = False
-        c['chunks'][str(int(a0))] = {'words': words, 'unsure': [round(u + a0, 2) for u in getattr(UNSURE_TL, 'v', [])], 'at': time.time()}
+        found = []
+        try: found = live_found(words, wav, a0)   # plan F2.1: show likely moments already during the stream
+        except Exception: traceback.print_exc()
+        c['chunks'][str(int(a0))] = {'words': words, 'unsure': [round(u + a0, 2) for u in getattr(UNSURE_TL, 'v', [])], 'at': time.time(), 'found': found}
         tmp = live_cache_file(sid) + '.tmp'; json.dump(c, open(tmp, 'w', encoding='utf-8')); os.replace(tmp, live_cache_file(sid))
-        LISTEN.update(done=len(c['chunks']), why='', at=time.time())
+        LISTEN.update(done=len(c['chunks']), why='', at=time.time(), found=sorted([f for ch in c['chunks'].values() for f in ch.get('found') or []], key=lambda f: -f['t'])[:8])
         log(f'Listened along during the stream: {fmt(a0 + LIVE_CHUNK)} done')
     except Exception: traceback.print_exc(); LISTEN['why'] = 'did not work this time'
     finally: shutil.rmtree(work, ignore_errors=True)
+def live_found(words, wav, a0):
+    """likely moments in a piece that was just heard: what you said and how you sounded"""
+    out = []
+    for i, w in enumerate(words):
+        ph = re.sub(r"[^\w' ]", '', ' '.join(x[2] for x in words[i:i + 3] if x[0] - w[0] < 1.5)).lower()
+        m_ = SAY_STRONG.match(ph)
+        why = 'you said "clip that"' if CLIP_SAY.match(ph) else (f'you said "{m_.group(0)}"' if m_ else None)
+        if why and not any(abs(w[0] - o['t']) < 20 for o in out): out.append({'t': round(w[0], 1), 'why': why})
+    try:
+        import numpy as np
+        r = subprocess.run([FF, '-v', 'error', '-i', wav, '-f', 's16le', '-ac', '1', '-ar', str(SOUND_SR), '-'], capture_output=True, creationflags=NOWIN)
+        x = np.frombuffer(r.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+        sc, why = sound_moments(sound_scan(x, None, 0.5, True))
+        for k in np.argsort(-sc)[:3]:
+            t = round(float(a0 + k * 0.5), 1)
+            if sc[k] >= 1.4 and why[k] and not any(abs(t - o['t']) < 20 for o in out): out.append({'t': t, 'why': why[k]})
+    except Exception: pass
+    return out
+
 LIVE_TL = threading.local()
 def live_listen_loop():
     while True:

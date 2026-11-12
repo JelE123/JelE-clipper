@@ -2,6 +2,33 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.41 · 12 November 2026
+
+### I hear what happens without words (plan F2.5)
+- Laughing, screaming, cheering and fights (gunshots close together) now count as reasons for a moment, also when you say nothing. You see them as "you laughed", "you screamed", "a fight (5 shots)"
+- Long music (a menu, a break, a song) counts a bit less, so those parts are less often a moment
+- No AI model needed: it listens to the rhythm and pitch of the sound itself
+
+### During the stream (plan F2.1)
+- On the Live page you now see "Found so far": moments I already heard while you stream, like "you said no way" or "you laughed"
+
+### Best 5 (plan F2.7)
+- On the Moments page, "Best 5" shows only the 5 best moments of a stream. #1 to #5 get an orange badge
+
+### Done for you (plan F3.3 and F4.4)
+- In the editor (step Effects) a list shows what the app did by itself: zoom, killfeed, sticker, teaser, replay and cut boring bits, each with why. Take one out with ×
+
+### Captions (plan F3.4)
+- Select words in "What is said" and choose "New line here" or "One line" to decide yourself where a caption line breaks
+- Drag a caption block on the timeline to move it a bit earlier or later
+
+### Sound (plan F4.2)
+- With your mic on its own track, your voice is put on top and the rest goes a bit quieter while you talk. A limiter keeps the loudest bits from clipping
+
+### Posting (plan F4.5)
+- "Text to post" is now a post card per platform: TikTok, YouTube Shorts and Instagram Reels each get the right title length and hashtags, and one button marks it as posted there
+- "Fill in views" on the Shorts page: the views of all your posted shorts in one screen
+
 ## 6.40 · 12 November 2026
 
 ### Everything neat and in line, in the whole app

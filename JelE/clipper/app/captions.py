@@ -29,25 +29,32 @@ def name_pairs():
     return out
 
 def caption_groups(words):
-    groups = []; cur = []; pairs = name_pairs()
+    """words -> caption lines. you can steer it in the editor (plan F3.4): a word that starts with ¶ starts a new line,
+    a word that ends with ~ stays on one line with the next word"""
+    groups = []; cur = []; pairs = name_pairs(); forced = set(); glued = set()
     for w in words:
         txt = w[2]
+        brk = txt.startswith('\u00b6'); glue = bool(cur) and cur[-1][2].endswith('~')
+        if brk: txt = txt.lstrip('\u00b6').strip()
+        w = (w[0], w[1], txt) + tuple(w[3:])
+        if brk and cur: groups.append(cur); forced.add(len(groups)); cur = []; cur.append(w); continue
+        if glue and sum(len(x[2]) + 1 for x in cur) + len(txt) <= 26: glued.add(len(groups)); cur.append(w); continue
         pair = bool(cur) and (re.sub(r"[^\w' ]", '', cur[-1][2].lower()) + ' ' + re.sub(r"[^\w' ]", '', txt.lower())) in pairs
         if pair and sum(len(x[2]) + 1 for x in cur) + len(txt) <= 24 and txt != UNCLEAR: cur.append(w); continue   # never split a name over two lines
         if cur and (txt == UNCLEAR or cur[-1][2] == UNCLEAR or len(cur) >= 3 or w[0] - cur[-1][1] > 0.5 or sum(len(x[2]) + 1 for x in cur) + len(txt) > 17 or re.search(r'[.!?,]$', cur[-1][2])):
             groups.append(cur); cur = []
         cur.append(w)
     if cur: groups.append(cur)
-    # 6.1: a lonely word joins its neighbour when they belong together (close in time, still short enough)
+    # 6.1: a lonely word joins its neighbour when they belong together (close in time, still short enough). never over your own line break
     def fits(a, b): return len(a) + len(b) <= 4 and sum(len(x[2]) + 1 for x in a + b) <= 21 and b[0][0] - a[-1][1] <= 0.45 and UNCLEAR not in [x[2] for x in a + b] and not re.search(r'[.!?]$', a[-1][2])
     i = 0
     while i < len(groups):
         g = groups[i]
         if len(g) == 1 and not EMPH.match(g[0][2]):
-            if i + 1 < len(groups) and fits(g, groups[i + 1]): groups[i:i + 2] = [g + groups[i + 1]]; continue
-            if i > 0 and fits(groups[i - 1], g): groups[i - 1:i + 1] = [groups[i - 1] + g]; i -= 1; continue
+            if i + 1 < len(groups) and (i + 1) not in forced and fits(g, groups[i + 1]): groups[i:i + 2] = [g + groups[i + 1]]; forced = {f - 1 if f > i else f for f in forced}; continue
+            if i > 0 and i not in forced and fits(groups[i - 1], g): groups[i - 1:i + 1] = [groups[i - 1] + g]; forced = {f - 1 if f > i - 1 else f for f in forced}; i -= 1; continue
         i += 1
-    return groups
+    return [[(x[0], x[1], x[2].rstrip('~')) + tuple(x[3:]) for x in g] for g in groups]
 
 STYLES = ('jele', 'purple', 'classic', 'clean')
 def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):

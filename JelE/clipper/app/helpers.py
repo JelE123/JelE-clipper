@@ -99,7 +99,7 @@ def fx_suggest(sid, start, end, job=None):
                     fx['stickers'].append({'t': round(w[0] - start, 2), 'dur': 1.6, 'text': lab[:24], 'x': 0.5, 'y': 0.3, 'kind': 'stamp'}); break
     # one story: the opening shows the second before the payoff (not the payoff itself), the replay shows that same payoff again.
     # only when there is a real payoff, and only when the clip does not open with it anyway
-    fx['peak'] = round(peak, 2) if peak is not None else None
+    fx['peak'] = round(peak, 2) if peak is not None else None; fx['peak_why'] = why_peak
     if peak is not None and why_peak in ('event', 'shout', 'marker') and dur > 10:
         if SET.get('fx_teaser', True) and peak > 5: fx['teaser'] = {'t': round(max(0, peak - 1.1), 2), 'len': 0.9, 'text': ''}
         if SET.get('fx_replay', True) and peak < dur - 0.4: fx['replay'] = {'a': round(max(0, peak - 1.8), 2), 'b': round(min(dur, peak + 0.7), 2), 'speed': 0.5}

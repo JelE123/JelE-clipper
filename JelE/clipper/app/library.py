@@ -46,6 +46,8 @@ def reason_keys(reasons):
         elif 'luid' in r or 'loud' in r: ks.add('audio')
         elif any(w in r for w in ('je zei', 'reageerde', 'you said', 'you reacted')): ks.add('say')
         elif 'gelachen' in r or 'laugh' in r: ks.add('laugh')
+        elif 'scream' in r: ks.add('scream')
+        elif 'a fight' in r or 'cheering' in r: ks.add('fight')
         elif 'twitch-clip' in r or 'twitch clip' in r: ks.add('tclip')
         elif re.search(r'\b(ace|[345]k|clutch)\b', r): ks.add('game')
     return ks

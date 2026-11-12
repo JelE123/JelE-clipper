@@ -331,6 +331,18 @@ def _render(job):
             en_ = '+'.join(f'between(t,{a_ - 0.03:.2f},{b_ + 0.03:.2f})' for a_, b_ in bleeps[:40])
             pre += f",volume=0:enable='{en_}'"
         f += f";[0:a]{pre},afade=t=in:d=0.12[a0]"; labels = ['[a0]']
+        # plan F4.2: your voice on top. with your mic on its own track, the rest goes a bit quieter while you talk
+        vkey = None
+        try:
+            ms_ = 0
+            if SET.get('voice_up', True) and not prepared and not job.get('parts') and len(audio_tracks(path)) > 1:
+                mt_ = int(SET.get('mic_track') or 0)
+                ms_ = (stream_of(path, mt_) if mt_ > 0 else find_mic(path)[0]) or 0
+            if ms_ > 1:
+                f += (f";[0:a:{ms_ - 1}]{a_fx},highpass=f=90,acompressor=threshold=0.06:ratio=3:attack=5:release=150,volume=0.5,afade=t=in:d=0.12[vk]"
+                      f";[vk]asplit=3[vkm][vks][vkk];[a0][vks]sidechaincompress=threshold=0.025:ratio=3:attack=25:release=350[a0d]")
+                labels = ['[a0d]', '[vkm]']; vkey = '[vkk]'
+        except Exception: traceback.print_exc(); vkey = None
         if bleeps:
             inputs += ['-f', 'lavfi', '-t', f'{dur:.2f}', '-i', 'sine=f=1000:r=48000']
             f += f";[{n}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=0.22,volume=0:enable='not({en_})'[bp]"; labels.append('[bp]'); n += 1
@@ -340,7 +352,9 @@ def _render(job):
             inputs += ['-stream_loop', '-1', '-ss', f"{float(mus.get('offset', 0)):.2f}", '-i', mfile]
             vol = max(0.0, min(1.0, float(mus.get('vol', 0.25))))
             f += f";[{n}:a]{a_fx},volume={vol:.2f},afade=t=in:d=0.6[mu]"
-            if mus.get('duck', True):
+            if mus.get('duck', True) and vkey:
+                f += f";[mu]{vkey}sidechaincompress=threshold=0.03:ratio=12:attack=15:release=450[mud]"; labels.append('[mud]'); vkey = None
+            elif mus.get('duck', True):
                 f += ";[a0]asplit=2[a0m][a0s];[mu][a0s]sidechaincompress=threshold=0.03:ratio=12:attack=15:release=450[mud]"; labels = ['[a0m]', '[mud]']
             else: labels.append('[mu]')
             n += 1
@@ -351,8 +365,9 @@ def _render(job):
                     inputs += ['-i', fp]; ms_ = int(at * 1000)
                     f += f";[{n}:a]{a_fx},adelay={ms_}|{ms_},volume={0.55 if 'boom' in fp else 0.45}[fx{i_}]"; labels.append(f'[fx{i_}]'); n += 1
             except Exception: traceback.print_exc()
+        if vkey: f += f";{vkey}anullsink"
         mix = f"amix=inputs={len(labels)}:duration=first:normalize=0," if len(labels) > 1 else ''
-        f += f";{''.join(labels)}{mix}afade=t=out:st={max(0, dur-0.35):.2f}:d=0.35" + (",loudnorm=I=-14:TP=-1.2:LRA=11" if SET.get('loud', True) else '') + "[aud]"
+        f += f";{''.join(labels)}{mix}afade=t=out:st={max(0, dur-0.35):.2f}:d=0.35" + (",loudnorm=I=-14:TP=-1.2:LRA=11" if SET.get('loud', True) else '') + ",alimiter=limit=0.95:level=disabled[aud]"
         # inline filter: newer ffmpeg builds (8+) dropped -filter_complex_script
         tmp_out = os.path.join(work, 'out.mp4')   # only shows up in Shorts when it is finished
         venc = (['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-threads', str(max(2, CORES // 2))] + ['-r', '30']) if job.get('preview') else (encoder_args() + ['-r', '60'])

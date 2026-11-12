@@ -481,7 +481,7 @@ aside{background:linear-gradient(180deg,#0c111b,#0a0e17);padding:var(--s4) var(-
 .shc .pon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.shc .ponl{grid-column:1/-1}.shc .pon button{height:26px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shc .vwr .vw{height:28px}
 .shc .ft{margin-top:auto!important;display:flex;flex-wrap:wrap;gap:5px}.shc .ft .btn.pri{flex:1 1 100%;height:34px}.shc .ft .btn:not(.pri){flex:1 1 0;min-width:0;height:30px;padding:0}
-.shc .lmeta .stsel{min-width:112px}#capB:empty{display:none}.insp .seg.wrap{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px}.insp .seg.wrap button{justify-content:center;padding:0 4px;white-space:nowrap}.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ed.v2 .srcbox{container-type:inline-size}@container (max-width:600px){.ed.v2 .ctrl .trimrow{flex:1 1 100%;margin:0!important;display:flex}.ed.v2 .ctrl .trimrow .btn{flex:1;justify-content:center}}body.dock .shc .pon button{font-size:11px;padding:0 2px}.top>div:first-child{min-width:0}.top h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shc .pon button:disabled{grid-column:1/-1}.storybar i.tiny{color:transparent;padding:0}
+.shc .lmeta .stsel{min-width:112px}#capB:empty{display:none}.vrow{display:grid!important;grid-template-columns:40px 1fr 110px;gap:10px;align-items:center}.vrow video{width:40px;height:56px;object-fit:cover;border-radius:6px;background:#000}.vrow span{display:flex;flex-direction:column;min-width:0}.vrow b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.vrow small{font-size:11.5px}.vrow input{height:34px}.capbar i{cursor:grab}.capbar i.drag{cursor:grabbing;outline:1px solid var(--or)}.trans .nlm{color:var(--or);font-weight:700;margin:0 2px;font-size:11px}#fxPlan{padding:14px 16px}.plan{display:flex;flex-direction:column;gap:4px;margin-top:8px}.plan .pl{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--tx);padding:4px 0;border-top:1px solid var(--line)}.plan .pl span{flex:1}.plan .pl .btn{height:24px;width:24px;padding:0;justify-content:center}.plan .dot{width:9px;height:9px;border-radius:3px;flex:none;background:var(--mut)}.plan .dot.zoom{background:#ff9200}.plan .dot.kf{background:#3b82f6}.plan .dot.st{background:#facc15}.plan .dot.tz{background:#22c55e}.plan .dot.rp{background:#8b5cf6}.plan .dot.cut{background:#94a3b8}.lvfound{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.lvfound b{font-size:12px;color:var(--mut);margin-right:4px}.lvfound i{font-style:normal;font-size:12px;padding:3px 9px;border-radius:99px;background:var(--orS);color:#ffb34d;border:1px solid rgba(255,146,0,.35)}.insp .seg.wrap{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px}.insp .seg.wrap button{justify-content:center;padding:0 4px;white-space:nowrap}.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ed.v2 .srcbox{container-type:inline-size}@container (max-width:600px){.ed.v2 .ctrl .trimrow{flex:1 1 100%;margin:0!important;display:flex}.ed.v2 .ctrl .trimrow .btn{flex:1;justify-content:center}}body.dock .shc .pon button{font-size:11px;padding:0 2px}.top>div:first-child{min-width:0}.top h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shc .pon button:disabled{grid-column:1/-1}.storybar i.tiny{color:transparent;padding:0}
 @media(max-width:1350px){.ed.v2 .edtop:has(.pv.land){grid-template-columns:1fr}}body.dock .ed.v2 .edtop:has(.pv.land){grid-template-columns:1fr}body.dock h3{white-space:normal}
 .btn.danger:hover{background:var(--badS);border-color:rgba(239,68,68,.4)}
 .btn svg.i{width:16px;height:16px}
@@ -909,7 +909,7 @@ body.dock .ed.v2{grid-template-columns:1fr}body.dock .ed.v2 .edtop{grid-template
   </section>
 
   <section class="page" id="mom">
-    <div class="mtool"><div class="seg" id="sort"><button data-s="score" class="on">Best first</button><button data-s="time">By time</button></div><span class="mut" id="mInfo" style="font-size:13.5px"></span><button class="btn pri sm" id="manBtn" style="margin-left:auto"><svg class="i"><use href="#i-cut"/></svg>Go through the video yourself</button></div>
+    <div class="mtool"><div class="seg" id="sort"><button data-s="top5" title="Only the 5 best moments of this stream">Best 5</button><button data-s="score" class="on">All, best first</button><button data-s="time">By time</button></div><span class="mut" id="mInfo" style="font-size:13.5px"></span><button class="btn pri sm" id="manBtn" style="margin-left:auto"><svg class="i"><use href="#i-cut"/></svg>Go through the video yourself</button></div>
     <div class="grid" id="mlist" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))"></div>
     <div class="selbar" id="selbar"><span id="selN"></span><span class="dim" style="font-size:12px" id="selFmt"></span><button class="btn sm ghost" id="selClr">Clear</button><button class="btn pri" id="selMake"><svg class="i"><use href="#i-bolt"/></svg>Make shorts</button></div>
   </section>
@@ -1122,11 +1122,14 @@ body.dock .ed.v2{grid-template-columns:1fr}body.dock .ed.v2 .edtop{grid-template
     <button class="btn" id="swE"><svg class="i"><use href="#i-cut"/></svg>Edit <span class="kb">E</span></button>
     <div class="keys">← → previous / next · space pause · Esc close</div></div></div>
 <div class="drop" id="drop">Let go to add</div>
-<div class="modal" id="postM"><div class="box2"><h3 class="disp">Text to post <button class="btn sm ghost" id="postX"><svg class="i"><use href="#i-x"/></svg></button></h3>
+<div class="modal" id="postM"><div class="box2"><h3 class="disp">Post card <button class="btn sm ghost" id="postX"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <div class="seg" id="pPlat" style="margin:4px 0 6px"><button data-pp="tiktok" class="on">TikTok</button><button data-pp="shorts">YouTube Shorts</button><button data-pp="reels">Instagram Reels</button></div>
+  <div class="dim" id="pHint" style="font-size:12px;margin-bottom:6px"></div>
   <div class="pf"><div class="lbl">Title <button class="btn sm" data-cp="pTitle">Copy</button></div><input id="pTitle"></div>
   <div class="pf"><div class="lbl">Description <button class="btn sm" data-cp="pDesc">Copy</button></div><textarea id="pDesc" rows="3"></textarea></div>
   <div class="pf"><div class="lbl">Hashtags <button class="btn sm" data-cp="pTags">Copy</button></div><input id="pTags"></div>
-  <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn pri" id="pAll" style="flex:1;justify-content:center"><svg class="i"><use href="#i-copy"/></svg>Copy all</button><a class="btn" id="pDl" download style="flex:1;justify-content:center"><svg class="i"><use href="#i-down"/></svg>Download video</a></div></div></div>
+  <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn" id="pAll" style="flex:1;justify-content:center"><svg class="i"><use href="#i-copy"/></svg>Copy all</button><a class="btn" id="pDl" download style="flex:1;justify-content:center"><svg class="i"><use href="#i-down"/></svg>Download video</a></div>
+  <button class="btn ghost" id="pDone" style="width:100%;justify-content:center;margin-top:8px"><svg class="i"><use href="#i-check"/></svg><span id="pDoneT">I posted it on TikTok</span></button></div></div>
 
 <script>
 if (/dock=1/.test(location.search)) document.body.classList.add('dock');
@@ -1296,12 +1299,16 @@ function storyParts(){ if(!ED) return {}; const a=ED.a, b=ED.b, pk=Math.min(b-1,
 function paintCaps(){ const cb=$('capB'); if(!cb||!ED) return; const A=ED.wa, L=ED.wl, ws=ED.words||[];
   const key=[A,L,ED.a,ED.b,ws.length,Object.keys(ED.edit||{}).length,(ED.off&&ED.off.size)||0].join('|'); if(cb._k===key) return; cb._k=key;
   const G=[]; let cur=null;
-  ws.forEach((w,i)=>{ if(w[1]<ED.a||w[0]>ED.b||(ED.off&&ED.off.has(i))) return; const t=(ED.edit&&ED.edit[i]!=null)?ED.edit[i]:w[2];
-    if(!cur||w[0]-cur.b>0.5||cur.n>=3||/[.!?]$/.test(cur.last)){ cur={a:w[0],b:w[1],i,txt:[],n:0}; G.push(cur); }
-    cur.b=w[1]; cur.txt.push(t); cur.n++; cur.last=t; });
-  cb.innerHTML=G.filter(g=>g.b>A&&g.a<A+L).map(g=>`<i data-ci="${g.i}" data-ca="${g.a}" style="left:${(g.a-A)/L*100}%;width:${Math.max(.6,(g.b-g.a)/L*100)}%">${esc(g.txt.join(' '))}</i>`).join('');
+  ws.forEach((w,i)=>{ if(w[1]<ED.a||w[0]>ED.b||(ED.off&&ED.off.has(i))) return; const t0=(ED.edit&&ED.edit[i]!=null)?ED.edit[i]:w[2], t=t0.replace(/^\u00b6\s*/,'').replace(/~$/,'');
+    if(!cur||/^\u00b6/.test(t0)||(w[0]-cur.b>0.5||cur.n>=3||/[.!?]$/.test(cur.last))&&!/~$/.test(cur.raw||'')){ cur={a:w[0],b:w[1],i,txt:[],n:0,ix:[]}; G.push(cur); }
+    cur.b=w[1]; cur.txt.push(t); cur.n++; cur.last=t; cur.raw=t0; cur.ix.push(i); });
+  cb.innerHTML=G.filter(g=>g.b>A&&g.a<A+L).map(g=>`<i data-ci="${g.i}" data-ix="${g.ix.join(',')}" data-ca="${g.a}" style="left:${(g.a-A)/L*100}%;width:${Math.max(.6,(g.b-g.a)/L*100)}%">${esc(g.txt.join(' '))}</i>`).join('');
   const cw=cb.clientWidth||1; cb.querySelectorAll('i').forEach(el=>{ el.title=el.textContent; if(parseFloat(el.style.width)/100*cw<46) el.classList.add('tiny'); });
-  cb.querySelectorAll('i').forEach(el=>{ el.onclick=()=>{ $('vid').currentTime=+el.dataset.ca; paintTL(); };
+  cb.querySelectorAll('i').forEach(el=>{ el.onmousedown=e=>{ if(e.button!==0) return; const x0=e.clientX, ix=el.dataset.ix.split(',').map(Number), t0=ix.map(j=>[ED.words[j][0],ED.words[j][1]]); let moved=false;
+      const mv=ev=>{ const dt=Math.max(-1.5,Math.min(1.5,(ev.clientX-x0)/cb.clientWidth*ED.wl)); if(Math.abs(ev.clientX-x0)>3) moved=true; if(!moved) return; ix.forEach((j,k)=>{ ED.words[j][0]=+(t0[k][0]+dt).toFixed(2); ED.words[j][1]=+(t0[k][1]+dt).toFixed(2); }); el.style.left=((ED.words[ix[0]][0]-ED.wa)/ED.wl*100)+'%'; el.classList.add('drag'); };
+      const up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); if(moved){ cb._dragged=Date.now(); cb._k=''; paintCaps(); toast('Caption moved in time'); } };
+      addEventListener('mousemove',mv); addEventListener('mouseup',up); };
+    el.onclick=()=>{ if(Date.now()-(cb._dragged||0)<300) return; $('vid').currentTime=+el.dataset.ca; paintTL(); };
     el.ondblclick=()=>{ const sp=document.querySelector(`#trans span[data-i="${el.dataset.ci}"]`); if(sp){ sp.scrollIntoView({block:'center'}); editWord(sp); } }; }); }
 function paintStory(){ try{ paintCaps(); }catch(e){} const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
   const sw=sb.clientWidth||1; sb.querySelectorAll('i').forEach(el=>{ const r=P[el.dataset.sb]; if(!r||r[1]-r[0]<0.15){ el.style.display='none'; return; } el.style.display=''; el.style.left=((r[0]-A)/L*100)+'%'; el.style.width=((r[1]-r[0])/L*100)+'%'; el.title=el.textContent; el.classList.toggle('tiny',(r[1]-r[0])/L*sw<el.textContent.length*6.5+16); });
@@ -1349,7 +1356,8 @@ $('mark').onclick=async()=>{ const r=await api('/api/marker',{}); toast(r.ok?'Mo
 function renderLive(){ if(!$('lvRec')) return; const s=ST||{}, c=s.cur;
   $('lvRec').classList.toggle('on',!!c);
   if(c){ const el=(s.now||Date.now()/1000)-(c.start||0)+(Date.now()/1000-(renderLive.t0||Date.now()/1000)); $('lvT').textContent='REC '+fmt(Math.max(0,el)); $('lvS').textContent=(c.n_markers?`${c.n_markers} moment${c.n_markers===1?'':'s'} marked`:'Logging along. Mark something crazy with the button below.')+(s.listen&&s.listen.done_min?` · ${s.listen.done_min} min already heard`:'')+(s.game_now?` · ${s.game_now}`:'');
-    $('lvMarks').innerHTML=(c.markers||[]).slice().reverse().map(m=>`<i>${fmt(m.t)}${m.note?' · '+esc(m.note):''}</i>`).join(''); }
+    const fnd=(s.listen&&s.listen.found)||[];
+    $('lvMarks').innerHTML=(c.markers||[]).slice().reverse().map(m=>`<i>${fmt(m.t)}${m.note?' · '+esc(m.note):''}</i>`).join('')+(fnd.length?`<div class="lvfound"><b>Found so far</b>${fnd.map(f=>`<i title="I heard this, it will be a moment after the stream">${fmt(f.t)} · ${esc(f.why)}</i>`).join('')}</div>`:''); }
   else { $('lvT').textContent='Not recording'; $('lvS').textContent=s.obs?'Start recording in OBS and I log along':'OBS is not connected'; $('lvMarks').innerHTML=''; }
   const list=SHORTS.filter(x=>x.auto&&x.status==='nieuw'), el=$('lvInbox');
   if(renderLive.sig!==list.map(x=>x.file).join()){ renderLive.sig=list.map(x=>x.file).join();
@@ -1422,10 +1430,10 @@ function renderMoments(){ const s=SESS;
   if(!s){ $('manBtn').style.display='none'; $('pgT').textContent='Moments'; $('pgS').textContent=''; $('mInfo').textContent=''; $('mlist').innerHTML='<div class="empty" style="grid-column:1/-1">'+EMPTY('spark','Pick a stream first','Go to Streams and click a stream.')+'</div>'; return; }
   $('pgT').textContent=s.title; $('pgS').textContent=`${s.duration?fmt(s.duration)+' · ':''}${s.chat_n} chat messages · ${s.markers.length} marked`; momActions();
   const ms=[...(s.moments||[])], top=Math.max(1,...ms.map(m=>m.score)), done=new Set((s.shorts||[]).map(x=>x.mid));
-  ms.sort((a,b)=>(b.score||0)-(a.score||0)).forEach((m,i)=>m._rank=i+1); if(SORT==='time') ms.sort((a,b)=>a.start-b.start);
+  ms.sort((a,b)=>(b.score||0)-(a.score||0)).forEach((m,i)=>m._rank=i+1); if(SORT==='top5') ms.splice(5); if(SORT==='time') ms.sort((a,b)=>a.start-b.start);
   $('mInfo').textContent=ms.length?`${ms.length} moments · click a card to edit, tick to make more at once`:'';
   $('mlist').innerHTML=ms.length? ms.map(m=>`<div class="card mc ${SEL.has(m.id)?'sel':''}" data-m="${m.id}">
-      <div class="thumb" data-edit="${m.id}" style="background-image:url('/thumb?sid=${encodeURIComponent(SID)}&mid=${m.id}')"><span class="rank disp ${m._rank<=3?'best':''}">#${m._rank}</span>
+      <div class="thumb" data-edit="${m.id}" style="background-image:url('/thumb?sid=${encodeURIComponent(SID)}&mid=${m.id}')"><span class="rank disp ${m._rank<=5?'best':''}" title="${m._rank<=5?'One of the 5 best moments of this stream':''}">#${m._rank}</span>
         ${done.has(m.id)?'<span class="done-tag">made</span>':''}<button class="chk" data-chk="${m.id}" title="Select">${ic('check')}</button>
         <div class="play">${ic('play')}</div><span class="tl" style="z-index:2">${fmt(m.start)} · ${Math.round(m.end-m.start)}s</span></div>
       <div class="bd"><div class="tt disp">${esc(m.title||'Moment at '+fmt(m.start))}</div>
@@ -1490,7 +1498,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="tc" id="tcur">0:00.0 <span>/ 0:00.0</span></div>
         <div class="trimrow" style="margin:0 0 0 auto"><button class="btn sm pri" id="clipHere" title="Make a clip around this point (C)">${ic('cut')}Clip here</button><button class="btn sm" id="setA" title="Start here (I)">Start here</button><button class="btn sm" id="setB" title="End here (O)">End here</button></div></div>
       <div class="lbl" style="margin:14px 0 6px">Zoomed in <span class="zoom" id="zoom"><button data-z="30">30 sec</button><button data-z="90">1.5 min</button><button data-z="300">5 min</button></span></div>
-      <div class="storybar capbar" id="capB" title="Your captions: click to go there, double-click to change a word"></div>
+      <div class="storybar capbar" id="capB" title="Your captions: click to go there, drag to move one earlier or later, double-click to change a word"></div>
       <div class="storybar" id="storyB"><i data-sb="build">Build-up</i><i data-sb="peak">Peak</i><i data-sb="react">Reaction</i><i data-sb="end">End</i></div>
       <div class="timeline"><div class="wave" id="wave"><canvas id="wv"></canvas><div class="selr" id="selr"><div class="hdl l" data-h="a"></div><div class="hdl r" data-h="b"></div></div><div class="phd" id="phd"></div></div><div class="ruler" id="ruler"></div></div>
       <div class="fxbar"><span class="lbl2">Effects</span><button class="btn sm" data-addfx="zoom">+ Zoom</button><button class="btn sm" data-addfx="st">+ Sticker</button><button class="btn sm" data-addfx="kf">+ Killfeed</button><button class="btn sm" data-addfx="tz">Teaser here</button><button class="btn sm" data-addfx="rp">Replay here</button><button class="btn sm ghost" id="fxAuto" title="Suggest effects again">Automatic</button><button class="btn sm ghost" id="fxClear">Clear all</button></div>
@@ -1505,7 +1513,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
           <button class="btn sm" id="frBtn">Find and replace</button><button class="btn sm ghost" id="unsBtn" title="To the next unsure word (Tab)">Unsure</button></span></div>
       <div class="frbar" id="frBar"><input id="frA" placeholder="search, e.g. jet"><input id="frB" placeholder="replace with, e.g. Jett"><label class="mini"><input type="checkbox" id="frAlways"> always fix like this</label><button class="btn sm pri" id="frGo">Replace</button></div>
       <div class="dim trhint">click: go there · <b>shift+click</b>: select a part to cut · double-click: edit · <span style="color:var(--or)">…</span> not understood · <span class="unsk">unsure</span> is this right? (Tab)</div>
-      <div class="trans" id="trans"></div><div class="trsel" id="trSel"><span id="trSelN"></span><button class="btn sm pri" data-ts="cut">Cut out</button><button class="btn sm" data-ts="back">Back</button><button class="btn sm" data-ts="off">Hide from captions</button><button class="btn sm" data-ts="vl">Is a voiceline</button><button class="btn sm ghost" data-ts="x">×</button></div>
+      <div class="trans" id="trans"></div><div class="trsel" id="trSel"><span id="trSelN"></span><button class="btn sm pri" data-ts="cut">Cut out</button><button class="btn sm" data-ts="back">Back</button><button class="btn sm" data-ts="off">Hide from captions</button><button class="btn sm" data-ts="nl" title="Start a new caption line at the first selected word">New line here</button><button class="btn sm" data-ts="one" title="Show the selected words together on one caption line">One line</button><button class="btn sm" data-ts="vl">Is a voiceline</button><button class="btn sm ghost" data-ts="x">×</button></div>
     </div>
     <div class="pv" id="pv"><div class="phone"><canvas id="cv" width="540" height="960"></canvas><div class="ui"><i></i><i></i><i></i></div></div>
       <div class="screen"><canvas id="cvL" width="960" height="540"></canvas></div>
@@ -1549,6 +1557,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
       </div>
       <div class="ipane" data-ep="fx">
         <div class="stephd"><small>STEP 3 OF 4</small><h3>Effects</h3><p>How it looks: layout, zoom, music and extras.</p></div>
+        <div class="card panel" id="fxPlan"></div>
         <div class="card panel efx" id="efx"><div class="lbl"><span id="efxT">Effect</span><button class="btn sm danger" id="efxDel">${ic('trash')}Remove</button></div><div id="efxB"></div></div>
         <div class="card panel"><div class="lbl">Automatic</div><div class="tog" style="border:0;margin:0;padding:0"><div><span>${ic('zoom')} Zoom in on hype</span><small>on "no way", kills and the Clip button</small></div><label class="sw"><input type="checkbox" id="zoomOn" ${ED.zoom?'checked':''}><i></i></label></div>
           <div class="tog" style="margin-top:10px"><div><span>Cut boring bits</span><small>only where you are silent, the game is quiet and the picture is still. You see them striped on the timeline, click one to keep it</small></div><label class="sw"><input type="checkbox" id="jcOn" ${ED.jumpcut?'checked':''}><i></i></label></div>
@@ -1689,10 +1698,13 @@ function pvMode(){ const land=ED.layout==='landscape'; $('pv').classList.toggle(
   $('pvnote').textContent={split:'This is how it looks on TikTok, Shorts and Reels',frame:'Your whole stream picture, with your cam in it like live',gameonly:'Zoomed in on your game, set the middle in Settings',landscape:'For YouTube, X or Discord'}[ED.layout]; }
 
 // ---------- preview (mirrors the render in clipper.py, at half size)
-function capGroups(ws){ const out=[]; let cur=[]; for(const w of ws){ if(cur.length&&(w[2]==='\u2026'||cur[cur.length-1][2]==='\u2026'||cur.length>=3||w[0]-cur[cur.length-1][1]>.5||cur.reduce((n,x)=>n+x[2].length+1,0)+w[2].length>17||/[.!?,]$/.test(cur[cur.length-1][2]))){ out.push(cur); cur=[]; } cur.push(w); } if(cur.length) out.push(cur);
+function capGroups(ws0){ const out=[]; let cur=[], forced=new Set(); const len=g=>g.reduce((n,x)=>n+x[2].length+1,0);
+  for(const w0 of ws0){ const brk=/^\u00b6/.test(w0[2]), glue=cur.length&&/~$/.test(cur[cur.length-1][2]); const w=[w0[0],w0[1],w0[2].replace(/^\u00b6\s*/,''),...w0.slice(3)];
+    if(brk&&cur.length){ out.push(cur); forced.add(out.length); cur=[w]; continue; } if(glue&&len(cur)+w[2].length<=26){ cur.push(w); continue; }
+    if(cur.length&&(w[2]==='\u2026'||cur[cur.length-1][2]==='\u2026'||cur.length>=3||w[0]-cur[cur.length-1][1]>.5||cur.reduce((n,x)=>n+x[2].length+1,0)+w[2].length>17||/[.!?,]$/.test(cur[cur.length-1][2]))){ out.push(cur); cur=[]; } cur.push(w); } if(cur.length) out.push(cur);
   const fits=(a,b)=>a.length+b.length<=4&&a.concat(b).reduce((n,x)=>n+x[2].length+1,0)<=21&&b[0][0]-a[a.length-1][1]<=.45&&!a.concat(b).some(x=>x[2]==='\u2026')&&!/[.!?]$/.test(a[a.length-1][2]);
-  for(let i=0;i<out.length;){ const g=out[i]; if(g.length===1&&!EMPH.test(g[0][2])){ if(i+1<out.length&&fits(g,out[i+1])){ out.splice(i,2,g.concat(out[i+1])); continue; } if(i>0&&fits(out[i-1],g)){ out.splice(i-1,2,out[i-1].concat(g)); i--; continue; } } i++; }
-  return out; }
+  for(let i=0;i<out.length;){ const g=out[i]; if(g.length===1&&!EMPH.test(g[0][2])){ if(i+1<out.length&&!forced.has(i+1)&&fits(g,out[i+1])){ out.splice(i,2,g.concat(out[i+1])); forced=new Set([...forced].map(f=>f>i?f-1:f)); continue; } if(i>0&&!forced.has(i)&&fits(out[i-1],g)){ out.splice(i-1,2,out[i-1].concat(g)); forced=new Set([...forced].map(f=>f>i-1?f-1:f)); i--; continue; } } i++; }
+  return out.map(g=>g.map(x=>[x[0],x[1],x[2].replace(/~$/,''),...x.slice(3)])); }
 const EMPH=/^(no+|what|wow|omg|yes+|nice+|insane|crazy|ace|clutch|bro+|let'?s|lets|go+|w|holy|why|how|wait|god|sheesh|gg|perfect|unreal|nasty|sick|one|tap)\W*$/i;
 function capPreview(g,W,y,k){ if(!ED.caps) return; if(ED.endcard&&ED.b-ED.a>6&&$('vid').currentTime>=ED.b-2.2) return; const t=$('vid').currentTime-(ED.capShift||0), ws=keptWords(); let txt=null, act=-1;
   if(!ws.length){ txt=['HE','ACTUALLY','HIT']; act=Math.floor(Date.now()/500)%3; }
@@ -1779,7 +1791,10 @@ function redo(){ if(ED.hpos<ED.hist.length-1){ ED.hpos++; restore(ED.hist[ED.hpo
 // ---------- effects: everything as items on a lane, all editable
 const FXN={zoom:'Zoom',kf:'Killfeed',st:'Sticker',tz:'Teaser',rp:'Replay'};
 async function fxInit(m,opt){ ED.fx={zooms:[],killfeed:[],stickers:[],teaser:null,replay:null}; ED.fxSel=null;
-  let fx=opt.fx; if(!fx){ try{ fx=await api(`/api/fx-suggest?sid=${encodeURIComponent(SID)}&a=${ED.a}&b=${ED.b}&mid=${m.id||''}`); }catch(e){ fx={}; } }
+  let sug={}; try{ sug=await api(`/api/fx-suggest?sid=${encodeURIComponent(SID)}&a=${ED.a}&b=${ED.b}&mid=${m.id||''}`); }catch(e){}
+  let fx=opt.fx||sug;
+  // plan F3.3/F4.4: remember what the app chose itself, so it can show why and you can take it out
+  ED.autoT=new Set(); ED.peakWhy=sug.peak_why; { const A0=ED.a, k=(n,t)=>n+'@'+(+t+A0).toFixed(1); (sug.zooms||[]).forEach(t=>ED.autoT.add(k('zooms',t))); (sug.killfeed||[]).forEach(t=>ED.autoT.add(k('killfeed',t))); (sug.stickers||[]).forEach(x=>ED.autoT.add(k('stickers',x.t))); if(sug.teaser) ED.autoT.add(k('teaser',sug.teaser.t)); if(sug.replay) ED.autoT.add(k('replay',sug.replay.a)); }
   const A=opt.fx?(opt.fxBase??ED.a):ED.a;   // effect times come in relative to the clip start
   ED.fx={zooms:(fx.zooms||[]).map(t=>t+A), killfeed:(fx.killfeed||[]).map(t=>t+A), stickers:(fx.stickers||[]).map(s=>({...s,t:s.t+A})),
     teaser:fx.teaser?{...fx.teaser,t:fx.teaser.t+A}:null, replay:fx.replay?{...fx.replay,a:fx.replay.a+A,b:fx.replay.b+A}:null};
@@ -1805,7 +1820,14 @@ function fxItems(){ const f=ED.fx, out=[]; if(!f) return out;
   f.stickers.forEach((s,i)=>out.push({k:'stickers',i,t:s.t,cls:'st',label:s.text.slice(0,10)}));
   if(f.teaser) out.push({k:'teaser',t:f.teaser.t,len:f.teaser.len,cls:'tz',label:'TEASER'}); if(f.replay) out.push({k:'replay',t:f.replay.a,len:f.replay.b-f.replay.a,cls:'rp',label:'REPLAY '+f.replay.speed+'x'});
   return out; }
-function fxPaint(){ const L=$('fxl'); if(!L||!ED.fx) return; $$('.fxi',L).forEach(e=>e.remove()); const A=ED.wa, W=ED.wl;
+const PEAKW={event:'the last kill of the play',shout:'your loudest reaction',marker:'the moment you pressed Clip'};
+function fxPlanPaint(){ const el=$('fxPlan'); if(!el||!ED.fx) return; const it=fxItems().filter(x=>ED.autoT&&ED.autoT.has(x.k+'@'+(+x.t).toFixed(1)));
+  const pk=PEAKW[ED.peakWhy]||'the best part', W={zooms:t=>`Zoom at ${fmtD(t-ED.a)}: pulls in on your reaction`, killfeed:t=>`Killfeed at ${fmtD(t-ED.a)}: a kill from the match`, stickers:(t,x)=>`Sticker "${esc(x.label)}" at ${fmtD(t-ED.a)}: from what happened`, teaser:t=>`Teaser: opens with the second before ${pk}, so people stay`, replay:t=>`Replay at half speed: shows ${pk} again`};
+  const jc=$('jcOn')&&$('jcOn').checked;
+  el.innerHTML=`<div class="lbl">Done for you <span class="dim" style="font-weight:500">why, and take it out with ×</span></div>`+((it.length||jc)?`<div class="plan">${it.map(x=>`<div class="pl"><i class="dot ${x.cls}"></i><span>${W[x.k]?W[x.k](x.t,x):esc(x.label)}</span><button class="btn sm ghost" data-unauto="${x.k}|${x.i??''}" title="Take this out">×</button></div>`).join('')}${jc?`<div class="pl"><i class="dot cut"></i><span>Boring bits cut: silences where nothing happens</span><button class="btn sm ghost" data-unjc title="Keep the silences">×</button></div>`:''}</div>`:`<div class="dim" style="font-size:12px">Nothing automatic in this short. Click Automatic on the timeline to get suggestions.</div>`);
+  $$('[data-unauto]',el).forEach(b=>b.onclick=()=>{ const [k,i]=b.dataset.unauto.split('|'); ED.fxSel={k,i:i===''?undefined:+i}; fxDel(); toast('Taken out. Click Automatic on the timeline to get it back'); });
+  $$('[data-unjc]',el).forEach(b=>b.onclick=()=>{ $('jcOn').checked=false; $('jcOn').dispatchEvent(new Event('change')); fxPlanPaint(); }); }
+function fxPaint(){ try{ fxPlanPaint(); }catch(e){} const L=$('fxl'); if(!L||!ED.fx) return; $$('.fxi',L).forEach(e=>e.remove()); const A=ED.wa, W=ED.wl;
   $('fxclip').style.left=((ED.a-A)/W*100)+'%'; $('fxclip').style.width=((ED.b-ED.a)/W*100)+'%';
   for(const it of fxItems()){ const d=document.createElement('div'); d.className='fxi '+it.cls+(ED.fxSel&&ED.fxSel.k===it.k&&ED.fxSel.i===it.i?' sel':''); d.textContent=it.label;
     d.style.left=((it.t-A)/W*100)+'%'; if(it.len) d.style.width=Math.max(26,it.len/W*L.clientWidth)+'px'; d.dataset.k=it.k; if(it.i!=null) d.dataset.i=it.i; d.title=FXN[it.cls==='zoom'?'zoom':it.cls]+' at '+fmtD(it.t-ED.a); L.appendChild(d); } }
@@ -1868,7 +1890,8 @@ let LF='all';
 async function loadShorts(quiet){ SHORTS=(await api('/api/shorts')).filter(s=>!s.test); loadLearned(); setTimeout(()=>{ try{ renderTodo(); }catch(e){} },0); const inbox=SHORTS.filter(s=>s.auto&&s.status==='nieuw');
   $('nOut').textContent=SHORTS.length; $('kO').textContent=SHORTS.length; $('nIn').textContent=inbox.length; $('nIn').style.display=inbox.length?'':'none';
   renderInbox(); if(PAGE==='live') renderLive(); if(PAGE!=='out') return;
-  $('pgA').innerHTML=`<button class="btn sm" id="openOut">${ic('folder')}Open folder</button>`; $('openOut').onclick=()=>api('/api/open',{what:'shorts'}); if(PAGE==='out') subTabs('out');
+  const nv=SHORTS.filter(x=>!x.deleted_at&&Object.keys(x.posted_on||{}).length).length;
+  $('pgA').innerHTML=(nv?`<button class="btn sm" id="viewsAll" title="Fill in the views of all your posted shorts at once">${ic('chart')}Fill in views</button>`:'')+`<button class="btn sm" id="openOut">${ic('folder')}Open folder</button>`; $('openOut').onclick=()=>api('/api/open',{what:'shorts'}); if($('viewsAll')) $('viewsAll').onclick=viewsOpen; if(PAGE==='out') subTabs('out');
   libBar(); if(LF==='trash') return trashRender(); if(LVIEW==='board'&&!SELMODE) return boardRender(); const list=shortFilter();
   $('olist').innerHTML=list.length? '<div class="sgrid">'+list.map(s=>`<div class="card shc"><div class="shv"><video src="/short?f=${encodeURIComponent(s.file)}" preload="metadata" muted loop playsinline></video><span class="fmt">short</span>${qBadge(s)}${s.status==='nieuw'?'<span class="new" style="position:absolute;right:10px;top:10px;background:var(--or);color:#111827;font-size:12px;font-weight:800;padding:3px 8px;border-radius:99px">new</span>':''}</div>
       <div class="bd">${SELMODE?`<label class="selbox"><input type="checkbox" data-sel="${esc(s.file)}" ${LSEL.has(s.file)?'checked':''}></label>`:''}<b title="${esc(s.file)}">${esc(s.title||s.file.replace(/\.mp4$/,''))}</b>${libMeta(s)}<div class="dim" style="font-size:12px">${s.auto?'automatic · ':''}${(s.size/1048576).toFixed(1)} MB · ${new Date(s.at*1000).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
@@ -1932,11 +1955,30 @@ addEventListener('keydown',e=>{ if(!$('swipe').classList.contains('on')) return;
   if(k==='y') swKeep(); if(k==='x') swGone(); if(k==='e') $('swE').click(); if(k==='escape') swClose();
   if(k==='arrowright'||k==='arrowdown'){ SWI=Math.min(SW.length-1,SWI+1); swShow(); } if(k==='arrowleft'||k==='arrowup'){ SWI=Math.max(0,SWI-1); swShow(); }
   if(k===' '){ e.preventDefault(); const v=$('swV'); v.paused?v.play():v.pause(); } e.stopPropagation(); }, true);
-async function postText(file){ const p=await api('/api/post?f='+encodeURIComponent(file)); $('pTitle').value=p.title||''; $('pDesc').value=p.description||''; $('pTags').value=p.hashtags||''; $('pDl').href='/short?f='+encodeURIComponent(file); $('postM').classList.add('on'); }
+// plan F4.5: one post card per platform: the right length, the right hashtags, and one click to mark it as posted
+const PPL={tiktok:{n:'TikTok',hint:'Title and hashtags go in one caption. Up to 2200 characters, 3 to 5 hashtags work best.',tags:5,title:150},
+  shorts:{n:'YouTube Shorts',hint:'The title is what people see, max 100 characters. #Shorts helps YouTube show it as a short.',tags:3,title:100,extra:'#Shorts'},
+  reels:{n:'Instagram Reels',hint:'Caption with hashtags at the end. Instagram allows up to 30, about 5 to 10 is best.',tags:10,title:200}};
+let PPOST=null, PPF=null, PPK='tiktok';
+function postFill(){ const p=PPOST||{}, c=PPL[PPK]; const tags=(p.hashtags||'').split(/\s+/).filter(t=>/^#/.test(t)); let tg=tags.slice(0,c.tags); if(c.extra&&!tg.includes(c.extra)) tg=[c.extra,...tg].slice(0,c.tags+1);
+  $('pTitle').value=(p.title||'').slice(0,c.title); $('pDesc').value=p.description||''; $('pTags').value=tg.join(' '); $('pHint').textContent=c.hint;
+  $$('#pPlat button').forEach(b=>b.classList.toggle('on',b.dataset.pp===PPK)); const s=SHORTS.find(x=>x.file===PPF), on=!!((s&&s.posted_on)||{})[PPK]; $('pDoneT').textContent=on?`Posted on ${c.n} ✓`:`I posted it on ${c.n}`; $('pDone').className='btn '+(on?'':'pri'); $('pDone').style.cssText='width:100%;justify-content:center;margin-top:8px'; }
+async function postText(file){ PPOST=await api('/api/post?f='+encodeURIComponent(file)); PPF=file; const s=SHORTS.find(x=>x.file===file), pl=(SETS.platforms&&SETS.platforms[0])||'tiktok'; PPK=Object.keys(PPL).find(k=>!((s&&s.posted_on)||{})[k])||pl; postFill(); $('pDl').href='/short?f='+encodeURIComponent(file); $('postM').classList.add('on'); }
+$$('#pPlat button').forEach(b=>b.onclick=()=>{ PPK=b.dataset.pp; postFill(); });
+$('pDone').onclick=async()=>{ const s=SHORTS.find(x=>x.file===PPF); const on=!((s&&s.posted_on)||{})[PPK]; await api('/api/short-posted',{file:PPF,platform:PPK,on}); if(s){ s.posted_on=s.posted_on||{}; if(on) s.posted_on[PPK]=Date.now()/1000; else delete s.posted_on[PPK]; } postFill(); toast(on?`Marked as posted on ${PPL[PPK].n}`:'Not marked anymore'); loadShorts(true); };
 function copyTxt(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }); toast('Copied'); }
 $('postX').onclick=()=>$('postM').classList.remove('on'); $('postM').onclick=e=>{ if(e.target.id==='postM') $('postM').classList.remove('on'); };
-$$('[data-cp]').forEach(b=>b.onclick=()=>copyTxt($(b.dataset.cp).value)); $('pAll').onclick=()=>copyTxt([$('pTitle').value,$('pDesc').value,$('pTags').value].filter(Boolean).join('\n\n'));
+$$('[data-cp]').forEach(b=>b.onclick=()=>copyTxt($(b.dataset.cp).value)); $('pAll').onclick=()=>copyTxt(PPK==='shorts'?[$('pTitle').value,$('pDesc').value+'\n\n'+$('pTags').value].filter(Boolean).join('\n\n'):[$('pTitle').value,$('pDesc').value,$('pTags').value].filter(Boolean).join('\n\n'));
 loadShorts(true);
+
+// plan F4.5: the views of all posted shorts in one screen, so I learn what really works
+function viewsOpen(){ let m=$('viewsM'); if(!m){ m=document.createElement('div'); m.className='modal'; m.id='viewsM'; document.body.appendChild(m); m.onclick=e=>{ if(e.target===m) m.classList.remove('on'); }; }
+  const L=SHORTS.filter(x=>!x.deleted_at&&Object.keys(x.posted_on||{}).length).sort((a,b)=>(a.views?1:0)-(b.views?1:0)||b.at-a.at);
+  m.innerHTML=`<div class="box2" style="width:min(620px,94vw)"><h3 class="disp">Fill in views <button class="btn sm ghost" id="viewsX">${ic('x')}</button></h3><p class="dim" style="font-size:12.5px;margin:0 0 10px">All your posted shorts. Type the views from TikTok, YouTube or Instagram (all together). Empty ones are at the top.</p>
+    <div class="vlist" style="max-height:60vh;overflow:auto">${L.map(x=>`<div class="r vrow"><video src="/short?f=${encodeURIComponent(x.file)}#t=1" preload="metadata" muted></video><span><b>${esc(x.title||x.file)}</b><small class="dim">${Object.keys(x.posted_on||{}).filter(k=>k!=='any').map(k=>PLATN[k]||k).join(', ')||'posted'} · ${new Date(x.at*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</small></span><input type="number" min="0" placeholder="views" value="${x.views||''}" data-vw2="${esc(x.file)}"></div>`).join('')}</div>
+    <button class="btn pri" id="viewsSave" style="width:100%;justify-content:center;margin-top:12px">${ic('check')}Save</button></div>`;
+  m.classList.add('on'); $('viewsX').onclick=()=>m.classList.remove('on');
+  $('viewsSave').onclick=async()=>{ let n=0; for(const i of $$('[data-vw2]',m)){ const x=SHORTS.find(y=>y.file===i.dataset.vw2); const v=+i.value||0; if(x&&v!==(x.views||0)){ await api('/api/short-views',{file:x.file,views:v}); x.views=v; n++; } } m.classList.remove('on'); toast(n?`Views saved for ${n} short${n===1?'':'s'}, I learn from it`:'Nothing changed'); loadShorts(true); }; }
 
 // ---------- settings + crop picker
 function fillSet(){ $('sLen').value=String(SETS.clip_len); $('sMax').value=SETS.max_clips; $('sCap').value=String(SETS.captions); $('sModel').value=SETS.whisper_model; $('sLang').value=SETS.language; $('sSmart').value=String(SETS.smart!==false); $('sDelay').value=SETS.chat_delay??6; $('sMic').value=String(SETS.mic_track||0); loadTracks(); $('sLoud').value=String(SETS.loud!==false); $('sTag').value=SETS.tag||''; $('sEnd').value=String(SETS.endcard!==false); $('sTz').value=String(SETS.fx_teaser!==false); $('sRp').value=String(SETS.fx_replay!==false); $('sKf').value=String(SETS.fx_killfeed!==false); $('sSt').value=String(SETS.fx_stickers!==false); $('sVoice').value=String(!!SETS.voice_clean); $('sHl').value=SETS.highlight_min||8; $('sJc').value=String(SETS.jumpcut!==false); $('sSfx').value=String(SETS.sfx!==false); $('sMatch').value=String(SETS.matchdata!==false); $('sOff').value=SETS.match_offset||0; $('sTclip').value=String(SETS.twitch_clips!==false); $('sNtfy').value=String(!!SETS.ntfy); extraSettings(); $('sProg').value=String(!!SETS.progress_bar); $('sCapS').value=String([0.85,1,1.15,1.3].includes(+SETS.cap_scale)?+SETS.cap_scale:1); $('sTags').value=SETS.hashtags||''; $('sPhone').value=String(!!SETS.phone); phoneBox(); $('sAutoN').value=SETS.auto_shorts?String([3,5,8].includes(+SETS.auto_shorts_n)?SETS.auto_shorts_n:3):'0'; $('sZoom').value=String(SETS.auto_zoom!==false); $('sCamAuto').value=String(SETS.cam_auto!==false); $('sEnc').value=SETS.encoder==='x264'?'x264':'auto';
@@ -2324,7 +2366,7 @@ function buildTrans(){ const el=$('trans'); if(!el) return; const ws=ED.words||[
   const sel=ED.sel?[Math.min(ED.sel[0],ED.sel[1]),Math.max(ED.sel[0],ED.sel[1])]:null;
   el.innerHTML=vis.map(([w,i])=>{ const tx=ED.edit[i]??w[2], unc=tx==='…', uns=!unc&&ED.unsure.has(Math.round(w[0]*100))&&ED.edit[i]==null&&!ED.ok.has(i);
     const cls=[w[1]<ED.a||w[0]>ED.b?'out':'', ED.off.has(i)?'off':'', unc?'unc':'', ED.edit[i]!=null?'ed':'', inCut((w[0]+w[1])/2)?'cut':'', uns?'uns':'', sel&&i>=sel[0]&&i<=sel[1]?'sel':''].filter(Boolean).join(' ');
-    return `<span data-i="${i}" data-a="${w[0]}" data-b="${w[1]}" class="${cls}" title="${unc?'Not understood. Double-click to type what you said':uns?'Unsure word: is this right? Double-click to edit':'Double-click to edit'}">${esc(tx)}</span>`; }).join(' ');
+    return `<span data-i="${i}" data-a="${w[0]}" data-b="${w[1]}" class="${cls}" title="${unc?'Not understood. Double-click to type what you said':uns?'Unsure word: is this right? Double-click to edit':'Double-click to edit'}">${/^\u00b6/.test(tx)?'<b class="nlm" title="New caption line">¶</b>':''}${esc(tx.replace(/^\u00b6\s*/,'').replace(/~$/,''))}${/~$/.test(tx)?'<b class="nlm" title="Stays on one line with the next word">‿</b>':''}</span>`; }).join(' ');
   $$('span',el).forEach(s=>{ s.onclick=e=>{ const i=+s.dataset.i; if(e.shiftKey&&ED.selA!=null){ ED.sel=[ED.selA,i]; buildTrans(); trSel(); return; }
     const lc=ED._lc; ED._lc={i,t:Date.now()}; if(lc&&lc.i===i&&Date.now()-lc.t<450){ ED._lc=null; e.preventDefault(); return editWord(s); }   // a double click: the list was just redrawn, so catch it here
     ED.selA=i; ED.sel=null; trSel(); $('vid').currentTime=+s.dataset.a; buildTrans(); }; s.ondblclick=e=>{ e.preventDefault(); editWord(s); }; }); }
@@ -2334,14 +2376,16 @@ function trSelAct(k){ const [x,y]=[Math.min(...ED.sel),Math.max(...ED.sel)], ws=
   if(k==='cut'){ ED.cuts.push([ws[x][0]-.04,ws[y][1]+.04]); cutsChanged(); toast('Cut out. Click a struck-through word in the text and choose Back to restore it.'); }
   if(k==='back'){ const a=ws[x][0], b=ws[y][1]; const nc=[]; for(const c of ED.cuts){ if(c[1]<=a||c[0]>=b){ nc.push(c); continue; } if(c[0]<a) nc.push([c[0],a]); if(c[1]>b) nc.push([b,c[1]]); } ED.cuts=nc; cutsChanged(); }
   if(k==='off'){ for(let i=x;i<=y;i++) ED.off.add(i); toast('Hidden from the captions'); }
+  if(k==='nl'){ const t=(ED.edit[x]??ws[x][2]).replace(/^\u00b6\s*/,''); ED.edit[x]='\u00b6'+t; toast('A new caption line starts here'); }
+  if(k==='one'){ if(x===y) ED.edit[x]=(ED.edit[x]??ws[x][2]).replace(/~$/,''); for(let i=x;i<y;i++) ED.edit[i]=(ED.edit[i]??ws[i][2]).replace(/^(\u00b6)?/,'$1').replace(/~?$/,'~'); for(let i=x+1;i<=y;i++) ED.edit[i]=(ED.edit[i]??ws[i][2]).replace(/^\u00b6\s*/,''); toast('These words stay on one caption line'); }
   if(k==='vl'){ const line=ws.slice(x,y+1).map((w,i)=>ED.edit[x+i]??w[2]).join(' '); api('/api/voicelines',{add:line}); for(let i=x;i<=y;i++) ED.off.add(i); toast('Put on the voiceline list; never shows up in your captions again'); }
   ED.sel=null; trSel(); buildTrans(); }
 // a toast with one button (stays a bit longer)
 function toastAct(text,label,fn){ const t=$('toast'); t.classList.remove('ok','bad'); t.innerHTML=`<span>${esc(text)}</span><button class="btn sm pri" id="toastB" style="margin-left:10px">${esc(label)}</button>`; t.classList.add('show','act');
   $('toastB').onclick=async()=>{ t.classList.remove('show','act'); await fn(); }; clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show','act'),7000); }
-function editWord(s){ const i=+s.dataset.i, cur=ED.edit[i]??ED.words[i][2], inp=document.createElement('input'); let fin=false;
+function editWord(s){ const i=+s.dataset.i, raw=ED.edit[i]??ED.words[i][2], mk1=/^\u00b6/.test(raw)?'\u00b6':'', mk2=/~$/.test(raw)?'~':'', cur=raw.replace(/^\u00b6\s*/,'').replace(/~$/,''), inp=document.createElement('input'); let fin=false;
   inp.className='wedit'; inp.value=cur==='…'?'':cur; inp.placeholder='what did you say?'; inp.style.width=Math.max(90,cur.length*10+24)+'px'; s.replaceWith(inp); inp.focus(); inp.select();
-  const done=(save,next)=>{ if(fin) return; fin=true; if(save){ const v=inp.value.trim(); ED.ok.add(i); if(!v){ ED.off.add(i); } else { ED.off.delete(i); if(v!==ED.words[i][2]) ED.edit[i]=v; else delete ED.edit[i]; }
+  const done=(save,next)=>{ if(fin) return; fin=true; if(save){ const v=inp.value.trim(); ED.ok.add(i); if(!v){ ED.off.add(i); } else { ED.off.delete(i); const vm=mk1+v+mk2; if(vm!==ED.words[i][2]) ED.edit[i]=vm; else delete ED.edit[i]; }
       const o=(ED.words[i][2]||'').replace(/[.,!?]+$/,''), v2=v.replace(/[.,!?]+$/,'');
       if(v2&&o&&o!=='…'&&!/\s/.test(o)&&o.toLowerCase()!==v2.toLowerCase()&&!(SETS.fixes||[]).some(f=>String(f[0]).toLowerCase()===o.toLowerCase()))   // F3.4: learn the fix for next time
         toastAct(`"${o}" became "${v2}". Always fix this in new captions?`,'Always',async()=>{ const r=await api('/api/settings',{fixes:[...(SETS.fixes||[]),[o,v2]]}); SETS=r.settings; toast('Saved: "'+o+'" always becomes "'+v2+'"'); }); }
