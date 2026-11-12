@@ -2,6 +2,18 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.31 · 12 November 2026
+
+### The editor in 4 steps (plan F3.1, design C)
+- The editor now works in 4 steps: 1 Cut, 2 Text, 3 Effects, 4 Done. Each step shows only what you need there, the rest is under "More options"
+- Every step ends with a "Next" button, and "Make short" is always at the top
+- Cut: start and end, cutting the boring bits, cutting all silences in one click, and jumping to the build-up, the peak, the reaction or the end
+- Text: your captions and the title at the top, with a button that walks you past every unsure word ("Check unsure words, 3 left")
+- Effects: layout, zoom, sound effects and music together (picture, extras and voice under More options)
+- Done: file name and style, the rest under More options
+- New: a story bar above the timeline that shows the build-up, the peak, the reaction and the end of your clip. Click a part to jump there
+- New: double-click the captions in the preview to change the word that is said right then
+
 ## 6.30 · 12 November 2026
 
 ### The speech model on your graphics card, also AMD and Intel (plan F2.2)

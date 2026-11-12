@@ -724,6 +724,20 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 .wzauto{margin-top:18px;padding:14px 16px;border:1px solid var(--orL);border-radius:12px;background:var(--orS)}.wzauto h4{margin-top:0}
 .wzhr{border:0;border-top:1px solid var(--line);margin:18px 0}
 #toast.act{pointer-events:auto;display:flex;align-items:center}
+
+/* editor in 4 steps (design C) */
+.seg.edsteps{flex:1;flex-direction:row;gap:0}.seg.edsteps button{white-space:nowrap;padding:0 6px;display:flex;align-items:center;gap:7px;justify-content:center;flex:1;font-weight:600}
+.seg.edsteps button b{width:20px;height:20px;border-radius:10px;display:inline-grid;place-items:center;font-size:11px;background:var(--line2);color:var(--mut)}
+.seg.edsteps button.on b{background:var(--or);color:#111827}
+.stephd small{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--dim)}.stephd h3{margin:2px 0 2px;font-size:20px}.stephd p{margin:0;color:var(--mut);font-size:13.5px;line-height:1.5}
+details.more{border:1px dashed var(--line2);border-radius:12px;padding:0 14px}details.more summary{cursor:pointer;padding:11px 0;color:var(--mut);font-weight:600;font-size:13.5px;list-style:none;text-align:center}
+details.more summary::-webkit-details-marker{display:none}details.more[open]{padding-bottom:12px}details.more .morebox{display:flex;flex-direction:column;gap:12px}
+details.more .morebox .card{margin:0}
+.btn.nextstep{width:100%;justify-content:center;height:44px;font-weight:600}
+#storyJump button{white-space:nowrap;font-size:12px;padding:0 6px}
+.storybar{position:relative;height:22px;margin:0 0 6px;overflow:hidden}
+.storybar i{position:absolute;top:0;bottom:0;font-style:normal;font-size:11px;font-weight:600;color:var(--mut);background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.storybar i[data-sb=peak]{background:var(--orS);border-color:var(--or);color:#ffb34d}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
@@ -1144,6 +1158,41 @@ async function engFill(){ if(!$('sEngine')) return; let r; try{ r=await api('/ap
 if($('sEngine')){ $('sEngine').onchange=async()=>{ const r=await api('/api/settings',{speech_engine:$('sEngine').value}); SETS=r.settings; toast('Saved'); engFill(); };
   $('engInst').onclick=async()=>{ await api('/api/engine-install',{}); toast('Installing graphics card support, you can keep working'); setTimeout(engFill,600); }; }
 
+
+// ---------- editor in 4 steps (plan F3.1, design C): Cut, Text, Effects, Done. at most 5 things per step, the rest under "More options"
+function more(pane, nodes){ const d=document.createElement('details'); d.className='more'; d.innerHTML='<summary>More options</summary><div class="morebox"></div>'; const box=d.lastChild;
+  nodes.filter(Boolean).forEach(n=>box.appendChild(n)); const nx=pane.querySelector('.nextstep'); pane.insertBefore(d,nx||null); return d; }
+function nextBtn(pane,to,label){ const b=document.createElement('button'); b.className='btn nextstep'; b.dataset.next=to; b.textContent=label; pane.appendChild(b); }
+function edSteps(){ const P=k=>document.querySelector(`.ipane[data-ep="${k}"]`), cut=P('cut'), txt=P('txt'), fx=P('fx'), lay=P('lay'), aud=P('aud'), exp=P('exp'); if(!cut||!fx) return;
+  // Cut: the automatic cuts and the loop live here
+  const jc=$('jcOn')&&$('jcOn').closest('.tog'); if(jc){ jc.style.marginTop='8px'; $('cutAuto').insertBefore(jc,$('cutSil')); }
+  const lp=$('oLoop')&&$('oLoop').closest('.mini-tog'); if(lp) $('cutMore').appendChild(lp);
+  // Effects: layout first, then the automatic effects and music; picture, extras and voice under More options
+  const [layCard,picCard]=[...lay.querySelectorAll(':scope > .card')]; const fxCards=[...fx.querySelectorAll(':scope > .card')]; const [musCard,voiceCard]=[...aud.querySelectorAll(':scope > .card')];
+  const efx=$('efx'), autoC=fxCards.find(c=>c.querySelector('#zoomOn')), extraC=fxCards.find(c=>c.querySelector('#oProg'));
+  [layCard,autoC,musCard].forEach(c=>c&&fx.appendChild(c)); if(efx) fx.insertBefore(efx, fx.children[1]);
+  nextBtn(fx,'exp','Next: Done →'); more(fx,[picCard,extraC,voiceCard]); lay.remove(); aud.remove();
+  // Text: captions and the title stay, the fine sliders go under More options
+  nextBtn(txt,'fx','Next: Effects →');
+  const tim=$('oShift')&&$('oShift').closest('.sl'), blp=$('oBleep')&&$('oBleep').closest('.mini-tog'); more(txt,[tim,blp]);
+  // Done: name and style; the rest under More options
+  const ec=[...exp.querySelectorAll(':scope > .card')]; if(ec[1]) more(exp,[ec[1]]);
+  document.querySelectorAll('.nextstep').forEach(b=>b.onclick=()=>{ edTab(b.dataset.next); const i=document.querySelector('.insp'); if(i) i.scrollIntoView({block:'start',behavior:'smooth'}); });
+  $('cutSil').onclick=()=>$('silBtn')&&$('silBtn').click();
+  $$('#storyJump button,#storyB i').forEach(b=>b.onclick=()=>{ const p=storyParts(); const k=b.dataset.sj||b.dataset.sb; if(p[k]){ $('vid').currentTime=p[k][0]; paintTL&&paintTL(); } });
+  $('unsGo').onclick=()=>{ if(typeof nextUnsure==='function') nextUnsure(); };
+  // double-click the captions in the preview: change the word that is said right then
+  const cv=$('cv'); if(cv) cv.addEventListener('dblclick',e=>{ const t=$('vid').currentTime; const sp=$$('#trans span[data-i]').filter(x=>+x.dataset.a<=t+0.05).pop(); if(sp){ sp.scrollIntoView({block:'center'}); editWord(sp); } });
+}
+// the story of the clip: build-up, the peak, the reaction, the end (from the moment's peak)
+function storyParts(){ if(!ED) return {}; const a=ED.a, b=ED.b, pk=Math.min(b-1,Math.max(a+1,ED.m&&ED.m.t!=null?+ED.m.t:(a+b)/2));
+  const p0=Math.max(a,pk-1.5), p1=Math.min(b,pk+1.5), e0=Math.max(p1,b-Math.min(2,(b-a)*.12));
+  return {build:[a,p0],peak:[p0,p1],react:[p1,e0],end:[e0,b]}; }
+function paintStory(){ const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
+  sb.querySelectorAll('i').forEach(el=>{ const r=P[el.dataset.sb]; if(!r||r[1]-r[0]<0.15){ el.style.display='none'; return; } el.style.display=''; el.style.left=((r[0]-A)/L*100)+'%'; el.style.width=((r[1]-r[0])/L*100)+'%'; });
+  if($('cutLen')) $('cutLen').textContent=fmtD(ED.b-ED.a)+' long';
+  const n=ED.unsure?[...ED.unsure].filter(i=>!ED.ok.has(i)&&!ED.off.has(i)).length:0; if($('unsN')) $('unsN').textContent=n?`${n} word${n===1?' is':'s are'} not sure yet.`:''; if($('unsGo')){ $('unsGo').style.display=n?'':'none'; $('unsGo').textContent=`Check unsure words (${n} left)`; } }
+
 // ---------- status
 async function poll(){ try{ const s=await api('/api/status'); ST=s; try{ if(PAGE==='home') renderTodo(); }catch(e){} renderLive.t0=Date.now()/1000; if(PAGE==='live') renderLive(); if(!SETS.cam) SETS=s.settings;
   $('sObs').className='st'+(s.obs?' ok':''); $('sObs').querySelector('span').textContent=s.obs?'OBS connected':'OBS not connected';
@@ -1293,7 +1342,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
     L.jumpcut!=null?{jumpcut:L.jumpcut}:{}, L.sfx!=null?{sfx:L.sfx}:{}, L.progress!=null?{progress:L.progress}:{}, L.endcard!=null?{endcard:L.endcard}:{}, opt);
   const usedL=Object.keys(L).length>0;
   ED={fx:null, fxSel:null, music:opt.music||null, voice:opt.voice??(SETS.voice_clean===true), jumpcut:opt.jumpcut??(SETS.jumpcut!==false), sfx:opt.sfx??(SETS.sfx!==false), capScale:+(opt.cap_scale||SETS.cap_scale||1), capY:opt.cap_y??null, gameX:opt.game_x??SETS.game_x, camH:opt.cam_h??null, progress:opt.progress??!!SETS.progress_bar, endcard:opt.endcard??(SETS.endcard!==false), off:new Set(), edit:{}, replace:opt.replace||null, zoom:SETS.auto_zoom!==false, words:m.words||[], m, a:m.start, b:m.end, dur, layout:normLayout(opt.layout||SETS.layout), style:opt.style||SETS.cap_style||'jele', caps:SETS.captions!==false, peaks:[], wa:0, wl:1,
-     cuts:(opt.cuts||[]).map(c=>[+c[0],+c[1]]), capShift:+(opt.cap_shift||0), bleep:opt.bleep??!!SETS.bleep, bg:opt.bg||SETS.frame_bg||'blur', round:opt.round??!!SETS.frame_round, border:opt.border??!!SETS.frame_border, divider:opt.divider??(SETS.divider!==false), capAnim:opt.cap_anim||SETS.cap_anim||'pop', snapW:SETS.snap_words!==false, loop:!!opt.loop, brand:opt.brand||SETS.brand_default||'jele', safe:SETS.safe_zone||'', unsure:new Set(), ok:new Set(), sel:null, selA:null, ready:false, tab:'lay'};
+     cuts:(opt.cuts||[]).map(c=>[+c[0],+c[1]]), capShift:+(opt.cap_shift||0), bleep:opt.bleep??!!SETS.bleep, bg:opt.bg||SETS.frame_bg||'blur', round:opt.round??!!SETS.frame_round, border:opt.border??!!SETS.frame_border, divider:opt.divider??(SETS.divider!==false), capAnim:opt.cap_anim||SETS.cap_anim||'pop', snapW:SETS.snap_words!==false, loop:!!opt.loop, brand:opt.brand||SETS.brand_default||'jele', safe:SETS.safe_zone||'', unsure:new Set(), ok:new Set(), sel:null, selA:null, ready:false, tab:'cut'};
   if(usedL&&!edit.saidL){ edit.saidL=1; toast('The editor starts with the look of your last '+(GAME(gid0)||{name:gid0}).name+' short'); }
   setWin(); $('navEd').style.display=''; document.body.classList.add('hasEd');
   $('edBox').innerHTML=`<div class="ed">
@@ -1304,6 +1353,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="tc" id="tcur">0:00.0 <span>/ 0:00.0</span></div>
         <div class="trimrow" style="margin:0 0 0 auto"><button class="btn sm pri" id="clipHere" title="Make a clip around this point (C)">${ic('cut')}Clip here</button><button class="btn sm" id="setA" title="Start here (I)">Start here</button><button class="btn sm" id="setB" title="End here (O)">End here</button></div></div>
       <div class="lbl" style="margin:14px 0 6px">Zoomed in <span class="zoom" id="zoom"><button data-z="30">30 sec</button><button data-z="90">1.5 min</button><button data-z="300">5 min</button></span></div>
+      <div class="storybar" id="storyB"><i data-sb="build">Build-up</i><i data-sb="peak">Peak</i><i data-sb="react">Reaction</i><i data-sb="end">End</i></div>
       <div class="timeline"><div class="wave" id="wave"><canvas id="wv"></canvas><div class="selr" id="selr"><div class="hdl l" data-h="a"></div><div class="hdl r" data-h="b"></div></div><div class="phd" id="phd"></div></div><div class="ruler" id="ruler"></div></div>
       <div class="fxbar"><span class="lbl2">Effects</span><button class="btn sm" data-addfx="zoom">+ Zoom</button><button class="btn sm" data-addfx="st">+ Sticker</button><button class="btn sm" data-addfx="kf">+ Killfeed</button><button class="btn sm" data-addfx="tz">Teaser here</button><button class="btn sm" data-addfx="rp">Replay here</button><button class="btn sm ghost" id="fxAuto" title="Suggest effects again">Automatic</button><button class="btn sm ghost" id="fxClear">Clear all</button></div>
       <div class="fxlane" id="fxl"><div class="row" style="top:29px"></div><div class="row" style="top:57px"></div><div class="clipr" id="fxclip"></div><div class="fxph" id="fxph"></div></div>
@@ -1323,9 +1373,20 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
       <div class="screen"><canvas id="cvL" width="960" height="540"></canvas></div>
       <div class="pvnote" id="pvnote"></div><div class="seg pvmodes" id="pvModes"><button data-pm="phone" class="on">Phone</button><button data-pm="bare">No frame</button><button data-pm="full">Full screen</button></div><div style="display:flex;justify-content:center;margin-top:8px"><select id="safeSel" style="height:30px;font-size:12px;width:auto"><option value="">No safe zones</option><option value="tiktok">TikTok safe zones</option><option value="shorts">Shorts safe zones</option><option value="reels">Reels safe zones</option></select></div></div>
     <div class="insp">
-      <div class="itabs"><div class="seg" id="edTabs"><button data-et="lay" class="on">Layout</button><button data-et="txt">Text</button><button data-et="fx">Effects</button><button data-et="aud">Audio</button><button data-et="exp">Export</button></div>
+      <div class="itabs"><div class="seg edsteps" id="edTabs"><button data-et="cut" class="on"><b>1</b>Cut</button><button data-et="txt"><b>2</b>Text</button><button data-et="fx"><b>3</b>Effects</button><button data-et="exp"><b>4</b>Done</button></div>
         <span class="undo"><button class="btn sm ghost" id="undoB" title="Undo (Ctrl+Z)">↶</button><button class="btn sm ghost" id="redoB" title="Redo (Ctrl+Y)">↷</button></span></div>
-      <div class="ipane on" data-ep="lay">
+      <div class="ipane on" data-ep="cut">
+        <div class="stephd"><small>STEP 1 OF 4</small><h3>Cut</h3><p>Where the short starts and ends, and which boring bits go out.</p></div>
+        <div class="card panel" id="cutMain"><div class="lbl">Start and end <span class="dim" id="cutLen" style="font-weight:500"></span></div>
+          <div class="dim" style="font-size:12px;line-height:1.5">Drag the orange edges on the timeline, or press <span class="kb">I</span> and <span class="kb">O</span> while playing.</div>
+          <div class="lbl" style="margin-top:14px">Story <span class="dim" style="font-weight:500">jump to a part</span></div>
+          <div class="seg wide" id="storyJump"><button data-sj="build">Build-up</button><button data-sj="peak">Peak</button><button data-sj="react">Reaction</button><button data-sj="end">End</button></div></div>
+        <div class="card panel" id="cutAuto"><div class="lbl">Boring bits</div>
+          <button class="btn sm" id="cutSil" style="margin-top:4px">Cut all silences</button></div>
+        <details class="more"><summary>More options</summary><div class="morebox" id="cutMore"></div></details>
+        <button class="btn nextstep" data-next="txt">Next: Text →</button>
+      </div>
+      <div class="ipane" data-ep="lay">
         <div class="card panel"><div class="lbl">Layout</div><div class="tiles" id="layT"></div></div>
         <div class="card panel"><div class="lbl">Picture <button class="btn sm ghost" id="optReset" title="Back to default">Default</button></div>
           <div class="sl" id="oGameR"><label>Game position</label><input type="range" id="oGame" min="0" max="100" step="1"><output id="oGamev"></output></div>
@@ -1337,6 +1398,8 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
             <div class="mini-tog"><span>Border in your colour</span><label class="sw"><input type="checkbox" id="oBorder"><i></i></label></div></div></div>
       </div>
       <div class="ipane" data-ep="txt">
+        <div class="stephd"><small>STEP 2 OF 4</small><h3>Text</h3><p>The title at the top and your captions. <span id="unsN"></span></p></div>
+        <button class="btn sm" id="unsGo" style="align-self:flex-start;display:none">Check unsure words</button>
         <div class="card panel"><div class="lbl">Captions<label class="sw"><input type="checkbox" id="capOn" ${ED.caps?'checked':''}><i></i></label></div><div class="tiles" id="styT"></div>
           <div class="lbl" style="margin-top:14px">Animation</div><div class="seg wide wrap" id="oAnim"><button data-an="pop">Pop</button><button data-an="bounce">Bounce</button><button data-an="type">Typewriter</button><button data-an="word">Per word</button><button data-an="none">None</button></div>
           <div class="sl" style="margin-top:12px"><label>Size</label><input type="range" id="oCapS" min="70" max="150" step="5"><output id="oCapSv"></output></div>
@@ -1347,6 +1410,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="card panel"><div class="lbl">Text at the top <span class="dim" style="font-weight:500">first 3 seconds</span></div><input id="hook" maxlength="60" placeholder="e.g. NO WAY THAT WORKED" style="width:100%"><div class="hooks" id="hookOpts"></div></div>
       </div>
       <div class="ipane" data-ep="fx">
+        <div class="stephd"><small>STEP 3 OF 4</small><h3>Effects</h3><p>How it looks: layout, zoom, music and extras.</p></div>
         <div class="card panel efx" id="efx"><div class="lbl"><span id="efxT">Effect</span><button class="btn sm danger" id="efxDel">${ic('trash')}Remove</button></div><div id="efxB"></div></div>
         <div class="card panel"><div class="lbl">Automatic</div><div class="tog" style="border:0;margin:0;padding:0"><div><span>${ic('zoom')} Zoom in on hype</span><small>on "no way", kills and the Clip button</small></div><label class="sw"><input type="checkbox" id="zoomOn" ${ED.zoom?'checked':''}><i></i></label></div>
           <div class="tog" style="margin-top:10px"><div><span>Cut boring bits</span><small>only where you are silent, the game is quiet and the picture is still. You see them striped on the timeline, click one to keep it</small></div><label class="sw"><input type="checkbox" id="jcOn" ${ED.jumpcut?'checked':''}><i></i></label></div>
@@ -1364,6 +1428,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="card panel"><div class="lbl">Voice</div><div class="mini-tog" style="margin-top:0"><span>Clearer voice (noise removed)</span><label class="sw"><input type="checkbox" id="voiceOn"><i></i></label></div></div>
       </div>
       <div class="ipane" data-ep="exp">
+        <div class="stephd"><small>STEP 4 OF 4</small><h3>Done</h3><p>Name it and make it. Every change is already saved.</p></div>
         <div class="card panel"><div class="lbl">File name</div><input id="tit" placeholder="e.g. ace on haven" style="width:100%">
           <div class="lbl" style="margin-top:14px">Style</div><div class="prow"><select id="presetSel"><option value="">Choose a style...</option></select><button class="btn sm" id="presetSave" title="Save the current look as a style">Save style</button></div>
           <div class="export" style="margin-top:14px"><button class="btn sm" id="makeAll">Also in other formats</button><button class="btn sm ghost" id="saveM">${ic('plus')}Save to moments</button><button class="btn sm ghost" id="draftReset" title="Throw away your edit and start over">${ic('redo')}Start over</button></div>
@@ -1377,6 +1442,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
       <div class="card panel expbar"><div class="edjob" id="edjob"><div class="row"><b id="ejS"></b><span id="ejE"></span></div><div class="bar det"><i id="ejB"></i></div></div>
         <div class="export"><button class="btn pri lg" id="make">${ic('down')}Export short</button><button class="btn lg" id="pvGo" title="A quick, small version of the result">${ic('play')}Preview</button></div></div>
     </div></div>`;
+  edSteps();
   tiles($('layT'),LAYOUTS,layoutTile,ED.layout,v=>{ ED.layout=v; pvMode(); optVis(); ed61Sync(); });
   tiles($('styT'),STYLES,styleTile,ED.style,v=>{ ED.style=v; $('capOn').checked=true; ED.caps=true; });
   $('capOn').onchange=()=>ED.caps=$('capOn').checked; $('zoomOn').onchange=()=>ED.zoom=$('zoomOn').checked;
@@ -1405,8 +1471,8 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
 function edHead(){ if(!ED){ $('edBox').innerHTML='<div class="empty">'+EMPTY('cut','Nothing open yet','Pick a moment to edit, or open a stream and look through the video yourself.')+'</div>'; return; }
   $('pgT').textContent=ED.m.id?(ED.m.title||'Moment at '+fmt(ED.m.start)):'Make a clip yourself'; $('pgS').textContent=(SESS?SESS.title:'')+((ED.m.reasons||[]).length?' · '+ED.m.reasons.slice(0,3).map(trR).join(', '):'')+(ED.replace?' · you are editing a made short':'');
   const ms=(SESS&&SESS.moments||[]).slice().sort((a,b)=>a.start-b.start), ix=ms.findIndex(m=>m.id===ED.m.id);
-  $('pgA').innerHTML=(SESS&&SESS.game_info?gameSelect(SESS.game_info.id,SESS.game_info.by_text):'')+`<button class="btn sm ghost txt nodock" id="edKeys" title="Shortcuts">?</button>${ix>=0?`<button class="btn sm" id="edPrev" ${ix<=0?'disabled':''}>${ic('back')}Previous</button><button class="btn sm" id="edNext" ${ix>=ms.length-1?'disabled':''}>Next<svg class="i" style="transform:scaleX(-1)"><use href="#i-back"/></svg></button>`:''}<button class="btn sm txt nodock" id="edBack">Moments</button>`;
-  $('edBack').onclick=()=>tab('mom'); $('edKeys').onclick=()=>$('keysM').classList.add('on');
+  $('pgA').innerHTML=(SESS&&SESS.game_info?gameSelect(SESS.game_info.id,SESS.game_info.by_text):'')+`<button class="btn sm ghost txt nodock" id="edKeys" title="Shortcuts">?</button>${ix>=0?`<button class="btn sm" id="edPrev" ${ix<=0?'disabled':''}>${ic('back')}Previous</button><button class="btn sm" id="edNext" ${ix>=ms.length-1?'disabled':''}>Next<svg class="i" style="transform:scaleX(-1)"><use href="#i-back"/></svg></button>`:''}<button class="btn sm txt nodock" id="edBack">Moments</button><button class="btn pri nodock" id="edMake">${ic('down')}Make short</button>`;
+  $('edBack').onclick=()=>tab('mom'); $('edMake').onclick=()=>$('make')&&$('make').click(); $('edKeys').onclick=()=>$('keysM').classList.add('on');
   if($('gameSel')) $('gameSel').onchange=async e=>{ await gameSet(e.target.value); edGameApply(); edHead(); };
   if(ix>=0){ $('edPrev').onclick=()=>ix>0&&edit(ms[ix-1]); $('edNext').onclick=()=>ix<ms.length-1&&edit(ms[ix+1]); } }
 function togglePlay(clip){ const v=$('vid'); if(!v) return; v.muted=false;
@@ -1426,7 +1492,7 @@ function paintWave(){ const c=$('wv'); if(!c) return; const r=c.getBoundingClien
   g.fillStyle='#60a5fa'; mk.forEach(t=>{ const x=(t-ED.wa)/ED.wl*W; g.beginPath(); g.moveTo(x-5,0); g.lineTo(x+5,0); g.lineTo(x,7); g.fill(); });
   const o=OV[SID]; if(o&&o.kills){ g.fillStyle='#f87171'; o.kills.forEach(t=>{ if(t<ED.wa||t>ED.wa+ED.wl) return; const x=(t-ED.wa)/ED.wl*W; g.fillRect(x-1,H-12,2,12); g.beginPath(); g.arc(x,H-14,3.5,0,7); g.fill(); }); }
   const ru=$('ruler'); if(ru){ const px=ru.getBoundingClientRect().width||600, need=ED.wl*52/px, step=[1,2,5,10,15,30,60,120,300,600].find(s=>s>=need)||900; let h=''; for(let t=Math.ceil(ED.wa/step)*step;t<=ED.wa+ED.wl;t+=step) h+=`<span style="left:${(t-ED.wa)/ED.wl*100}%">${fmt(t)}</span>`; ru.innerHTML=h; } }
-function paintTL(){ if(!ED||!$('selr')) return; const v=$('vid'), L=ED.wl, A=ED.wa;
+function paintTL(){ if(!ED||!$('selr')) return; const v=$('vid'), L=ED.wl, A=ED.wa; try{ paintStory(); }catch(e){}
   $('selr').style.left=((ED.a-A)/L*100)+'%'; $('selr').style.width=((ED.b-ED.a)/L*100)+'%'; $('phd').style.left=(((v.currentTime||0)-A)/L*100)+'%';
   $('aT').textContent=fmtD(ED.a); $('bT').textContent=fmtD(ED.b);
   $('tcur').innerHTML=`${fmtD(Math.max(0,(v.currentTime||0)-ED.a))} <span>/ ${fmtD(ED.b-ED.a)}</span>`;
@@ -2075,7 +2141,7 @@ setInterval(function sixTick(){ if(!ST||!ST.version) return; renderBanners(ST);
 const ctrlT=w=>w; // placeholder kept for older calls
 function capTxt(t){ return (ED&&ED.bleep&&SWEAR.test(t))?t.replace(/^(\W*)(\w)(\w*)/,(m,a,b,c)=>a+b+'*'.repeat(Math.max(2,c.length))):t; }
 const SWEAR=/^(fuck\w*|motherfuck\w*|shit\w*|bullshit|bitch\w*|asshole\w*|cunt\w*|dick(head)?s?|pussy|whore|slut|nigg\w*|fag\w*|retard\w*|kanker\w*|kut|tering|tyfus|hoer)\W*$/i;
-function edTab(id){ $$('#edTabs button').forEach(b=>b.classList.toggle('on',b.dataset.et===id)); $$('.ipane').forEach(p=>p.classList.toggle('on',p.dataset.ep===id)); ED.tab=id; }
+function edTab(id){ id={lay:'fx',aud:'fx'}[id]||id; $$('#edTabs button').forEach(b=>b.classList.toggle('on',b.dataset.et===id)); $$('.ipane').forEach(p=>p.classList.toggle('on',p.dataset.ep===id)); ED.tab=id; }
 function jobBody(layout){ return {sid:SID,start:ED.a,end:ED.b,hook:$('hook').value,captions:$('capOn').checked,mid:ED.m.id,layout,style:ED.style,fx:fxExport(),voice:ED.voice,music:ED.music,cap_y:ED.capY,cap_scale:ED.capScale,game_x:ED.gameX,cam_h:ED.camH,progress:ED.progress,endcard:ED.endcard,jumpcut:ED.jumpcut&&!ED.planned,sfx:ED.sfx,words:ED.words.length?keptWords():undefined,zoom:ED.zoom,
   cuts:allCuts().filter(c=>c[1]>ED.a&&c[0]<ED.b), cap_shift:ED.capShift, bleep:ED.bleep, bg:ED.bg, round:ED.round, border:ED.border, divider:ED.divider, cap_anim:ED.capAnim, loop:ED.loop, brand:ED.brand||undefined,
   unsure_left:(ED.words||[]).filter((w,i)=>w[0]>=ED.a&&w[0]<=ED.b&&ED.unsure.has(Math.round(w[0]*100))&&ED.edit[i]==null&&!ED.ok.has(i)&&!ED.off.has(i)).length}; }
@@ -2177,7 +2243,7 @@ function ed61Sync(){ if(!$('oAnim')) return; $$('#oAnim button').forEach(b=>b.cl
   $('oRound').checked=!!ED.round; $('oBorder').checked=!!ED.border; $('oDiv').checked=!!ED.divider; $('oBleep').checked=!!ED.bleep; $('snapW').checked=!!ED.snapW;
   $('oShift').value=Math.round(ED.capShift*10); $('oShiftv').textContent=ED.capShift?(ED.capShift>0?'+':'')+ED.capShift.toFixed(1)+' s':'in sync';
   $('oSplitR').style.display=ED.layout==='split'?'':'none'; $('oFrameR').style.display=ED.layout==='frame'?'':'none'; trInfo(); }
-function ed61Init(){ $$('#edTabs button').forEach(b=>b.onclick=()=>edTab(b.dataset.et)); edTab(ED.tab||'lay');
+function ed61Init(){ $$('#edTabs button').forEach(b=>b.onclick=()=>edTab(b.dataset.et)); edTab(ED.tab||'cut');
   $$('#oAnim button').forEach(b=>b.onclick=()=>{ ED.capAnim=b.dataset.an; ed61Sync(); });
   $$('#oBg button').forEach(b=>b.onclick=()=>{ ED.bg=b.dataset.bg; ed61Sync(); });
   $('oRound').onchange=e=>ED.round=e.target.checked; $('oBorder').onchange=e=>ED.border=e.target.checked; $('oDiv').onchange=e=>ED.divider=e.target.checked;
