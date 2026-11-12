@@ -508,8 +508,8 @@ def analyse(sid):
                 if c.get('said'): continue   # "clip that" moments keep the cut around what you asked
                 prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
                 lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd)
-                b_ = llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}
-                if not b_: b_ = brief_rules(c, items, a0, c['t'])
+                rb_ = brief_rules(c, items, a0, c['t'])
+                b_ = brief_merge(llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}, rb_, items)
                 if not b_: continue
                 st, en = max(0, b_['start']), min(dur, b_['end'])
                 if en - st < 6: en = min(dur, st + 6)

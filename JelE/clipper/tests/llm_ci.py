@@ -19,12 +19,17 @@ jb = c.llm_judge(bad, W('so yeah I was thinking maybe we buy a vandal this round
 print('JUDGE good', jg, '| bad', jb, '|', round(time.time() - t0, 1), 's')
 tl = ['   0s you say: "this guy has been camping all game"', '   4s you say: "I am going to sneak behind him"', '   9s you say: "shh shh"', '  13s game sound: 1 gunshot',
       '  13s screen: you are dead', '  14s you: laughing', '  15s you say: "he turned around he was waiting for me"', '  16s chat: 18 messages in 10s', '  19s you say: "unbelievable"', '  30s you say: "okay next round"']
-t0 = time.time(); br = c.llm_brief({'t': 13}, tl, 100.0, 'Valorant', 'en', port)
-print('BRIEF', br, round(time.time() - t0, 1), 's')
+t0 = time.time(); raw_br = c.llm_brief({'t': 13}, tl, 100.0, 'Valorant', 'en', port)
+items = [{'t': 100.0, 'e': 102.5, 'k': 'say', 'v': 'this guy has been camping all game'}, {'t': 104.0, 'e': 106.0, 'k': 'say', 'v': 'I am going to sneak behind him'},
+         {'t': 109.0, 'e': 109.8, 'k': 'say', 'v': 'shh shh'}, {'t': 113.0, 'k': 'game sound', 'v': '1 gunshot'}, {'t': 113.0, 'k': 'screen', 'v': 'you are dead'},
+         {'t': 114.0, 'k': 'you', 'v': 'laughing'}, {'t': 115.0, 'e': 117.5, 'k': 'say', 'v': 'he turned around he was waiting for me'}, {'t': 116.0, 'k': 'chat', 'v': '18 messages'},
+         {'t': 119.0, 'e': 119.8, 'k': 'say', 'v': 'unbelievable'}, {'t': 130.0, 'e': 131.0, 'k': 'say', 'v': 'okay next round'}]
+br = c.brief_merge(raw_br, c.brief_rules({'t': 113}, items, 100.0, 113.0), items)
+print('BRIEF raw', raw_br, '| merged', {k: br.get(k) for k in ('start', 'payoff', 'end', 'zoom', 'about')}, round(time.time() - t0, 1), 's')
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = bool(br) and br['start'] <= 113.5 and br['payoff'] >= 112 and br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)

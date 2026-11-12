@@ -422,3 +422,18 @@ def music_for_mood(mood):
     fs = [f for f in music_list() if rx.search(f)]
     import random as _rnd
     return _rnd.choice(fs) if fs else None
+
+def brief_merge(ai, rules, items):
+    """the AI knows what it is about; the rules are strict about timing. keep the AI's story, fix timing that cannot be right:
+    a start with less than 4 s before the payoff, a reaction that goes on for more than 9 s, a start or end in the middle of a sentence"""
+    if not ai: return rules
+    b = dict(ai)
+    if b['payoff'] - b['start'] < 4: b['start'] = min(rules['start'], b['payoff'] - 4)
+    if b['end'] - b['payoff'] > 9: b['end'] = rules['end']
+    if b['end'] - b['payoff'] < 1.5: b['end'] = max(b['end'], rules['end'])
+    says = [x for x in items if x['k'] == 'say']
+    for x in says:   # never start or stop in the middle of a sentence
+        if x['t'] < b['start'] < x['e'] and b['payoff'] - x['t'] <= 20: b['start'] = round(x['t'] - 0.3, 1)
+        if x['t'] < b['end'] < x['e'] and x['e'] - b['payoff'] <= 10: b['end'] = round(x['e'] + 0.5, 1)
+    b['zoom'] = [z for z in (b.get('zoom') or []) if b['payoff'] - 3 <= z <= b['end']][:2] or [b['payoff']]
+    return b
