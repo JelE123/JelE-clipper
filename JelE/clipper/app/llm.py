@@ -420,11 +420,15 @@ def llm_brief(c, lines, a, game='', lang='en', port=None):
     ex_a = '{"about": "holds B alone and wins a 1v3", "type": "clutch", "start": 8.5, "cause": 12, "payoff": 15, "end": 21.5, "zoom": [14, 16], "replay": true, "focus": "none", "layout": "split", "music": "hype", "title": "HELD B ALONE VS THREE", "score": 9}'
     msg = [{'role': 'system', 'content': sysm}, {'role': 'user', 'content': ex_u}, {'role': 'assistant', 'content': ex_a},
            {'role': 'user', 'content': f'Game: {game or "unknown"}. Timeline:\n' + '\n'.join(lines[:70])}]
-    ans = llm_chat(msg, 220, 0.2, port)
-    m = re.search(r'\{.*\}', ans, re.S)
+    ans = llm_chat(msg, 400, 0.2, port); LLM['last_brief'] = ans[:600]
+    m = re.search(r'\{.*\}', ans, re.S) or re.search(r'\{.*', ans, re.S)
     if not m: return {}
-    try: d = json.loads(m.group(0))
-    except Exception: return {}
+    js = m.group(0)
+    d = None
+    for fix_ in (js, js + '}', js + '"}', re.sub(r',\s*"[^"]*"?\s*:?\s*[^,}]*$', '', js) + '}'):   # an answer cut off at the end still counts
+        try: d = json.loads(fix_); break
+        except Exception: continue
+    if not isinstance(d, dict): return {}
     try:
         st, pay, en = float(d['start']) + a, float(d['payoff']) + a, float(d['end']) + a
     except Exception: return {}

@@ -580,8 +580,8 @@ def analyse(sid):
                         c['score'] = round(c['score'] * max(1.0 if strong_ else 0, 0.2 + 0.16 * sc_), 1)   # the AI decides: a 10 counts almost double, a 4 or lower is out
                         if sc_ <= 4 and not strong_: c['drop'] = True   # ...unless the facts are clear: you read a message from the screen, or a real cause plus a scream or laugh
                     except Exception: pass
-                elif any(x['k'] == 'speech' for x in items) and any(x['k'] == 'note' for x in items):
-                    c['score'] = round(c['score'] * 0.35, 1)   # mumbling while nothing happens: not a moment
+                if any(x['k'] == 'speech' for x in items) and any(x['k'] == 'note' for x in items):
+                    c['score'] = round(c['score'] * 0.35, 1)   # mumbling while nothing happens: not a moment (with or without the AI)
             if port:   # with the AI, a moment it did not look at can never beat one it liked
                 for c in cands:
                     if c not in top: c['score'] = round(c['score'] * 0.6, 1)

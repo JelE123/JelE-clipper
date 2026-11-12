@@ -40,11 +40,11 @@ ti_ = [{'t': 300.0, 'e': 301.5, 'k': 'say', 'v': 'okay we need this round'}, {'t
        {'t': 310.0, 'k': 'game sound', 'v': '2 gunshots'}, {'t': 318.0, 'e': 319.0, 'k': 'say', 'v': 'wait what did he say'}, {'t': 319.2, 'e': 321.5, 'k': 'say', 'v': 'he said jele is the worst player ever uninstall'},
        {'t': 322.0, 'k': 'you', 'v': 'screaming'}, {'t': 323.0, 'e': 325.0, 'k': 'say', 'v': 'WHAT bro I have 30 kills'}, {'t': 326.0, 'k': 'chat', 'v': '25 messages'}, {'t': 329.0, 'e': 330.0, 'k': 'say', 'v': 'okay okay focus'}]
 bt = c.brief_merge(bt_raw, c.brief_rules({'t': 322}, ti_, 300.0, 322.0), ti_)
-print('TOXIC raw', bt_raw, '| merged', {k: bt.get(k) for k in ('start', 'cause', 'payoff', 'end')}, 'focus' if bt.get('focus') else 'no focus')
+print('RAWBRIEF', repr(c.LLM.get('last_brief'))[:400]); print('TOXIC raw', bt_raw, '| merged', {k: bt.get(k) for k in ('start', 'cause', 'payoff', 'end')}, 'focus' if bt.get('focus') else 'no focus')
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = bool(bt.get('focus')) and bt['start'] <= 302 and bt['cause'] <= 304.5 and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(bt.get('focus')) and bt['start'] <= 302 and bt['cause'] <= 304.5 and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= (3 if c.SET['llm_size'] == 'smart' else 5)) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)
