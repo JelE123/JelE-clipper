@@ -422,7 +422,10 @@ def analyse(sid):
     if SET.get('auto_shorts'):
         for m in auto_pick:
             pre = next((p for p in SET.get('presets', []) if p.get('name') == SET.get('auto_preset')), {})
+            lrn = learned_look(game_for(sid, m['start']))['auto'] if SET.get('learn_look', True) else {}
+            lrn = {k: v for k, v in lrn.items() if k not in pre}   # your own preset wins over what was learned
             JOBS.put(('render', {'sid': sid, 'start': m['start'], 'end': m['end'], 'title': m.get('title', ''), 'hook': m.get('title', ''), 'captions': SET['captions'], 'mid': m['id'], 'auto': True,
+                                 **lrn, **({'learned': sorted(lrn)} if lrn else {}),
                                  **{k: v for k, v in pre.items() if k in ('layout', 'style', 'cap_scale', 'cap_y', 'progress', 'endcard', 'zoom', 'jumpcut', 'sfx', 'cam_h', 'game_x')}}))
         n_auto = len(auto_pick)
         if n_auto: log(f'Making the best {n_auto} shorts automatically, they will show up in your inbox'); STATE['auto_left'] = STATE.get('auto_left', 0) + n_auto

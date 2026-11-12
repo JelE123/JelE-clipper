@@ -2,6 +2,13 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.29 · 12 November 2026
+
+### Learns your look (plan F3.7)
+- The editor now starts with the look of the last short you made yourself for that game: layout, caption style, size, height and animation, cuts, sound effects, progress bar and end card
+- What you pick 10 times in a row for a game, the automatic shorts use too. Those shorts get a "learned from you" label (hover to see what was learned). Your own automatic preset always wins
+- You can turn this off in Settings > Connections and app > Speed and safety
+
 ## 6.28 · 12 November 2026
 
 ### Nicer captions (plan F3.5, first part)

@@ -137,6 +137,32 @@ def note_edit(job):
     else: cnt('caps_moved', False)
     cnt('music_added', bool(job.get('music')) and not oj.get('music'))
     jsave(EDITS_F, d)
+# ---------------------------------------------------------------- 7.0: learning your look per game (plan F3.7)
+LOOK_F = os.path.join(DATA, 'look_per_game.json')
+LOOK_KEYS = ('layout', 'style', 'cap_scale', 'cap_anim', 'cap_y', 'jumpcut', 'sfx', 'progress', 'endcard', 'zoom', 'loop')
+def learn_look(job):
+    """every short you make yourself: remember the look per game. the editor starts with your last choices,
+    and what you pick 10 times in a row the automatic shorts use too ("learned from you")"""
+    if job.get('auto') or job.get('preview') or job.get('test') or job.get('live') or job.get('remake_of') or not job.get('sid'): return
+    try: g = game_for(job['sid'], job.get('start'))
+    except Exception: g = SET.get('default_game') or 'valorant'
+    d = jload(LOOK_F, {}); gd = d.setdefault(g, {})
+    for k in LOOK_KEYS:
+        if k not in job: continue
+        v = job[k]
+        if isinstance(v, float): v = round(v, 2)
+        h = gd.setdefault(k, []); h.append(v); del h[:-20]
+    jsave(LOOK_F, d)
+def learned_look(g):
+    gd = jload(LOOK_F, {}).get(g) or {}
+    last = {k: h[-1] for k, h in gd.items() if h}
+    auto = {}
+    for k, h in gd.items():
+        if k in ('cap_y',): continue          # a height is only for the editor, not for every automatic short
+        tail = h[-10:]
+        if len(tail) >= 10 and all(x == tail[0] for x in tail): auto[k] = tail[0]
+    return {'last': last, 'auto': auto}
+
 EDIT_TIPS = {'teaser_off': ('You often remove the teaser. Shall I turn it off by default?', {'fx_teaser': False}),
              'replay_off': ('You often remove the replay. Shall I turn it off by default?', {'fx_replay': False}),
              'caps_moved': ('You often move the captions. Want to change the default height in the editor (Text > Height) and save it as a style?', None),

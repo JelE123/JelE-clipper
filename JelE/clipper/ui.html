@@ -942,6 +942,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
           <div class="row2"><label>Graphics card</label><select id="sEnc"><option value="auto">Automatic (NVIDIA, AMD or Intel)</option><option value="x264">Processor only</option></select></div></div>
         <div class="card adv nosave"><h3>Speed and safety</h3><p>During your stream I take it easy, after that as fast as your PC can.</p>
           <div class="row2"><label>During your stream<small>heavy work waits until you are done</small></label><select id="sPause"><option value="true">Wait (your stream does not stutter)</option><option value="false">Just keep going</option></select></div>
+          <div class="row2"><label>Learn my look per game<small>the editor starts with your last choices; what you pick 10 times in a row, the automatic shorts use too</small></label><select id="sLearn"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Listen along while you stream<small>so the moments are there right after. Only on a strong pc, with few cores, and only when OBS records to MKV</small></label><select id="sListen"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Make at the same time<small>works after a restart</small></label><select id="sPar"><option value="auto">Automatic</option><option value="1">1 at a time</option><option value="2">2 at a time</option><option value="3">3 at a time</option></select></div>
           <div class="row2"><label>Working copy<small>light version to scrub through quickly</small></label><select id="sProxy"><option value="true">On</option><option value="false">Off</option></select></div>
@@ -1271,9 +1272,16 @@ function edGameApply(){ if(!ED) return; const gi=(SESS&&SESS.game_info)||{id:SET
 
 // ---------- editor
 let ED=null;
+// F3.7: your last look per game (from the shorts you made yourself)
+let LEARNED={}; async function loadLearned(){ try{ LEARNED=await api('/api/learned'); }catch(e){ LEARNED={}; } } loadLearned();
 function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
+  const gid0=((SESS&&SESS.game_info)||{}).id||SETS.default_game||'valorant', L=(opt.replace||opt.layout)?{}:((LEARNED[gid0]||{}).last||{});
+  opt=Object.assign({}, L.layout?{layout:L.layout}:{}, L.style?{style:L.style}:{}, L.cap_scale?{cap_scale:L.cap_scale}:{}, L.cap_anim?{cap_anim:L.cap_anim}:{}, L.cap_y!=null?{cap_y:L.cap_y}:{},
+    L.jumpcut!=null?{jumpcut:L.jumpcut}:{}, L.sfx!=null?{sfx:L.sfx}:{}, L.progress!=null?{progress:L.progress}:{}, L.endcard!=null?{endcard:L.endcard}:{}, opt);
+  const usedL=Object.keys(L).length>0;
   ED={fx:null, fxSel:null, music:opt.music||null, voice:opt.voice??(SETS.voice_clean===true), jumpcut:opt.jumpcut??(SETS.jumpcut!==false), sfx:opt.sfx??(SETS.sfx!==false), capScale:+(opt.cap_scale||SETS.cap_scale||1), capY:opt.cap_y??null, gameX:opt.game_x??SETS.game_x, camH:opt.cam_h??null, progress:opt.progress??!!SETS.progress_bar, endcard:opt.endcard??(SETS.endcard!==false), off:new Set(), edit:{}, replace:opt.replace||null, zoom:SETS.auto_zoom!==false, words:m.words||[], m, a:m.start, b:m.end, dur, layout:normLayout(opt.layout||SETS.layout), style:opt.style||SETS.cap_style||'jele', caps:SETS.captions!==false, peaks:[], wa:0, wl:1,
      cuts:(opt.cuts||[]).map(c=>[+c[0],+c[1]]), capShift:+(opt.cap_shift||0), bleep:opt.bleep??!!SETS.bleep, bg:opt.bg||SETS.frame_bg||'blur', round:opt.round??!!SETS.frame_round, border:opt.border??!!SETS.frame_border, divider:opt.divider??(SETS.divider!==false), capAnim:opt.cap_anim||SETS.cap_anim||'pop', snapW:SETS.snap_words!==false, loop:!!opt.loop, brand:opt.brand||SETS.brand_default||'jele', safe:SETS.safe_zone||'', unsure:new Set(), ok:new Set(), sel:null, selA:null, ready:false, tab:'lay'};
+  if(usedL&&!edit.saidL){ edit.saidL=1; toast('The editor starts with the look of your last '+(GAME(gid0)||{name:gid0}).name+' short'); }
   setWin(); $('navEd').style.display=''; document.body.classList.add('hasEd');
   $('edBox').innerHTML=`<div class="ed">
     <div class="card panel">
@@ -1640,7 +1648,7 @@ function optInit(){ optVis(); optSync();
 
 // ---------- shorts
 let LF='all';
-async function loadShorts(quiet){ SHORTS=(await api('/api/shorts')).filter(s=>!s.test); setTimeout(()=>{ try{ renderTodo(); }catch(e){} },0); const inbox=SHORTS.filter(s=>s.auto&&s.status==='nieuw');
+async function loadShorts(quiet){ SHORTS=(await api('/api/shorts')).filter(s=>!s.test); loadLearned(); setTimeout(()=>{ try{ renderTodo(); }catch(e){} },0); const inbox=SHORTS.filter(s=>s.auto&&s.status==='nieuw');
   $('nOut').textContent=SHORTS.length; $('kO').textContent=SHORTS.length; $('nIn').textContent=inbox.length; $('nIn').style.display=inbox.length?'':'none';
   renderInbox(); if(PAGE==='live') renderLive(); if(PAGE!=='out') return;
   $('pgA').innerHTML=`<button class="btn sm" id="openOut">${ic('folder')}Open folder</button>`; $('openOut').onclick=()=>api('/api/open',{what:'shorts'}); if(PAGE==='out') subTabs('out');
@@ -1932,11 +1940,11 @@ async function bkLoad(){ const el=$('bkBox'); if(!el) return; const L=await api(
   $('bkNow').onclick=async()=>{ const r=await api('/api/backup-now',{}); toast(r.ok?'Backup made':(r.why||'Did not work')); bkLoad(); };
   $$('[data-bk]',el).forEach(b=>b.onclick=async()=>{ if(!confirm('Restore this backup? Your settings, library and taste go back to that moment. I first make a backup of how it is now.')) return; const r=await api('/api/backup-restore',{file:b.dataset.bk}); toast(r.ok?'Restored':(r.why||'Did not work')); if(r.ok){ const s=await api('/api/status'); SETS=s.settings; fillSet(); bkLoad(); } }); }
 function pauseTxt(s){ return s.pause_why==='disk'?'Waiting: your disk is almost full':s.pause_why==='busy'?'Waiting: your pc is very busy':'Wait until your stream is done'; }
-function perfFill(){ if(!$('sPause')) return; $('sPause').value=String(SETS.pause_live!==false); if($('sListen')) $('sListen').value=String(SETS.live_listen!==false); $('sPar').value=String(SETS.parallel||'auto'); $('sProxy').value=String(SETS.proxy!==false); $('sRemux').value=String(SETS.remux!==false); $('sDrop').value=String(SETS.remux_drop_mkv!==false); $('sSafe').value=String(!!(ST.safe)); $('sRm').value=localStorageGet('rm')||'auto'; }
+function perfFill(){ if(!$('sPause')) return; $('sPause').value=String(SETS.pause_live!==false); if($('sListen')) $('sListen').value=String(SETS.live_listen!==false); if($('sLearn')) $('sLearn').value=String(SETS.learn_look!==false); $('sPar').value=String(SETS.parallel||'auto'); $('sProxy').value=String(SETS.proxy!==false); $('sRemux').value=String(SETS.remux!==false); $('sDrop').value=String(SETS.remux_drop_mkv!==false); $('sSafe').value=String(!!(ST.safe)); $('sRm').value=localStorageGet('rm')||'auto'; }
 function localStorageGet(k){ try{ return localStorage.getItem('jele_'+k); }catch(e){ return null; } }
 function localStorageSet(k,v){ try{ localStorage.setItem('jele_'+k,v); }catch(e){} }
 function rmApply(){ const v=localStorageGet('rm')||'auto'; document.documentElement.classList.toggle('rm',v==='on'); } rmApply();
-['sPause','sPar','sProxy','sRemux','sDrop','sListen'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const b={live_listen:$('sListen').value==='true',pause_live:$('sPause').value==='true',parallel:$('sPar').value,proxy:$('sProxy').value==='true',remux:$('sRemux').value==='true',remux_drop_mkv:$('sDrop').value==='true'}; const r=await api('/api/settings',b); SETS=r.settings; toast(id==='sPar'?'Saved. Works after restarting the Clipper':'Saved'); }; });
+['sPause','sPar','sProxy','sRemux','sDrop','sListen','sLearn'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const b={learn_look:$('sLearn').value==='true',live_listen:$('sListen').value==='true',pause_live:$('sPause').value==='true',parallel:$('sPar').value,proxy:$('sProxy').value==='true',remux:$('sRemux').value==='true',remux_drop_mkv:$('sDrop').value==='true'}; const r=await api('/api/settings',b); SETS=r.settings; toast(id==='sPar'?'Saved. Works after restarting the Clipper':'Saved'); }; });
 if($('sSafe')) $('sSafe').onchange=async()=>{ const r=await api('/api/safe',{on:$('sSafe').value==='true'}); toast(r.on?'Safe mode on':'Safe mode off'); poll(); };
 if($('sRm')) $('sRm').onchange=()=>{ localStorageSet('rm',$('sRm').value); rmApply(); };
 
@@ -2263,7 +2271,7 @@ function libBar(){ const tags=[...new Set(SHORTS.flatMap(s=>(s.tags||[]).concat(
   $('lbTag').innerHTML='<option value="">All tags</option>'+tags.map(t=>`<option ${t===LT?'selected':''}>${esc(t)}</option>`).join(''); }
 function libMeta(s){ return `<div class="lmeta"><button class="star ${s.fav?'on':''}" data-fav="${esc(s.file)}" title="Favourite">★</button>
   <select class="stsel" data-st="${esc(s.file)}">${Object.entries(STATN).map(([k,v])=>`<option value="${k}" ${(s.status||'goed')===k?'selected':''}>${v}</option>`).join('')}</select>
-  ${(s.tags||[]).concat(autoTags(s)).slice(0,4).map(t=>`<i class="tg">${esc(t)}</i>`).join('')}<button class="tg add" data-tag="${esc(s.file)}" title="Add tag">+ tag</button></div>`; }
+  ${s.learned&&s.learned.length?`<i class="tg" style="color:var(--or)" title="Made with what you picked 10 times in a row: ${esc(s.learned.join(', '))}">learned from you</i>`:''}${(s.tags||[]).concat(autoTags(s)).slice(0,4).map(t=>`<i class="tg">${esc(t)}</i>`).join('')}<button class="tg add" data-tag="${esc(s.file)}" title="Add tag">+ tag</button></div>`; }
 function libBind(root){ $$('[data-fav]',root).forEach(b=>b.onclick=async()=>{ const s=SHORTS.find(x=>x.file===b.dataset.fav); s.fav=!s.fav; b.classList.toggle('on',s.fav); await api('/api/short-meta',{file:s.file,fav:s.fav}); });
   $$('[data-st]',root).forEach(e=>e.onchange=async()=>{ await api('/api/short-meta',{file:e.dataset.st,status:e.value}); const s=SHORTS.find(x=>x.file===e.dataset.st); s.status=e.value; toast(e.value==='gepost'?'Marked as posted everywhere. In a few days I ask for the views':e.value==='goed'?'Ready to post: made, not posted yet':'Saved'); loadShorts(true); });
   $$('[data-tag]',root).forEach(b=>b.onclick=async()=>{ const t=prompt('Tag (e.g. ranked, best of november)'); if(!t) return; await api('/api/short-meta',{file:b.dataset.tag,add_tag:t}); loadShorts(); });

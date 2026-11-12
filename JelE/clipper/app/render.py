@@ -387,6 +387,7 @@ def _render(job):
             lib[os.path.basename(dst)]['post']['description'] = 'Chapters:\n' + '\n'.join(f'{fmt(ct)} {cl}' for ct, cl in chapters) + '\n\n' + lib[os.path.basename(dst)]['post']['description']
         lib[os.path.basename(dst)]['job'] = {k: v for k, v in job.items() if k not in ('replace', 'variant', 'test', 'preview')}
         if job.get('remake_of'): lib[os.path.basename(dst)]['remake_of'] = job['remake_of']
+        if job.get('learned'): lib[os.path.basename(dst)]['learned'] = job['learned']
         lib[os.path.basename(dst)]['file'] = os.path.basename(dst); lib[os.path.basename(dst)]['brand'] = B().get('id')
         lib_save(lib)
         try:

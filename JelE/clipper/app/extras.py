@@ -423,6 +423,9 @@ def worker():
                     try: note_edit(arg)
                     except Exception: pass
                 p = render(arg); ok = bool(p)
+                if p:
+                    try: learn_look(arg)
+                    except Exception: pass
                 if p and not arg.get('preview') and not arg.get('test'):
                     try:
                         job['stage'] = 'Checking'; job['pct'] = 99

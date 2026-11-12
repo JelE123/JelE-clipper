@@ -141,6 +141,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/jumpcut-plan':   # the boring bits that would be cut from this clip, so the editor can show them
             try: return self.j({'cuts': jumpcut_plan(q['sid'][0], float(q['a'][0]), float(q['b'][0]))})
             except Exception as e_: log('Could not plan the cuts:', e_); return self.j({'cuts': []})
+        if p == '/api/learned': return self.j({g: learned_look(g) for g in GP.ORDER} if GP and SET.get('learn_look', True) else {})
         if p == '/api/games': return self.j({'games': GP.public() if GP else [], 'default': SET.get('default_game') or 'valorant'})
         if p == '/api/vod-check': return self.j(vod_check())
         if p == '/api/phone-diag': return self.j(phone_diag())
