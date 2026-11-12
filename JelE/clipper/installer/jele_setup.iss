@@ -97,15 +97,12 @@ begin
   Result.Parent := EdPage.Surface;
   Result.Left := 0;
   Result.Top := Top;
-  Result.Width := ScaleX(150);
+  Result.Width := EdPage.SurfaceWidth;
   Result.Height := ScaleY(22);
   Result.Font.Style := [fsBold];
   Result.Font.Size := 11;
-  Result.Caption := Title;
-  if Rec then
-  begin
-    T := Txt(Top + ScaleY(3), 'Recommended for this PC', True, 0, $0092FF, 160);
-  end;
+  if Rec then Result.Caption := Title + '   (recommended for this PC)'
+  else Result.Caption := Title;
   T := Txt(Top + ScaleY(26), Fit, True, 0, -1, 22);
   T := Txt(T.Top + T.Height + ScaleY(3), Body, False, 0, -1, 22);
 end;
