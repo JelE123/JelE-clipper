@@ -2,6 +2,16 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.21 · 12 November 2026
+
+### Your own logo
+- The JelE Studio logo is now used everywhere: the app icon, the shortcut, the icon next to the clock, the browser tab and the top left of the app (with the JelE wordmark in Syne)
+
+### A nicer setup
+- The setup now has a dark look in the JelE Studio colors, with the logo on the side and at the top
+- The Light or Full choice is clearer: two choices, each with its size, which PC it fits and what it holds, and "Recommended for this PC" at the one that fits
+- A welcome page and an end page that explain in short what the Clipper does and how you start it
+
 ## 6.20 · 12 November 2026
 
 ### A real setup (plan F1.4)

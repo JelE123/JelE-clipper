@@ -23,13 +23,28 @@ OutputBaseFilename=JelE_Clipper_Setup
 SetupIconFile={#Src}\clipper\jele.ico
 UninstallDisplayIcon={app}\clipper\jele.ico
 UninstallDisplayName=JelE Clipper
+#if Ver >= EncodeVer(6,6,0)
+WizardStyle=modern dark
+WizardBackColor=$271811
+#else
 WizardStyle=modern
+#endif
+WizardImageFile={#SourcePath}img\side_0.bmp,{#SourcePath}img\side_1.bmp,{#SourcePath}img\side_2.bmp,{#SourcePath}img\side_3.bmp,{#SourcePath}img\side_4.bmp,{#SourcePath}img\side_5.bmp
+WizardSmallImageFile={#SourcePath}img\small_0.bmp,{#SourcePath}img\small_1.bmp,{#SourcePath}img\small_2.bmp,{#SourcePath}img\small_3.bmp,{#SourcePath}img\small_4.bmp,{#SourcePath}img\small_5.bmp
+DisableWelcomePage=no
 Compression=lzma2/max
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 CloseApplications=no
+
+[Messages]
+WelcomeLabel1=Welcome to JelE Clipper
+WelcomeLabel2=From stream to short.%n%nThe Clipper finds the best moments of your stream by itself and turns them into vertical shorts with captions, ready to post.%n%nInstalling takes a few minutes and needs an internet connection.
+FinishedHeadingLabel=JelE Clipper is ready
+FinishedLabel=Start it with the JelE Clipper icon on your desktop or in the start menu.%n%nIt keeps running as a small J icon next to the clock, so it can catch your clips while you stream.
+ClickFinish=Click Finish to close the setup.
 
 [Files]
 Source: "{#Src}\clipper\*"; DestDir: "{app}\clipper"; Excludes: "data\*,shorts\*,__pycache__,tests\*,.venv\*,config.js,installer\Output\*"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -49,7 +64,8 @@ Type: filesandordirs; Name: "{app}\clipper\__pycache__"
 
 [Code]
 var
-  Edition: TInputOptionWizardPage;
+  EdPage: TWizardPage;
+  RbLight, RbFull: TNewRadioButton;
   HasNvidia: Boolean;
 
 function NvidiaFound(): Boolean;
@@ -58,33 +74,60 @@ begin
             FileExists(ExpandConstant('{commonpf64}\NVIDIA Corporation\NVSMI\nvidia-smi.exe'));
 end;
 
+function Txt(Top: Integer; Caption: String; Bold: Boolean; Size: Integer; Color: Integer; Indent: Integer): TNewStaticText;
+begin
+  Result := TNewStaticText.Create(EdPage);
+  Result.Parent := EdPage.Surface;
+  Result.Left := ScaleX(Indent);
+  Result.Top := Top;
+  Result.Width := EdPage.SurfaceWidth - ScaleX(Indent);
+  Result.WordWrap := True;
+  Result.AutoSize := True;
+  if Bold then Result.Font.Style := [fsBold];
+  if Size > 0 then Result.Font.Size := Size;
+  if Color >= 0 then Result.Font.Color := Color;
+  Result.Caption := Caption;
+end;
+
+function Choice(Top: Integer; Title, Fit, Body: String; Rec: Boolean): TNewRadioButton;
+var
+  T: TNewStaticText;
+begin
+  Result := TNewRadioButton.Create(EdPage);
+  Result.Parent := EdPage.Surface;
+  Result.Left := 0;
+  Result.Top := Top;
+  Result.Width := ScaleX(150);
+  Result.Height := ScaleY(22);
+  Result.Font.Style := [fsBold];
+  Result.Font.Size := 11;
+  Result.Caption := Title;
+  if Rec then
+  begin
+    T := Txt(Top + ScaleY(3), 'Recommended for this PC', True, 0, $0092FF, 160);
+  end;
+  T := Txt(Top + ScaleY(26), Fit, True, 0, -1, 22);
+  T := Txt(T.Top + T.Height + ScaleY(3), Body, False, 0, -1, 22);
+end;
+
 procedure InitializeWizard();
 var
-  Info: String;
+  N: TNewStaticText;
 begin
   HasNvidia := NvidiaFound();
-  if HasNvidia then
-    Info := 'We found an NVIDIA graphics card in this PC, so Full fits best.'
-  else
-    Info := 'We did not find an NVIDIA graphics card in this PC, so Light fits best.';
-  Edition := CreateInputOptionPage(wpWelcome,
-    'Light or Full?', 'Pick the version that fits your PC. ' + Info,
-    'LIGHT (about 0.5 GB on your disk)' + #13#10 +
-    'For laptops and PCs without an NVIDIA graphics card. Installs the Clipper with everything it needs. ' +
-    'The speech model (for captions) downloads by itself the first time you need it.' + #13#10#13#10 +
-    'FULL (about 4 GB on your disk)' + #13#10 +
-    'For gaming PCs with an NVIDIA graphics card. Also installs graphics card support for the speech model ' +
-    '(much faster, best captions) and downloads the speech models right away, so your first short is quick.' + #13#10#13#10 +
-    'Both have the same features. You can switch later by running this setup again.',
-    True, False);
-  Edition.Add('Light: laptop or PC without NVIDIA graphics card');
-  Edition.Add('Full: gaming PC with NVIDIA graphics card');
-  if HasNvidia then Edition.SelectedValueIndex := 1 else Edition.SelectedValueIndex := 0;
+  EdPage := CreateCustomPage(wpWelcome, 'Light or Full?', 'Pick the version that fits your PC. Both have the same features.');
+  RbLight := Choice(0, 'Light', 'About 0.5 GB  -  for laptops and PCs without an NVIDIA graphics card',
+    'Installs the Clipper with everything it needs. The speech model for captions downloads by itself the first time you need it.', not HasNvidia);
+  RbFull := Choice(ScaleY(118), 'Full', 'About 4 GB  -  for gaming PCs with an NVIDIA graphics card',
+    'Also installs graphics card support for the speech model (much faster, best captions) and downloads the speech models right away, so your first short is quick.', HasNvidia);
+  N := Txt(ScaleY(240), 'You can switch later by running this setup again.', False, 0, clGray, 0);
+  RbFull.Checked := HasNvidia;
+  RbLight.Checked := not HasNvidia;
 end;
 
 function IsFull(): Boolean;
 begin
-  Result := Edition.SelectedValueIndex = 1;
+  Result := RbFull.Checked;
 end;
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;

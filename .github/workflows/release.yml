@@ -79,10 +79,35 @@ jobs:
       - name: Build the setup
         shell: pwsh
         run: |
+          choco upgrade innosetup -y --no-progress | Out-Null   # the newest version: needed for the dark style
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          (Get-Item $iscc).VersionInfo.ProductVersion
           & $iscc "/DMyVersion=${{ needs.release.outputs.version }}" "/DSrc=$PWD\build" JelE/clipper/installer/jele_setup.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Screenshots of the setup
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory shots | Out-Null
+          function Shot($n) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots\$n.png"); $g.Dispose(); $bmp.Dispose()
+          }
+          Start-Process JelE/clipper/installer/Output/JelE_Clipper_Setup.exe -ArgumentList '/DIR=C:\JelEShots'
+          $w = New-Object -ComObject WScript.Shell
+          Start-Sleep 8; $null = $w.AppActivate('Setup - JelE Clipper'); Start-Sleep 1; Shot '1_welcome'
+          foreach ($n in '2_choice', '3_folder', '4_ready') { $w.SendKeys('{ENTER}'); Start-Sleep 3; Shot $n }
+          Get-Process | Where-Object { $_.ProcessName -like 'JelE_Clipper_Setup*' } | Stop-Process -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-screenshots
+          path: shots
+          if-no-files-found: ignore
 
       - name: Test it on this clean Windows machine
         shell: pwsh

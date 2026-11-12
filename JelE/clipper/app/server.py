@@ -155,7 +155,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/detect-cam':
             return self.j({'cam': obs.detect_cam(), 'obs': obs.ok})
         if p.startswith('/fonts/'):
-            return self.file(os.path.join(FONT_DIR, os.path.basename(p)), 'font/ttf')
+            return self.file(os.path.join(FONT_DIR, os.path.basename(p)), 'font/woff2' if p.endswith('.woff2') else 'font/ttf')
         if p == '/sthumb':   # a picture for a stream without moments
             ss = load_sess(q['sid'][0]); out = os.path.join(sdir(ss['id']), 'sthumb.jpg')
             if not os.path.exists(out) and ss.get('path'):

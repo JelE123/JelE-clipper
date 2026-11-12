@@ -5,6 +5,8 @@
 <style>
 @font-face{font-family:'Barlow Condensed';src:url('/fonts/BarlowCondensed-ExtraBoldItalic.ttf');font-weight:800;font-style:italic}
 @font-face{font-family:'Barlow Condensed';src:url('/fonts/BarlowCondensed-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Syne';src:url('/fonts/Syne-ExtraBold.woff2') format('woff2');font-weight:800}
+@font-face{font-family:'Syne';src:url('/fonts/Syne-Medium.woff2') format('woff2');font-weight:500}
 :root{--or:#ff9200;--or2:#ffa733;--orS:rgba(255,146,0,.14);--bg:#090d15;--side:#0d121c;--card:#121926;--card2:#182131;--hov:#1d283b;--line:#222d40;--line2:#2c3a52;--tx:#eef2f8;--mut:#8592a8;--dim:#5d6a80;--ok:#22c55e;--bad:#ef4444;--pur:#7c3aed;--r:14px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -18,9 +20,9 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 /* sidebar */
 aside{width:236px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 14px}
 .brand{display:flex;align-items:center;gap:11px;padding:2px 8px 22px}
-.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(140deg,#ffb347,#f07800);display:grid;place-items:center;box-shadow:0 6px 18px rgba(255,146,0,.25)}
-.brand b{font-size:25px;line-height:1}.brand b span{color:var(--or)}
-.brand small{display:block;color:var(--dim);font-size:11.5px;margin-top:2px}
+.logo{width:38px;height:38px;flex:none;display:block;filter:drop-shadow(0 6px 16px rgba(255,146,0,.22))}
+.brand b{font:800 25px/1 'Syne',sans-serif;letter-spacing:-.6px;color:#F8FAFC}.brand b i{font-style:normal;color:#ff9200}
+.brand small{display:block;font:500 9.5px/1 'Syne',sans-serif;letter-spacing:5.2px;color:rgba(248,250,252,.42);margin-top:6px}
 .nav{display:flex;flex-direction:column;gap:3px}
 .nav button{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:var(--mut);font-weight:600;font-size:14px;text-align:left;transition:.12s}
 .nav button:hover{background:var(--card);color:var(--tx)}
@@ -724,8 +726,8 @@ ol.steps{margin:8px 0 6px 18px;padding:0;font-size:12.5px;line-height:1.5;color:
 </defs></svg>
 
 <aside>
-  <div class="brand"><div class="logo"><svg width="20" height="20" viewBox="0 0 512 512"><path d="M280 96 L352 96 L352 376 C352 456 136 456 136 376 L136 320 L280 320 Z" fill="#fff"/></svg></div>
-    <div><b class="disp">JelE <span>Clipper</span></b><small>From stream to short</small></div></div>
+  <div class="brand"><svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="120" fill="#ff9200"/><path d="M280 96 L352 96 L352 376 C352 456 136 456 136 376 L136 320 L280 320 Z" fill="#fff"/></svg>
+    <div><b><i>J</i>el<i>E</i></b><small>CLIPPER</small></div></div>
   <div class="nav">
     <button data-t="live" class="dockonly"><svg class="i"><use href="#i-bolt"/></svg><span>Live</span></button>
     <button data-t="home" class="on"><svg class="i"><use href="#i-inbox"/></svg><span>Inbox</span><em id="nIn">0</em></button>
