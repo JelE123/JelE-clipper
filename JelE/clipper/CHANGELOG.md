@@ -2,6 +2,28 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.39 · 12 November 2026
+
+### Captions no longer repeat the same sentence
+- Fixed: with the graphics card engine the captions could get stuck and repeat one sentence over and over. The engine now starts fresh for every part, and repeated loops are cleaned up
+- Old transcripts with such a loop are cleaned up when they are loaded. Click "Search again" on a stream to also get new titles and moments
+
+### Better titles
+- A title must have at least two real words: no more titles like "NO", "YO" or "4". Half sentences ("I CAN'T BELIEVE THE") are cut cleanly
+
+### Your mic track
+- The setup wizard and Settings no longer pretend the tracks in your file are OBS track numbers. When I don't know which OBS tracks were recorded, you pick your OBS track (1 to 6) yourself, and the list shows "In file: 1, 2, 3..." to listen to
+- When OBS connects later, the real track numbers are picked up right away
+
+### A cleaner editor
+- Source and result side by side, with the play buttons right under your video, then the timeline and what is said
+- The result preview now has the same height as your video, the step bar no longer covers the step title, and the editor uses the full width of big screens
+- Tiny caption blocks on the timeline show as a slim bar instead of cut-off text
+
+### Moments page
+- The reason chips ("chat went off", "Clip button") were broken, they are readable again
+- #1, #2 and #3 are now small orange badges, the same size as the rest, and the numbers follow the score
+
 ## 6.38 · 12 November 2026
 
 ### A clearer Settings page

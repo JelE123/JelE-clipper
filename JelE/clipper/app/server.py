@@ -184,7 +184,8 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/tracks':
             s = load_sess(q['sid'][0]); pick, why, tr = find_mic(s['path'])
             tr = [dict(t, obs=obs_track_of(s['path'], i + 1)) for i, t in enumerate(tr)]   # OBS track number of each stream in the file
-            return self.j({'tracks': tr, 'auto': pick, 'auto_obs': obs_track_of(s['path'], pick) if pick else 0, 'why': why, 'known': bool(track_map(s['path']))})
+            return self.j({'tracks': tr, 'auto': pick, 'auto_obs': obs_track_of(s['path'], pick) if pick else 0, 'why': why, 'known': bool(track_map(s['path'])),
+                           'mic_stream': (stream_of(s['path'], int(SET.get('mic_track') or 0)) if int(SET.get('mic_track') or 0) > 0 else pick) or pick or 0})
         if p == '/listen':   # 8 seconds of one audio track, so you can hear which one is your mic
             s = load_sess(q['sid'][0]); n = int(q.get('n', ['1'])[0]); at = float(q.get('t', ['60'])[0])
             out = os.path.join(sdir(s['id']), f'listen{n}.wav')

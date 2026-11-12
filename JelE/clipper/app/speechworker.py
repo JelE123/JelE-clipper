@@ -134,6 +134,28 @@ def transcribe(req):
 
 
 # ---------------------------------------------------------------- graphics card on any brand (AMD, Intel, NVIDIA): whisper.cpp with Vulkan
+def collapse_loops(words, ti=2):
+    """the speech model sometimes gets stuck and says the same words again and again.
+    a block of 2+ words that comes 3+ times in a row (or one word 6+ times) is kept only once"""
+    import re as _r
+    k = [_r.sub(r"[^\w']+", '', str(w[ti]).lower()) for w in words]
+    out, i, n = [], 0, len(words)
+    while i < n:
+        hit = 0
+        for L in range(1, 13):
+            if i + L * 3 > n: break
+            blk = k[i:i + L]
+            if not any(blk): continue
+            r = 1
+            while i + (r + 1) * L <= n and k[i + r * L:i + (r + 1) * L] == blk: r += 1
+            if r >= (6 if L == 1 else 3): hit = (L, r); break
+        if hit:
+            L, r = hit; out.extend(words[i:i + L]); i += L * r
+        else:
+            out.append(words[i]); i += 1
+    return out
+
+
 def parse_wcpp(path):
     """whisper-cli -ojf -ml 1 -sow: one segment per word, with the chance per token. -> segments like faster-whisper gives"""
     d = json.load(open(path, encoding='utf-8', errors='replace'))
@@ -145,6 +167,7 @@ def parse_wcpp(path):
         a, b = (off.get('from') or 0) / 1000.0, (off.get('to') or 0) / 1000.0
         ps = [t.get('p', 1.0) for t in sg.get('tokens') or [] if not (t.get('text') or '').startswith('[_')]
         words.append([a, b, txt, min(ps) if ps else 1.0])
+    words = collapse_loops(words)
     segs, cur = [], []
     for w in words:   # words back into sentences: a new one after a pause
         if cur and (w[0] - cur[-1][1] > 0.8 or cur[-1][2].rstrip().endswith(('.', '?', '!'))):
@@ -161,7 +184,7 @@ def transcribe_wcpp(req):
     exe, model = req['exe'], req['model_path']
     out = os.path.join(tempfile.gettempdir(), f'jele_wcpp_{os.getpid()}')
     args = [exe, '-m', model, '-f', req['wav'], '-l', (req.get('lang') or 'en'), '-t', str(int(req.get('threads') or 4)),
-            '-ojf', '-ml', '1', '-sow', '-pp', '-np', '-sns', '-of', out]
+            '-ojf', '-ml', '1', '-sow', '-pp', '-np', '-sns', '-mc', '0', '-of', out]
     if req.get('prompt'): args += ['--prompt', req['prompt'][:800]]
     if req.get('no_gpu'): args += ['-ng']
     p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors='replace',

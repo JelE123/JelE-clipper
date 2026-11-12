@@ -23,7 +23,7 @@ def prog(stage=None, pct=None):
     if pct is not None: j['pct'] = round(max(0.0, min(100.0, pct)), 1)
 
 def load_transcript(sid):
-    try: return apply_fixes([tuple(w) for w in json.load(open(os.path.join(sdir(sid), 'transcript.json'), encoding='utf-8'))], game_for(sid))
+    try: return apply_fixes(collapse_loops([tuple(w) for w in json.load(open(os.path.join(sdir(sid), 'transcript.json'), encoding='utf-8'))]), game_for(sid))
     except Exception: return []
 def load_unsure(sid):
     try: return json.load(open(os.path.join(sdir(sid), 'twijfel.json'), encoding='utf-8'))

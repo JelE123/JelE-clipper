@@ -65,7 +65,7 @@ main{flex:1;min-width:0;overflow-y:auto;scroll-behavior:smooth}
 .top h1{font-size:28px;line-height:1}
 .top .sub{color:var(--mut);font-size:13.5px}
 .top .acts{margin-left:auto;display:flex;gap:8px;align-items:center}
-.page{display:none;padding:26px 30px 60px;max-width:1500px}
+.page{display:none;padding:26px 30px 60px;max-width:1500px}#edit.page{max-width:2300px}
 .page.on{display:block}
 .btn{display:inline-flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px 15px;font-weight:650;font-size:13.5px;transition:.12s;white-space:nowrap;text-decoration:none;color:var(--tx)}
 .btn:hover{background:var(--hov);border-color:var(--line2)}
@@ -115,8 +115,8 @@ h3{font-size:15px;font-weight:700;margin-bottom:3px}
 .mc .thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 55%,rgba(5,8,14,.7))}
 .mc .play{position:absolute;inset:0;margin:auto;width:52px;height:52px;border-radius:50%;background:rgba(255,146,0,.95);color:#111827;display:grid;place-items:center;opacity:0;transform:scale(.85);transition:.15s;z-index:2}
 .mc:hover .play{opacity:1;transform:none}
-.rank{position:absolute;left:10px;top:10px;z-index:2;font-size:28px;line-height:1;background:rgba(5,8,14,.8);padding:4px 9px 3px;border-radius:8px}
-.rank.top{background:var(--or);color:#111827}
+.rank{position:absolute;left:10px;top:10px;z-index:2;font-size:17px;line-height:1;background:rgba(5,8,14,.82);color:#fff;padding:5px 8px 4px;border-radius:7px;letter-spacing:.02em}
+.rank.best{background:var(--or);color:#111827}
 .chk{position:absolute;right:10px;top:10px;z-index:3;width:26px;height:26px;border-radius:8px;border:2px solid rgba(255,255,255,.7);background:rgba(5,8,14,.5);display:grid;place-items:center;color:transparent}
 .mc.sel .chk{background:var(--or);border-color:var(--or);color:#111827}
 .done-tag{position:absolute;right:44px;top:12px;z-index:2;font-size:12px;font-weight:750;background:rgba(34,197,94,.9);color:#052e16;padding:3px 8px;border-radius:99px}
@@ -688,7 +688,7 @@ body.dock .itabs{top:56px}body.dock .itabs .seg button{font-size:12px}
 .clg li::before{content:"";position:absolute;left:2px;top:12px;width:4px;height:4px;border-radius:50%;background:var(--dim)}
 .ver{cursor:pointer;border-radius:8px}.ver:hover b{color:var(--or)}
 .xgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.xgrid .btn{justify-content:center;padding:0 6px}
-.chips{display:flex;gap:6px}.chips i{width:22px;height:22px;border-radius:8px;cursor:pointer;border:2px solid var(--line2)}.chips i:hover{border-color:var(--tx)}
+.swatch{display:flex;gap:6px}.swatch i{width:22px;height:22px;border-radius:8px;cursor:pointer;border:2px solid var(--line2)}.swatch i:hover{border-color:var(--tx)}
 #brCard input[type=range]{accent-color:var(--or);padding:0;border:0;background:none}
 #brHint.warn{color:var(--warn,#f59e0b)}
 .mdr{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;margin-top:8px}.mdr .hbar{grid-column:1/-1}.mdr span{font-size:12px;text-align:right}
@@ -768,6 +768,27 @@ body.dock .board{grid-template-columns:1fr}
 @media(max-width:1000px){.setwrap{grid-template-columns:1fr}.setnav{position:static;flex-direction:row;flex-wrap:wrap}.setnav>button small{display:none}.setnav input{flex:1 1 100%}}
 body.dock .libbar{flex-wrap:wrap}body.dock .libbar .seg{flex-wrap:wrap;max-width:100%}
 body.dock .setwrap{grid-template-columns:1fr}body.dock .setnav{position:static}body.dock .setnav>button small{display:none}
+
+/* editor v2 layout */
+.ed.v2{grid-template-columns:minmax(0,1fr) 360px;gap:var(--s4)}@media(min-width:2200px){.ed.v2{grid-template-columns:minmax(0,1fr) 400px}}
+.ed.v2 .edmain{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.ed.v2 .edtop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s3);align-items:stretch}
+.ed.v2 .srcbox,.ed.v2 .resbox{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2);min-width:0}
+.ed.v2 .resbox{width:clamp(250px,22vw,340px)}
+.ed.v2 .edtop{align-items:stretch}.ed.v2 .srcbox .vwrap{display:block}.ed.v2 .srcbox video{display:block;width:100%;max-height:min(50vh,720px);object-fit:contain;background:#000;border-radius:10px}#safeSel{padding-top:0;padding-bottom:0;line-height:28px}
+.ed.v2 .resbox .pv{position:static;margin:0;padding:0;background:none;border:0;box-shadow:none;width:100%}
+.ed.v2 .resbox .phone{max-width:none;width:auto;height:min(52vh,560px);aspect-ratio:9/19.2}.ed.v2 .resbox{width:auto}.ed.v2 .resbox .pvnote{display:none}
+.ed.v2 .edlab{display:flex;align-items:baseline;gap:8px}.ed.v2 .edlab b{font-size:13.5px;font-weight:600}.ed.v2 .edlab span{color:var(--dim);font-size:12px}
+.ed.v2 .edlab.big b{font-size:15px}
+.ed.v2 .edctrl{padding-top:var(--s2);border-top:1px solid var(--line);margin-top:auto}.ed.v2 .edctrl .ctrl{margin:0;flex-wrap:wrap;gap:8px}.ed.v2 .srcbox{align-self:stretch}.ed.v2 .insp .expbar{margin-top:var(--s3)}
+.ed.v2 .edtl,.ed.v2 .edtr{display:flex;flex-direction:column;gap:var(--s2)}
+.ed.v2 .edtl > *,.ed.v2 .edtr > *{margin-top:0!important}.ed.v2 .edtr .trhead{min-height:0}.ed.v2 .edtr .trhead .lbl{font-size:15px;font-weight:600;color:var(--tx);text-transform:none;letter-spacing:0}
+.storybar i{text-overflow:ellipsis}.capbar i.tiny{padding:0;color:transparent;top:8px;bottom:8px;background:var(--line2);border:0;border-radius:4px}
+.fxi.tz,.fxi.rp{height:13px;font-size:9.5px;line-height:13px;padding:0 5px;letter-spacing:.02em}.fxi.rp{top:15px}
+.ed.v2 .insp{position:sticky;top:84px;max-height:calc(100vh - 100px);overflow:auto;padding-right:4px}.ed.v2 .insp .itabs{top:0;box-shadow:none;border-bottom:1px solid var(--line);margin-bottom:4px}
+@media(max-width:1350px){.ed.v2{grid-template-columns:minmax(0,1fr) 320px}.ed.v2 .edtop{grid-template-columns:1fr}.ed.v2 .resbox{width:auto;max-width:360px;margin:0 auto}}
+@media(max-width:1000px){.ed.v2{grid-template-columns:1fr}.ed.v2 .insp{position:static;max-height:none}}
+body.dock .ed.v2{grid-template-columns:1fr}body.dock .ed.v2 .edtop{grid-template-columns:1fr}body.dock .ed.v2 .insp{position:static;max-height:none}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
@@ -999,7 +1020,7 @@ body.dock .setwrap{grid-template-columns:1fr}body.dock .setnav{position:static}b
           <div class="row2" style="border-top:0"><label>Profile</label><div class="prow"><select id="brSel"></select><button class="btn sm" id="brNew"><svg class="i"><use href="#i-plus"/></svg>New</button></div></div>
           <div class="row2"><label>Name</label><input id="brName" placeholder="e.g. My team"></div>
           <div class="row2"><label>Channel<small>shown on every short and the end screen</small></label><input id="brTag" placeholder="twitch.tv/yourname"></div>
-          <div class="row2"><label>Colour<small id="brHint">accents, highlights and the button on the end screen</small></label><div class="prow"><input type="color" id="brCol" value="#ff9200" style="width:54px;height:36px;padding:2px"><span id="brChips" class="chips"></span></div></div>
+          <div class="row2"><label>Colour<small id="brHint">accents, highlights and the button on the end screen</small></label><div class="prow"><input type="color" id="brCol" value="#ff9200" style="width:54px;height:36px;padding:2px"><span id="brChips" class="swatch"></span></div></div>
           <div class="row2"><label>Text colour on your colour</label><select id="brInk"><option value="auto">Automatic (readable)</option><option value="#111827">Dark</option><option value="#ffffff">White</option></select></div>
           <div class="row2"><label>Logo<small>PNG with a transparent background</small></label><div class="prow"><img id="brLogoI" alt="" style="width:40px;height:40px;object-fit:contain;border-radius:8px;background:var(--card2);display:none"><label class="btn sm"><svg class="i"><use href="#i-plus"/></svg>Choose logo<input type="file" id="brLogoF" accept="image/png" hidden></label></div></div>
           <div class="row2"><label>Watermark<small>your logo small in a corner</small></label><select id="brWm"><option value="off">Off</option><option value="all">Whole short</option><option value="end">Only at the end</option></select></div>
@@ -1221,7 +1242,21 @@ if($('sEngine')){ $('sEngine').onchange=async()=>{ const r=await api('/api/setti
 function more(pane, nodes){ const d=document.createElement('details'); d.className='more'; d.innerHTML='<summary>More options</summary><div class="morebox"></div>'; const box=d.lastChild;
   nodes.filter(Boolean).forEach(n=>box.appendChild(n)); const nx=pane.querySelector('.nextstep'); pane.insertBefore(d,nx||null); return d; }
 function nextBtn(pane,to,label){ const b=document.createElement('button'); b.className='btn nextstep'; b.dataset.next=to; b.textContent=label; pane.appendChild(b); }
-function edSteps(){ const P=k=>document.querySelector(`.ipane[data-ep="${k}"]`), cut=P('cut'), txt=P('txt'), fx=P('fx'), lay=P('lay'), aud=P('aud'), exp=P('exp'); if(!cut||!fx) return;
+// the editor screen: source and result side by side, the controls under them, the timeline and the words in their own cards, the steps on the right
+function edLayout(){ const ed=document.querySelector('#edBox .ed'); if(!ed||ed.classList.contains('v2')) return; const left=ed.children[0], pv=$('pv'), insp=ed.querySelector('.insp'); if(!left||!pv||!insp) return;
+  ed.classList.add('v2'); const mk=(cls,html)=>{ const d=document.createElement('div'); d.className=cls; if(html) d.innerHTML=html; return d; };
+  const main=mk('edmain'), top=mk('edtop'), src=mk('srcbox'), tl=mk('card panel edtl'), tr=mk('card panel edtr');
+  const vw=left.querySelector('.vwrap'); src.appendChild(mk('edlab','<b>Source</b><span>your recording</span>')); if(vw) src.appendChild(vw);
+  const res=mk('resbox'); res.appendChild(mk('edlab','<b>Result</b><span>what your viewers see</span>')); res.appendChild(pv);
+  top.append(src,res); main.appendChild(top);
+  const ctrl=left.querySelector(':scope > .ctrl'); if(ctrl) src.appendChild(mk('edctrl')).appendChild(ctrl);
+  const trStart=left.querySelector(':scope > .trhead');
+  [...left.children].forEach(n=>{ if(n===trStart||(trStart&&(trStart.compareDocumentPosition(n)&Node.DOCUMENT_POSITION_FOLLOWING))) tr.appendChild(n); else tl.appendChild(n); });
+  tl.prepend(mk('edlab big','<b>Timeline</b><span>drag the orange edges to set start and end</span>'));
+  main.append(tl,tr); ed.insertBefore(main, ed.firstChild); left.remove();
+    const fit=()=>{ const v=src.querySelector('video'), ph=res.querySelector('.phone'); if(!v||!ph||!v.clientHeight) return; ph.style.height=Math.max(360,Math.round(v.clientHeight-20))+'px'; };
+  if(window.ResizeObserver){ new ResizeObserver(fit).observe(src); } fit(); }
+function edSteps(){ edLayout(); const P=k=>document.querySelector(`.ipane[data-ep="${k}"]`), cut=P('cut'), txt=P('txt'), fx=P('fx'), lay=P('lay'), aud=P('aud'), exp=P('exp'); if(!cut||!fx) return;
   // Cut: the automatic cuts and the loop live here
   const jc=$('jcOn')&&$('jcOn').closest('.tog'); if(jc){ jc.style.marginTop='8px'; $('cutAuto').insertBefore(jc,$('cutSil')); }
   const lp=$('oLoop')&&$('oLoop').closest('.mini-tog'); if(lp) $('cutMore').appendChild(lp);
@@ -1253,6 +1288,7 @@ function paintCaps(){ const cb=$('capB'); if(!cb||!ED) return; const A=ED.wa, L=
     if(!cur||w[0]-cur.b>0.5||cur.n>=3||/[.!?]$/.test(cur.last)){ cur={a:w[0],b:w[1],i,txt:[],n:0}; G.push(cur); }
     cur.b=w[1]; cur.txt.push(t); cur.n++; cur.last=t; });
   cb.innerHTML=G.filter(g=>g.b>A&&g.a<A+L).map(g=>`<i data-ci="${g.i}" data-ca="${g.a}" style="left:${(g.a-A)/L*100}%;width:${Math.max(.6,(g.b-g.a)/L*100)}%">${esc(g.txt.join(' '))}</i>`).join('');
+  const cw=cb.clientWidth||1; cb.querySelectorAll('i').forEach(el=>{ el.title=el.textContent; if(parseFloat(el.style.width)/100*cw<46) el.classList.add('tiny'); });
   cb.querySelectorAll('i').forEach(el=>{ el.onclick=()=>{ $('vid').currentTime=+el.dataset.ca; paintTL(); };
     el.ondblclick=()=>{ const sp=document.querySelector(`#trans span[data-i="${el.dataset.ci}"]`); if(sp){ sp.scrollIntoView({block:'center'}); editWord(sp); } }; }); }
 function paintStory(){ try{ paintCaps(); }catch(e){} const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
@@ -1374,10 +1410,10 @@ function renderMoments(){ const s=SESS;
   if(!s){ $('manBtn').style.display='none'; $('pgT').textContent='Moments'; $('pgS').textContent=''; $('mInfo').textContent=''; $('mlist').innerHTML='<div class="empty" style="grid-column:1/-1">'+EMPTY('spark','Pick a stream first','Go to Streams and click a stream.')+'</div>'; return; }
   $('pgT').textContent=s.title; $('pgS').textContent=`${s.duration?fmt(s.duration)+' · ':''}${s.chat_n} chat messages · ${s.markers.length} marked`; momActions();
   const ms=[...(s.moments||[])], top=Math.max(1,...ms.map(m=>m.score)), done=new Set((s.shorts||[]).map(x=>x.mid));
-  ms.forEach((m,i)=>m._rank=i+1); if(SORT==='time') ms.sort((a,b)=>a.start-b.start);
+  ms.sort((a,b)=>(b.score||0)-(a.score||0)).forEach((m,i)=>m._rank=i+1); if(SORT==='time') ms.sort((a,b)=>a.start-b.start);
   $('mInfo').textContent=ms.length?`${ms.length} moments · click a card to edit, tick to make more at once`:'';
   $('mlist').innerHTML=ms.length? ms.map(m=>`<div class="card mc ${SEL.has(m.id)?'sel':''}" data-m="${m.id}">
-      <div class="thumb" data-edit="${m.id}" style="background-image:url('/thumb?sid=${encodeURIComponent(SID)}&mid=${m.id}')"><span class="rank disp ${m._rank<=3?'top':''}">#${m._rank}</span>
+      <div class="thumb" data-edit="${m.id}" style="background-image:url('/thumb?sid=${encodeURIComponent(SID)}&mid=${m.id}')"><span class="rank disp ${m._rank<=3?'best':''}">#${m._rank}</span>
         ${done.has(m.id)?'<span class="done-tag">made</span>':''}<button class="chk" data-chk="${m.id}" title="Select">${ic('check')}</button>
         <div class="play">${ic('play')}</div><span class="tl" style="z-index:2">${fmt(m.start)} · ${Math.round(m.end-m.start)}s</span></div>
       <div class="bd"><div class="tt disp">${esc(m.title||'Moment at '+fmt(m.start))}</div>
@@ -1900,8 +1936,8 @@ async function initSettings(){ if(!SETS.cam) await poll(); fillSet();
   if(s){ $('pick').style.backgroundImage=`url('/frame?sid=${encodeURIComponent(s.id)}&t=${Math.min(120,(s.duration||60)/2)}')`; $('pickSrc').textContent='Picture from: '+s.title; }
   requestAnimationFrame(paintPick); }
 async function loadTracks(){ const el=$('trk'), s=SESSIONS.find(x=>x.path&&x.duration); if(!s){ el.innerHTML=''; return; } el.innerHTML='<div class="why">Looking at the tracks in your last recording...</div>';
-  try{ const r=await api('/api/tracks?sid='+encodeURIComponent(s.id)), mt=+$('sMic').value, use=mt===0?r.auto:mt;
-    el.innerHTML=`<div class="why">In your last recording: ${r.tracks.length} audio track${r.tracks.length===1?'':'s'}. ${mt===0?esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+".":''}</div>`+r.tracks.map(t=>`<div class="t ${t.n===use?'use':''}"><b>Track ${t.n}</b><span>${esc(t.title||'no name')}</span>${t.n===use?'<em>gets captioned</em>':''}<button class="btn sm" data-listen="${t.n}">${ic('play')}Listen</button></div>`).join('');
+  try{ const r=await api('/api/tracks?sid='+encodeURIComponent(s.id)), mt=+$('sMic').value, use2=r.mic_stream||(mt===0?r.auto:0);
+    el.innerHTML=`<div class="why">In your last recording: ${r.tracks.length} audio track${r.tracks.length===1?'':'s'}. ${mt===0?esc(r.why.charAt(0).toUpperCase()+r.why.slice(1))+".":''}</div>`+(r.known?'':'<div class="why">OBS only saves the tracks that are on, so these are numbered in file order and can differ from the OBS numbers.</div>')+r.tracks.map((t,i)=>`<div class="t ${t.n===use2?'use':''}"><b>${r.known?'Track '+(t.obs||t.n):'In file: '+t.n}</b><span>${esc(t.title||'no name')}</span>${t.n===use2?'<em>gets captioned</em>':''}<button class="btn sm" data-listen="${t.n}">${ic('play')}Listen</button></div>`).join('');
     const t0=Math.min(120,(s.duration||60)/2); $$('[data-listen]',el).forEach(b=>b.onclick=()=>{ if(loadTracks.a) loadTracks.a.pause(); loadTracks.a=new Audio(`/listen?sid=${encodeURIComponent(s.id)}&n=${b.dataset.listen}&t=${t0}`); loadTracks.a.play(); });
   }catch(e){ el.innerHTML=''; } }
 $('sMic').onchange=loadTracks;
@@ -2030,11 +2066,15 @@ const WSTEPS=[
    if(!s) return `<h4>Your mic</h4><p>For good captions I only listen to your mic, not the game or music. After your first recording you see your audio tracks here and pick the right one.</p><p>Best setup in OBS: put your mic on its own audio track (Advanced Audio Properties, tracks 1 and 2), and under Output &gt; Recording turn on both tracks.</p>`;
    const r=await api('/api/tracks?sid='+encodeURIComponent(s.id));
    return `<h4>Your mic</h4><p>For good captions I only listen to your mic. Listen to each track and pick the one with mostly your voice.</p>
-   ${r.known?'':`<p class="dim" style="font-size:12px">These are the audio tracks in your last recording, in order. If OBS skips a track (for example it records 1, 2 and 6), the numbers below can differ from OBS. Connect OBS and record once more, then I know the real numbers.</p>`}
-   <div class="vlist">${(r.tracks||[]).map((t,i)=>`<div class="r"><b>Track ${t.obs||i+1}</b><span>${esc(t.name||t.title||'')}${r.auto===i+1?' · <b style="color:var(--or)">chosen automatically</b>':''}</span><button class="btn sm" data-lis="${i+1}">${ic('play')}Listen</button><button class="btn sm ${+SETS.mic_track===(t.obs||i+1)?'pri':''}" data-mic="${t.obs||i+1}">This is my mic</button></div>`).join('')}
-   <div class="r"><b>Automatic</b><span>${esc(r.why||'I find your mic track myself')}</span><button class="btn sm ${+SETS.mic_track===0?'pri':''}" data-mic="0">Choose automatically</button></div></div><audio id="wzA"></audio>`; },
+   ${r.known?`<div class="vlist">${(r.tracks||[]).map((t,i)=>`<div class="r"><b>Track ${t.obs||i+1}</b><span>${esc(t.name||t.title||'')}${r.auto===i+1?' · <b style="color:var(--or)">chosen automatically</b>':''}</span><button class="btn sm" data-lis="${i+1}">${ic('play')}Listen</button><button class="btn sm ${+SETS.mic_track===(t.obs||i+1)?'pri':''}" data-mic="${t.obs||i+1}">This is my mic</button></div>`).join('')}
+   <div class="r"><b>Automatic</b><span>${esc(r.why||'I find your mic track myself')}</span><button class="btn sm ${+SETS.mic_track===0?'pri':''}" data-mic="0">Choose automatically</button></div></div>`
+   :`<div class="row2" style="border:0;padding-left:0"><label>Your mic is on OBS track<small>the number in OBS, Advanced Audio Properties</small></label><select id="wzMicT"><option value="0">I don't know, find it myself</option>${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${+SETS.mic_track===n?'selected':''}>Track ${n}</option>`).join('')}</select></div>
+   <p class="dim" style="font-size:12px;margin:4px 0 8px">Your last recording has ${(r.tracks||[]).length} audio track${(r.tracks||[]).length===1?'':'s'}. OBS only saves the tracks that are turned on, so they are numbered in order here and can differ from OBS (OBS tracks 1, 2 and 6 become 1, 2 and 3 in the file). Listen to check which one is your voice.</p>
+   <div class="vlist">${(r.tracks||[]).map((t,i)=>`<div class="r"><b>In file: ${i+1}</b><span>${esc(t.name||t.title||'')}${r.mic_stream===i+1?' · <b style="color:var(--or)">gets captioned</b>':''}</span><button class="btn sm" data-lis="${i+1}">${ic('play')}Listen</button></div>`).join('')}</div>`}
+   <audio id="wzA"></audio>`; },
   bind:()=>{ const s=SESSIONS.find(x=>x.path&&x.duration); $$('[data-lis]').forEach(b=>b.onclick=()=>{ const a=$('wzA'); a.src=`/listen?sid=${encodeURIComponent(s.id)}&n=${b.dataset.lis}&t=${Math.min(90,(s.duration||60)/2)}`; a.play(); });
-   $$('[data-mic]').forEach(b=>b.onclick=async()=>{ const r=await api('/api/settings',{mic_track:+b.dataset.mic}); SETS=r.settings; $$('[data-mic]').forEach(x=>x.classList.toggle('pri',x===b)); toast('Saved'); }); } },
+   $$('[data-mic]').forEach(b=>b.onclick=async()=>{ const r=await api('/api/settings',{mic_track:+b.dataset.mic}); SETS=r.settings; $$('[data-mic]').forEach(x=>x.classList.toggle('pri',x===b)); toast('Saved'); });
+   if($('wzMicT')) $('wzMicT').onchange=async e=>{ const r=await api('/api/settings',{mic_track:+e.target.value}); SETS=r.settings; if($('sMic')) $('sMic').value=String(SETS.mic_track); toast('Saved'); }; } },
  {t:'Cam and killfeed', body:async()=>`<h4>Cam and killfeed</h4><p>I need to know where your cam (or mascot) and your killfeed are on screen, so I crop them right. I can usually find your cam in OBS myself.</p>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="wzCam">${ic('spark')}Get cam from OBS</button><button class="btn" id="wzCamSelf">Set it myself</button></div><div id="wzCamR" style="margin-top:10px">${SETS.cam?`<span class="pill2">Now: x ${SETS.cam[0]}, y ${SETS.cam[1]}, ${SETS.cam[2]} × ${SETS.cam[3]}</span>`:''}</div>
    <p style="margin-top:14px">The killfeed is at the top right by default, like in Valorant. Is yours somewhere else? Drag the purple box in Settings &gt; Where is your cam.</p>`,

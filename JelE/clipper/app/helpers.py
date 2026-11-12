@@ -307,3 +307,24 @@ def twitch_clip_times(s):
             out.append({'t': ce - s['start'] - 12, 'by': c.get('creator_name', ''), 'views': c.get('view_count', 0), 'title': c.get('title', '')})
         log(f'Twitch: {len(out)} clips from viewers found'); return out
     except Exception as e: log('Could not fetch Twitch clips:', e); return []
+
+def collapse_loops(words, ti=2):
+    """the speech model sometimes gets stuck and says the same words again and again.
+    a block of 2+ words that comes 3+ times in a row (or one word 6+ times) is kept only once"""
+    import re as _r
+    k = [_r.sub(r"[^\w']+", '', str(w[ti]).lower()) for w in words]
+    out, i, n = [], 0, len(words)
+    while i < n:
+        hit = 0
+        for L in range(1, 13):
+            if i + L * 3 > n: break
+            blk = k[i:i + L]
+            if not any(blk): continue
+            r = 1
+            while i + (r + 1) * L <= n and k[i + r * L:i + (r + 1) * L] == blk: r += 1
+            if r >= (6 if L == 1 else 3): hit = (L, r); break
+        if hit:
+            L, r = hit; out.extend(words[i:i + L]); i += L * r
+        else:
+            out.append(words[i]); i += 1
+    return out

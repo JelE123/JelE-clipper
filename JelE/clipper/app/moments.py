@@ -139,7 +139,7 @@ def track_map(path):
     if not m and n and obs.ok:
         cur = obs_rec_tracks()
         if cur and len(cur) == n: m = cur
-    _TMAP[path] = m
+    if m: _TMAP[path] = m      # unknown is not remembered: OBS can connect later
     return m
 def obs_track_of(path, stream):
     m = track_map(path); return m[stream - 1] if m and 0 < stream <= len(m) else stream
@@ -268,6 +268,7 @@ def analyse(sid):
             try: json.dump({'live': True}, open(os.path.join(sdir(sid), 'transcript_bron.json'), 'w'))
             except OSError: pass
         shutil.rmtree(work0, ignore_errors=True)
+        ALL = collapse_loops(ALL)
         try:
             json.dump(ALL, open(os.path.join(sdir(sid), 'transcript.json'), 'w', encoding='utf-8'))
             sg_ = speech_game(ALL)
@@ -498,7 +499,8 @@ def hook_options(near, hw, c, s):
         ranked = sorted(phrases, key=lambda ph: -(len(SAY_STRONG.findall(' '.join(w[2] for w in ph))) * 3 + len(SAY_HYPE.findall(' '.join(w[2] for w in ph)))))
         for ph in ranked[:3]:
             t = re.sub(r"[^\w' !?]", '', ' '.join(w[2] for w in ph[:6] if w[2] != UNCLEAR)).strip()
-            if 2 <= len(t) <= 40 and not SAY_LAUGH.fullmatch(t.lower()): add(t, 'what you said')
+            t = tidy_title(t)
+            if t and not SAY_LAUGH.fullmatch(t.lower()): add(t, 'what you said')
     add(fallback_title(c, s), 'why it is a moment')
     g = c.get('game')
     if g: add({'ACE': 'THEY NEVER STOOD A CHANCE', '4K': 'ONE MORE AND IT WAS AN ACE'}.get(g['label'], 'HOW DID I WIN THIS'))
@@ -508,6 +510,18 @@ def hook_options(near, hw, c, s):
     add('WAIT FOR IT...')
     c['hooks_src'] = src[:3]   # where each title comes from, shown when you pick one
     return out[:3]
+
+_DANGLE = {'I', "I'M", 'IM', 'THE', 'A', 'AN', 'TO', 'AND', 'OR', 'BUT', 'OF', 'IN', 'ON', 'AT', 'MY', 'YOUR', 'SO', 'IF', 'WITH', 'FOR', "IT'S", 'UH', 'UM', 'LIKE', 'JUST', 'HAVE', 'GONNA', 'DE', 'HET', 'EEN', 'EN', 'IK', 'JE', 'IS', 'DAT', 'DIE'}
+def tidy_title(t):
+    """a spoken title must read like a hook: no half words at the end, at least 2 real words.
+    one word ("NO", "YO", "4") or a name alone is not a title"""
+    w = re.sub(r"[^\w' !?]", '', (t or '').upper()).split()
+    while w and w[-1].strip('!?') in _DANGLE: w.pop()
+    while w and w[0].strip('!?') in ('UH', 'UM', 'AND', 'BUT', 'SO', 'LIKE'): w.pop(0)
+    if len(w) < 2 or len(' '.join(w)) < 7 or sum(1 for x in w if len(x.strip("!?'")) >= 3) < 1: return ''
+    k = [x.strip('!?') for x in w]
+    if len(set(k)) == 1 and len(k) < 3: return ''          # "NO NO"
+    return ' '.join(w)[:38]
 
 def title_from(near, hw):
     """a short hook for the top of the short: the phrase you shouted, cut on a pause"""
@@ -527,7 +541,7 @@ def title_from(near, hw):
     words = [w[2] for w in best[1] if w[2] != UNCLEAR][:6]
     t = re.sub(r"[^\w' !?]", '', ' '.join(words)).strip().upper()
     if SAY_LAUGH.fullmatch(t.lower() or 'x') or CLIP_SAY.search(t.lower()): return ''   # "clip that" is the reason, not the title
-    return t[:38]
+    return tidy_title(t)
 
 CLAIMS = re.compile(r"\b(ACE|[2-5]K|1 ?V ?[2-5]|CLUTCH|ONE ?TAP|NINJA ?DEFUSE)\b")
 def title_fits(t, c):
