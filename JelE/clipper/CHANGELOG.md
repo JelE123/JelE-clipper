@@ -2,6 +2,16 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.49 · 12 November 2026
+
+### I understand what a moment is about
+- For every good moment I now make a timeline of everything that happens, second by second: what you say, gunshots, laughing and screaming, what is on screen (dead, spectating, round won) and chat
+- From that I work out the story: where it starts making sense, the payoff (the kill, the joke, the fail) and where your reaction is over. The clip is cut to that story, never starting or stopping in the middle of a sentence
+- The edit follows the story: the zoom lands on the payoff, the teaser shows the second before it, a replay only when the play is worth seeing twice, cam + game when your reaction matters and game only when the play matters
+- With the local AI it also says in words what happens ("sneaks behind a camper but gets shot") and what kind of moment it is (clutch, funny, fail...). You see this at the top of every moment and in the editor under Done for you
+- Music that fits: the story says hype, funny, tension or chill. Put songs with that word in their name in your music folder, and auto shorts get a fitting song (in the editor you add it with one click)
+- Tested with the real AI models on a made-up stream: the smart model found the story ("tried to sneak and got shot"), the timing rules fix what a model gets wrong
+
 ## 6.48 · 12 November 2026
 
 ### The AI judges every moment
