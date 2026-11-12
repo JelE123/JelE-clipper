@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.37 · 12 November 2026
+
+### OBS dock (plan F4.6, first part)
+- While you record, the dock now also shows which game it sees and how many minutes are already heard
+- The Clip button in the dock has the same clean look as the rest of the app
+
 ## 6.36 · 12 November 2026
 
 ### The reaction stays in (plan F2.6, first part)

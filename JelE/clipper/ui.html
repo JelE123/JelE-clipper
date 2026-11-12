@@ -350,10 +350,10 @@ body.dock .empty{padding:22px 16px;font-size:12px}body.dock .empty b{font-size:1
 .lv-rec.on .lv-dot{background:var(--bad);animation:pulse 1.4s infinite}
 .lv-rec b{display:block;font-size:28px;line-height:1}.lv-rec small{color:var(--mut);font-size:12px}
 .lv-rec.on{border-color:rgba(239,68,68,.45);background:linear-gradient(100deg,rgba(239,68,68,.12),transparent 70%),var(--card)}
-.lv-clip{width:100%;margin-top:10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;text-align:left;padding:16px 18px;border-radius:12px;background:linear-gradient(135deg,#ffad3b,#f07800);color:#111827;box-shadow:0 10px 26px rgba(255,146,0,.25);transition:.12s}
+.lv-clip{width:100%;margin-top:10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;text-align:left;padding:16px 18px;border-radius:12px;background:#ff9200;color:#111827;box-shadow:0 10px 26px rgba(255,146,0,.25);transition:.12s}
 .lv-clip:hover{transform:translateY(-1px);filter:brightness(1.05)}.lv-clip:active{transform:scale(.98)}
 .lv-clip svg.i{grid-row:1/3;width:30px;height:30px;stroke-width:2.4}
-.lv-clip span{font:italic 800 26px/1 'Barlow Condensed',sans-serif}.lv-clip small{font-size:12px;font-weight:700;opacity:.7}
+.lv-clip span{font:700 22px/1.1 var(--font);letter-spacing:-.01em}.lv-clip small{font-size:12px;font-weight:700;opacity:.7}
 .lv-clip.hit{animation:hit .5s}@keyframes hit{0%{box-shadow:0 0 0 0 rgba(255,146,0,.8)}100%{box-shadow:0 0 0 18px rgba(255,146,0,0)}}
 .lv-marks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
 .lv-marks i{font-style:normal;font-size:12px;font-weight:700;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:3px 9px;color:#93c5fd}
@@ -1255,7 +1255,7 @@ $('mark').onclick=async()=>{ const r=await api('/api/marker',{}); toast(r.ok?'Mo
 // ---------- live (dock home)
 function renderLive(){ if(!$('lvRec')) return; const s=ST||{}, c=s.cur;
   $('lvRec').classList.toggle('on',!!c);
-  if(c){ const el=(s.now||Date.now()/1000)-(c.start||0)+(Date.now()/1000-(renderLive.t0||Date.now()/1000)); $('lvT').textContent='REC '+fmt(Math.max(0,el)); $('lvS').textContent=c.n_markers?`${c.n_markers} moment${c.n_markers===1?'':'s'} marked`:'Logging along. Mark something crazy with the button below.';
+  if(c){ const el=(s.now||Date.now()/1000)-(c.start||0)+(Date.now()/1000-(renderLive.t0||Date.now()/1000)); $('lvT').textContent='REC '+fmt(Math.max(0,el)); $('lvS').textContent=(c.n_markers?`${c.n_markers} moment${c.n_markers===1?'':'s'} marked`:'Logging along. Mark something crazy with the button below.')+(s.listen&&s.listen.done_min?` · ${s.listen.done_min} min already heard`:'')+(s.game_now?` · ${s.game_now}`:'');
     $('lvMarks').innerHTML=(c.markers||[]).slice().reverse().map(m=>`<i>${fmt(m.t)}${m.note?' · '+esc(m.note):''}</i>`).join(''); }
   else { $('lvT').textContent='Not recording'; $('lvS').textContent=s.obs?'Start recording in OBS and I log along':'OBS is not connected'; $('lvMarks').innerHTML=''; }
   const list=SHORTS.filter(x=>x.auto&&x.status==='nieuw'), el=$('lvInbox');
