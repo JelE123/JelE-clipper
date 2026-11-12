@@ -2,6 +2,17 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.50 · 12 November 2026
+
+### The AI decides which moments stay
+- With the local AI installed, the AI now really decides: a moment it gives a 4 or lower is thrown out, not just moved down. A 10 counts almost double. It now looks at the 30 best candidates, and a moment it did not look at can never beat one it liked
+- The AI got strict rules: mumbling, talking to yourself, the end screen, menus, the lobby, waiting and buy phase small talk are a 1 to 3. A 7 or more only when a stranger on TikTok would laugh, be amazed or feel the hype
+- Tested with the real models: mumbling at the end screen got a 1 or 2 (out), an ace with a big reaction an 8
+
+### The end screen
+- I recognise the end screen after a match (scoreboard, Play again, Return to lobby, match summary) in Valorant, CS2 and Fortnite. A moment on the end screen drops far down, also without the AI
+- Mumbling (lots of unclear words) while nothing happens in the game drops far down too
+
 ## 6.49 · 12 November 2026
 
 ### I understand what a moment is about
