@@ -737,6 +737,7 @@ details.more .morebox .card{margin:0}
 #storyJump button{white-space:nowrap;font-size:12px;padding:0 6px}
 .storybar{position:relative;height:22px;margin:0 0 6px;overflow:hidden}
 .storybar i{position:absolute;top:0;bottom:0;font-style:normal;font-size:11px;font-weight:600;color:var(--mut);background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.capbar{height:24px;margin-bottom:4px}.capbar i{background:var(--card);color:var(--tx);font-weight:500}
 .storybar i[data-sb=peak]{background:var(--orS);border-color:var(--or);color:#ffb34d}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs>
@@ -1188,7 +1189,16 @@ function edSteps(){ const P=k=>document.querySelector(`.ipane[data-ep="${k}"]`),
 function storyParts(){ if(!ED) return {}; const a=ED.a, b=ED.b, pk=Math.min(b-1,Math.max(a+1,ED.m&&ED.m.t!=null?+ED.m.t:(a+b)/2));
   const p0=Math.max(a,pk-1.5), p1=Math.min(b,pk+1.5), e0=Math.max(p1,b-Math.min(2,(b-a)*.12));
   return {build:[a,p0],peak:[p0,p1],react:[p1,e0],end:[e0,b]}; }
-function paintStory(){ const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
+function paintCaps(){ const cb=$('capB'); if(!cb||!ED) return; const A=ED.wa, L=ED.wl, ws=ED.words||[];
+  const key=[A,L,ED.a,ED.b,ws.length,Object.keys(ED.edit||{}).length,(ED.off&&ED.off.size)||0].join('|'); if(cb._k===key) return; cb._k=key;
+  const G=[]; let cur=null;
+  ws.forEach((w,i)=>{ if(w[1]<ED.a||w[0]>ED.b||(ED.off&&ED.off.has(i))) return; const t=(ED.edit&&ED.edit[i]!=null)?ED.edit[i]:w[2];
+    if(!cur||w[0]-cur.b>0.5||cur.n>=3||/[.!?]$/.test(cur.last)){ cur={a:w[0],b:w[1],i,txt:[],n:0}; G.push(cur); }
+    cur.b=w[1]; cur.txt.push(t); cur.n++; cur.last=t; });
+  cb.innerHTML=G.filter(g=>g.b>A&&g.a<A+L).map(g=>`<i data-ci="${g.i}" data-ca="${g.a}" style="left:${(g.a-A)/L*100}%;width:${Math.max(.6,(g.b-g.a)/L*100)}%">${esc(g.txt.join(' '))}</i>`).join('');
+  cb.querySelectorAll('i').forEach(el=>{ el.onclick=()=>{ $('vid').currentTime=+el.dataset.ca; paintTL(); };
+    el.ondblclick=()=>{ const sp=document.querySelector(`#trans span[data-i="${el.dataset.ci}"]`); if(sp){ sp.scrollIntoView({block:'center'}); editWord(sp); } }; }); }
+function paintStory(){ try{ paintCaps(); }catch(e){} const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
   sb.querySelectorAll('i').forEach(el=>{ const r=P[el.dataset.sb]; if(!r||r[1]-r[0]<0.15){ el.style.display='none'; return; } el.style.display=''; el.style.left=((r[0]-A)/L*100)+'%'; el.style.width=((r[1]-r[0])/L*100)+'%'; });
   if($('cutLen')) $('cutLen').textContent=fmtD(ED.b-ED.a)+' long';
   const n=ED.unsure?[...ED.unsure].filter(i=>!ED.ok.has(i)&&!ED.off.has(i)).length:0; if($('unsN')) $('unsN').textContent=n?`${n} word${n===1?' is':'s are'} not sure yet.`:''; if($('unsGo')){ $('unsGo').style.display=n?'':'none'; $('unsGo').textContent=`Check unsure words (${n} left)`; } }
@@ -1353,6 +1363,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="tc" id="tcur">0:00.0 <span>/ 0:00.0</span></div>
         <div class="trimrow" style="margin:0 0 0 auto"><button class="btn sm pri" id="clipHere" title="Make a clip around this point (C)">${ic('cut')}Clip here</button><button class="btn sm" id="setA" title="Start here (I)">Start here</button><button class="btn sm" id="setB" title="End here (O)">End here</button></div></div>
       <div class="lbl" style="margin:14px 0 6px">Zoomed in <span class="zoom" id="zoom"><button data-z="30">30 sec</button><button data-z="90">1.5 min</button><button data-z="300">5 min</button></span></div>
+      <div class="storybar capbar" id="capB" title="Your captions: click to go there, double-click to change a word"></div>
       <div class="storybar" id="storyB"><i data-sb="build">Build-up</i><i data-sb="peak">Peak</i><i data-sb="react">Reaction</i><i data-sb="end">End</i></div>
       <div class="timeline"><div class="wave" id="wave"><canvas id="wv"></canvas><div class="selr" id="selr"><div class="hdl l" data-h="a"></div><div class="hdl r" data-h="b"></div></div><div class="phd" id="phd"></div></div><div class="ruler" id="ruler"></div></div>
       <div class="fxbar"><span class="lbl2">Effects</span><button class="btn sm" data-addfx="zoom">+ Zoom</button><button class="btn sm" data-addfx="st">+ Sticker</button><button class="btn sm" data-addfx="kf">+ Killfeed</button><button class="btn sm" data-addfx="tz">Teaser here</button><button class="btn sm" data-addfx="rp">Replay here</button><button class="btn sm ghost" id="fxAuto" title="Suggest effects again">Automatic</button><button class="btn sm ghost" id="fxClear">Clear all</button></div>

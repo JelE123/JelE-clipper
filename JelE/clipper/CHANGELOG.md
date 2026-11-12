@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.32 · 12 November 2026
+
+### Captions on the timeline (plan F3.3, first part)
+- New: a captions row above the timeline, with every caption line in its place. Click a line to go there, double-click it to change a word
+- It follows your changes right away: fixed words, hidden words and cuts
+
 ## 6.31 · 12 November 2026
 
 ### The editor in 4 steps (plan F3.1, design C)
