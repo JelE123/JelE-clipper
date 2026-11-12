@@ -13,10 +13,27 @@ def font(size, kind='caption'):
     return ImageFont.load_default()
 
 EMPH = re.compile(r"^(no+|what|wow|omg|yes+|nice+|insane|crazy|ace|clutch|bro+|let'?s|lets|go+|w|holy|why|how|wait|god|sheesh|gg|perfect|unreal|nasty|sick|one|tap)\W*$", re.I)
+FILLERS = re.compile(r"^(u+h+m*|u+m+|e+r+m+|e+h+m*|h+m+|mm+|ehm|uhm)[.,!?]*$", re.I)
+def drop_fillers(words):
+    """uh, um, ehm: out of the captions (the sound stays)"""
+    if not SET.get('cap_fillers', True): return words
+    return [w for w in words if not FILLERS.match(w[2])]
+
+def name_pairs():
+    """two-word names (game words and your own words) that must stay on one caption line"""
+    out = set()
+    try:
+        if gamewords: out |= {k for k in gamewords.canon(cur_game())[0] if k.count(' ') == 1}
+    except Exception: pass
+    out |= {w.strip().lower() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip().count(' ') == 1}
+    return out
+
 def caption_groups(words):
-    groups = []; cur = []
+    groups = []; cur = []; pairs = name_pairs()
     for w in words:
         txt = w[2]
+        pair = bool(cur) and (re.sub(r"[^\w' ]", '', cur[-1][2].lower()) + ' ' + re.sub(r"[^\w' ]", '', txt.lower())) in pairs
+        if pair and sum(len(x[2]) + 1 for x in cur) + len(txt) <= 24 and txt != UNCLEAR: cur.append(w); continue   # never split a name over two lines
         if cur and (txt == UNCLEAR or cur[-1][2] == UNCLEAR or len(cur) >= 3 or w[0] - cur[-1][1] > 0.5 or sum(len(x[2]) + 1 for x in cur) + len(txt) > 17 or re.search(r'[.!?,]$', cur[-1][2])):
             groups.append(cur); cur = []
         cur.append(w)
@@ -45,8 +62,9 @@ def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):
     gap = size * (0.26 if style == 'purple' else 0.22)
     widths = [tmp.textlength(t, font=f) for t in txt]
     total = sum(widths) + gap * (len(txt) - 1)
-    if total > W - 80 and scale > 0.3:
-        return draw_caption(words, active, scale * (W - 80) / total, W, H, style)
+    room = W - 80 if W >= 1500 else W - 200   # vertical: stay clear of the buttons on the right of TikTok and Reels
+    if total > room and scale > 0.3:
+        return draw_caption(words, active, scale * room / total, W, H, style)
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0)); y = H / 2
     stroke = {'jele': 9, 'purple': 5, 'classic': 11, 'clean': 0}[style]
     # soft drop shadow under everything
@@ -77,7 +95,7 @@ def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):
 def caption_track(words, clip_start, dur, folder, style='jele', W=1080, H=300, scale=1.0, anim='pop'):
     """renders the captions as a series of images with exact durations (ffconcat), one per word change, with a tiny pop on each new line"""
     from PIL import Image
-    ws = [(max(0, a - clip_start), max(0, b - clip_start), t) for a, b, t in words if b > clip_start and a < clip_start + dur]
+    ws = [(max(0, a - clip_start), max(0, b - clip_start), t) for a, b, t in drop_fillers(words) if b > clip_start and a < clip_start + dur]
     if not ws: return None
     blank = os.path.join(folder, 'blank.png'); Image.new('RGBA', (W, H), (0, 0, 0, 0)).save(blank)
     groups = caption_groups(ws); items = []; t = 0.0; n = 0

@@ -894,7 +894,8 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
           <div class="row2"><label>Chat delay<small>seconds</small></label><input id="sDelay" type="number" min="0" max="20"></div>
 </div>
         <div class="card"><h3>Captions</h3><div class="capflow"><div><b>1</b><span><b>Listen</b>The speech model writes down what you say, only from your mic track if it can find it.</span></div><div><b>2</b><span><b>Fix words</b>Game words are put right by themselves, plus your own words below.</span></div><div><b>3</b><span><b>You check</b>In the editor, words it is unsure about are marked. Press Tab to jump from one to the next. Viewers never see a "..." for what it did not understand.</span></div></div><div class="nosave"><div class="row2" style="border-top:0"><label>Animation<small>for new shorts</small></label><select id="sAnim"><option value="pop">Pop</option><option value="bounce">Bounce</option><option value="type">Typewriter</option><option value="word">Per word</option><option value="none">None</option></select></div>
-          <div class="row2"><label>Bleep swearing</label><select id="sBleep"><option value="false">No</option><option value="true">Yes</option></select></div></div>
+          <div class="row2"><label>Bleep swearing</label><select id="sBleep"><option value="false">No</option><option value="true">Yes</option></select></div>
+          <div class="row2"><label>Leave out uh, um and ehm<small>only in the captions, the sound stays</small></label><select id="sFill"><option value="true">Yes</option><option value="false">No</option></select></div></div>
           <div class="row2"><label>Captions</label><select id="sCap"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Language</label><select id="sLang"><option value="en">English</option><option value="nl">Dutch</option><option value="">Automatic</option></select></div>
           <div class="row2"><label>Speech model</label><select id="sModel"><option value="auto">Automatic (best for your PC)</option><option value="small.en">small.en (fastest)</option><option value="medium.en">medium.en (more accurate)</option><option value="large-v3-turbo">large-v3-turbo (very accurate, still fairly fast)</option><option value="large-v3">large-v3 (best, really only with NVIDIA)</option></select></div>
@@ -2031,8 +2032,8 @@ $('gSave').onclick=async()=>{ const gt={}; $$('[data-gt]').forEach(i=>{ if(i.val
   const r=await api('/api/settings',b); SETS=r.settings; toast('Saved'); };
 $('vocSave').onclick=async()=>{ const r=await api('/api/settings',{vocab:$('vocabT').value}); SETS=r.settings; await api('/api/voicelines',{text:$('vlT').value}); toast('Word list and voicelines saved'); };
 
-function capDefFill(){ if(!$('sAnim')) return; $('sAnim').value=SETS.cap_anim||'pop'; $('sBleep').value=String(!!SETS.bleep); }
-['sAnim','sBleep'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const r=await api('/api/settings',{cap_anim:$('sAnim').value,bleep:$('sBleep').value==='true'}); SETS=r.settings; toast('Saved'); }; });
+function capDefFill(){ if(!$('sAnim')) return; $('sAnim').value=SETS.cap_anim||'pop'; $('sBleep').value=String(!!SETS.bleep); if($('sFill')) $('sFill').value=String(SETS.cap_fillers!==false); }
+['sAnim','sBleep','sFill'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const r=await api('/api/settings',{cap_anim:$('sAnim').value,bleep:$('sBleep').value==='true',cap_fillers:$('sFill').value==='true'}); SETS=r.settings; toast('Saved'); }; });
 
 function s62Fill(){ if(!$('lvOn')) return; $('lvOn').value=String(SETS.live_clip!==false); $('lvLen').value=String(SETS.live_len||25); $('lvBlock').value=SETS.block_scenes||'';
   $('plMain').value=SETS.platform||'tiktok'; $('plT').value=SETS.tags_tiktok||''; $('plS').value=SETS.tags_shorts||''; $('plR').value=SETS.tags_reels||''; $('plName').value=SETS.name_tpl&&SETS.name_tpl!=='{title}'?SETS.name_tpl:''; $('plQ').value=String(SETS.q_min||70); }

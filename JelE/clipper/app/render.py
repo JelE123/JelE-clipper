@@ -267,6 +267,7 @@ def _render(job):
                  (f"[stk]drawbox=x=0:y={top_h-4}:w=1080:h=8:color={BHEX()}:t=fill[base]" if job.get('divider', SET.get('divider', True)) else "[stk]null[base]"))
             cap_y = top_h + int(bot_h * 0.55); hook_y = top_h - 200; kf_pos = (1080 - 30, top_h + 40)
         if job.get('cap_y') is not None: cap_y = int(float(job['cap_y']) * OH)
+        if layout != 'landscape': cap_y = max(int(OH * 0.13) + 150, min(int(OH * 0.78), cap_y))   # always inside the safe zone: not under the TikTok buttons and text
         last = 'base'; n = 1 + (FRAME_INPUTS if layout == 'frame' else 0)
         # killfeed: the corner of the game, big, for a moment after every kill you chose
         kf_times = [t_ for t_ in kf_times if 0 <= t_ < dur and (replay_at is None or t_ < replay_at)]

@@ -2,6 +2,14 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.28 · 12 November 2026
+
+### Nicer captions (plan F3.5, first part)
+- Captions always stay inside the safe zone: never under the buttons and the text of TikTok, Reels and Shorts, also when you drag them very low or high
+- Lines are a bit narrower, so they stay clear of the buttons on the right
+- A name of two words (like an ability, a map or a name from your own word list) is never split over two caption lines
+- Uh, um and ehm are left out of the captions (the sound stays). You can turn this off in Settings > Captions
+
 ## 6.27 · 12 November 2026
 
 ### Fixing captions is easier (plan F3.4, first part)
