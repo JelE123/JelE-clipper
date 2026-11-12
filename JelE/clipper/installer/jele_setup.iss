@@ -142,9 +142,9 @@ begin
       '/c ""' + Py + '" installer\setup_edition.py ' + Ed + ' >> "' + LogF + '" 2>&1"');
   WizardForm.ProgressGauge.Style := npbstNormal;
   if not Ok then
-    MsgBox('Part of the install did not work (is the internet on?).' + #13#10#13#10 +
+    SuppressibleMsgBox('Part of the install did not work (is the internet on?).' + #13#10#13#10 +
            'The Clipper is installed, and it tries to finish this the first time it starts. ' +
-           'If it keeps going wrong, send the file clipper\data\setup.log along.', mbError, MB_OK);
+           'If it keeps going wrong, send the file clipper\data\setup.log along.', mbError, MB_OK, IDOK);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -153,8 +153,8 @@ begin
     StopRunningClipper();
   if CurUninstallStep = usPostUninstall then
   begin
-    if MsgBox('Also delete your shorts, settings and what the Clipper learned?' + #13#10#13#10 +
-              'Choose No to keep them (handy if you install the Clipper again later).', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    if SuppressibleMsgBox('Also delete your shorts, settings and what the Clipper learned?' + #13#10#13#10 +
+              'Choose No to keep them (handy if you install the Clipper again later).', mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
     begin
       DelTree(ExpandConstant('{app}\clipper\data'), True, True, True);
       DelTree(ExpandConstant('{app}\clipper\shorts'), True, True, True);

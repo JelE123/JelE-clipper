@@ -56,8 +56,9 @@ jobs:
   setup:
     # builds JelE_Clipper_Setup.exe on a clean Windows machine, installs it there as a test, and adds it to the release
     needs: release
-    if: needs.release.outputs.created == '1'
+    if: needs.release.outputs.created == '1' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
