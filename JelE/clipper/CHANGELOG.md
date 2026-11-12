@@ -2,6 +2,20 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.18 · 12 November 2026
+
+### Safer and steadier (plan F1.1 and F1.2)
+- The speech model now runs in its own process. If it crashes or runs out of memory, only that process stops: the Clipper keeps running, tries again with a lighter model and tells you what happened
+- That speech process stays loaded between jobs, works at low priority, leaves cores free for your game and OBS, and on Windows can never use more than 60% of your memory
+- The whole Clipper and all the video work it starts now run below normal priority, so your game, OBS and stream always go first. On an idle PC this costs no speed
+- Stopping a job now also stops the speech model right away
+- New work waits instead of breaking halfway when your disk has less than 2 GB free, and goes on by itself once there is room
+- New heavy work waits a moment when your PC is already at its limit (it never waits for its own work). "Do it now anyway" still works
+- The banner and the job card now say why the work waits: your stream, your disk or a busy PC
+
+### Under the hood
+- clipper.py is split into parts by topic in the new app folder (recording, analysis, speech, captions, rendering, library, server and more). Everything works the same
+
 ## 6.17 · 6 November 2026
 
 ### Changed
