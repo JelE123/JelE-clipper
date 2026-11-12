@@ -32,10 +32,15 @@ bm = c.llm_brief({'t': 8}, mum, 500.0, 'Valorant', 'en', port)
 jm = c.llm_judge({'start': 500, 'end': 520, 'reasons': ['it suddenly got loud', 'end screen after the match'], 't': 508},
                  W('uh yeah so that was okay hmm I think yeah whatever okay let me queue again maybe', 500), 'Valorant', 'en', port)
 print('MUMBLE brief', bm, '| judge', jm)
+tox = ['   0s you say: "okay we need this round"', '   4s on screen (chat): "xToxicGuy: jele is the worst player ever uninstall"', '  10s game sound: 2 gunshots',
+       '  18s you say: "wait what did he say"', '  19s you say: "he said jele is the worst player ever uninstall"', '  22s you: screaming', '  23s you say: "WHAT bro I have 30 kills"',
+       '  26s chat: 25 messages in 10s', '  29s you say: "okay okay focus"']
+bt = c.llm_brief({'t': 22}, tox, 300.0, 'Valorant', 'en', port)
+print('TOXIC brief', bt)
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(bt) and bt['start'] <= 304 and (bt.get('cause') is None or bt['cause'] <= 305) and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)

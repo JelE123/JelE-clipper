@@ -194,3 +194,54 @@ def vision_auto_loop():
             break
         time.sleep(60)
     SET['vision_auto_done'] = True; save_settings(SET)
+
+# ---------------------------------------------------------------- the text on screen around a moment, with where it is (chat, killfeed)
+def _region(x, y, w, h):
+    cx, cy = x + w / 2, y + h / 2
+    if cx < 0.45 and cy > 0.5: return 'chat'
+    if cx > 0.62 and cy < 0.32: return 'killfeed'
+    if cy < 0.15: return 'top'
+    return 'screen'
+
+def screen_texts(path, a, b, every=2.0):
+    """every line of text that shows up between a and b: [{'t': first seen, 'e': last seen, 'text', 'box': [x, y, w, h] (0..1), 'region'}].
+    text that is there the whole time (the HUD, names, the score) is left out: only what appears"""
+    if not vision_ok(): return []
+    frames = vision_frames(path, a, b, every)
+    if not frames: return []
+    H, W = frames[0][1].shape[:2]
+    groups = {}
+    for t, img in frames:
+        try: res, _ = VISION['ocr'](img)
+        except Exception: continue
+        for x in res or []:
+            if not x or len(x) < 3 or float(x[2]) < 0.6: continue
+            txt = str(x[1]).strip()
+            key = re.sub(r'[^a-z0-9]', '', txt.lower())
+            if len(key) < 5: continue
+            xs = [p[0] for p in x[0]]; ys = [p[1] for p in x[0]]
+            box = [min(xs) / W, min(ys) / H, (max(xs) - min(xs)) / W, (max(ys) - min(ys)) / H]
+            g = groups.get(key)
+            if not g: groups[key] = {'t': t, 'e': t, 'text': txt, 'box': [round(v, 3) for v in box], 'n': 1}
+            else: g['e'] = t; g['n'] += 1
+    n = len(frames)
+    out = [dict(g, region=_region(*g['box'])) for g in groups.values() if not (g['t'] <= a + every and g['n'] >= 0.8 * n)]
+    return sorted(out, key=lambda g: g['t'])
+
+STOP = set('the a an and or but to of in on at for is are was were be been it its this that i you he she we they me my your his her our their with as so just like'.split())
+def _toks(t): return [w for w in re.findall(r"[a-z0-9']+", (t or '').lower()) if w not in STOP and len(w) > 1]
+
+def read_aloud(texts, says, window=45):
+    """you read something from the screen out loud (a chat message, a name): -> (the text, when it first showed up), or (None, None)"""
+    best = (0, None)
+    for s_ in says:
+        st = set(_toks(s_['v']))
+        if len(st) < 2: continue
+        for g in texts:
+            if not (s_['t'] - window <= g['t'] <= s_['t'] + 1): continue
+            gt = _toks(g['text'])
+            if len(gt) < 2: continue
+            common = len(st & set(gt))
+            sc_ = common / max(2, min(len(gt), len(st)))
+            if common >= 2 and sc_ >= 0.5 and sc_ > best[0]: best = (sc_, g)
+    return (best[1], best[1]['t']) if best[1] else (None, None)

@@ -136,7 +136,7 @@ def _render(job):
         fx = job.get('fx')
         if fx is None and not job.get('parts'): fx = fx_suggest(sid, start, end, job)   # automatic shorts get the suggested effects
         fx = fx or {}
-        ws = []; ztimes = []; cuts_at = []; prepared = False; kf_times = []; stickers = []; chapters = []
+        ws = []; ztimes = []; cuts_at = []; prepared = False; kf_times = []; stickers = []; chapters = []; focus = []
         teaser_len = 0.0; replay_at = None; replay_len = 0.0
         if job.get('parts'):   # montage / highlights: several moments glued together
             prog('Preparing the montage', 3); parts = []; tt = 0.0
@@ -155,6 +155,7 @@ def _render(job):
                 except Exception: traceback.print_exc(); ws = []
             ztimes = [float(z) for z in fx['zooms']] if 'zooms' in fx else zoom_times(sid, job, ws, start, dur)
             kf_times = [float(z) for z in fx.get('killfeed', [])]
+            focus = [dict(x) for x in (fx.get('focus') or []) if x.get('box')][:2]
             stickers = list(fx.get('stickers', []))
             keep = None
             if job.get('jumpcut', SET.get('jumpcut', True)) and ws:
@@ -185,6 +186,7 @@ def _render(job):
                 mp = lambda t_: teaser_len + remap(t_, keep)
                 ws = [(mp(a_ - start), mp(b_ - start), t_) for a_, b_, t_ in ws if any(x <= a_ - start <= y for x, y in keep)]
                 ztimes = [mp(z) for z in ztimes]; kf_times = [mp(z) for z in kf_times]
+                for x in focus: x['t'] = mp(float(x['t']))
                 stickers = [dict(x, t=mp(float(x.get('t', 0)))) for x in stickers]
                 if rp: replay_at = teaser_len + main_len; replay_len = (rp['b'] - rp['a']) / rp['speed']
                 if teaser_len: cuts_at.append(teaser_len)
@@ -289,6 +291,22 @@ def _render(job):
             inputs += ['-ss', f'{start:.3f}', '-t', f'{dur:.3f}', '-i', path]
             f += (f";[{n}:v]crop={kbw}:{kbh}:{kb[0]}:{kb[1]},scale={ow_}:{oh_}:flags=lanczos,drawbox=x=0:y=0:w=iw:h=ih:color={BHEX()}:t=5,setsar=1[kf];"
                   f"[{last}][kf]overlay={kf_pos[0] - ow_}:{kf_pos[1]}:enable='{en}'[t{n}]"); last = f't{n}'; n += 1
+        # focus: what you react to, big in the middle for a few seconds (a chat message, the killfeed)
+        for x in [x for x in focus if 0 <= float(x['t']) < dur and (replay_at is None or float(x['t']) < replay_at)][:2]:
+            try:
+                nx, ny, nw, nh = [float(v) for v in x['box']]
+                pad = 0.012; nx, ny = max(0.0, nx - pad), max(0.0, ny - pad * 1.6); nw, nh = min(1 - nx, nw + 2 * pad), min(1 - ny, nh + 3.2 * pad)
+                if x.get('region') == 'chat':   # the whole chat line plus the lines above it, not just the words it read
+                    nw = min(1 - nx, max(nw, 0.30)); add_ = nh * 2.5; ny = max(0.0, ny - add_); nh = min(1 - ny, nh + add_)
+                bw, bh = max(16, int(nw * sw) // 2 * 2), max(8, int(nh * sh) // 2 * 2); bx, by = int(nx * sw), int(ny * sh)
+                ow2 = int(OW * (0.88 if OW == 1080 else 0.6)) // 2 * 2; oh2 = max(8, int(ow2 * bh / bw) // 2 * 2)
+                if oh2 > int(OH * 0.3): oh2 = int(OH * 0.3) // 2 * 2; ow2 = max(16, int(oh2 * bw / bh) // 2 * 2)
+                t0_, t1_ = float(x['t']), float(x['t']) + float(x.get('dur') or 3.0)
+                fy = int(OH * (0.36 if layout != 'landscape' else 0.12))
+                inputs += ['-ss', f'{start:.3f}', '-t', f'{dur:.3f}', '-i', path]
+                f += (f";[{n}:v]crop={bw}:{bh}:{bx}:{by},scale={ow2}:{oh2}:flags=lanczos,pad={ow2 + 16}:{oh2 + 16}:8:8:color={BHEX()},setsar=1[fc{n}];"
+                      f"[{last}][fc{n}]overlay=(W-w)/2:{fy}:enable='between(t,{t0_:.2f},{t1_:.2f})'[t{n}]"); last = f't{n}'; n += 1
+            except Exception: traceback.print_exc()
         if layout != 'landscape' and (B().get('tag') or '').strip() and not job.get('chapters'):
             tag = tag_png(work, B().get('tag') or '', OW)
             inputs += ['-i', tag]; f += f";[{last}][{n}:v]overlay=0:{tag_y}[t{n}]"; last = f't{n}'; n += 1

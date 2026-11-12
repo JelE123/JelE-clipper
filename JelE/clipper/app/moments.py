@@ -343,7 +343,7 @@ def analyse(sid):
             if not (0 <= i < T): continue
             phrase = ' '.join(x[2] for x in ALL[k:k + 3] if x[0] - a < 1.5)   # catches "no way", "oh my god"
             m1 = SAY_STRONG.match(re.sub(r'[^\w\' ]', '', phrase)) or (SAY_STRONG.search(w) and SAY_STRONG.search(w))
-            v = 2.0 if m1 else 1.5 if SAY_LAUGH.search(w) else 0.8 if SAY_HYPE.search(w) else 0
+            v = 1.0 if m1 else 1.2 if SAY_LAUGH.search(w) else 0.5 if SAY_HYPE.search(w) else 0   # words alone count little: "oh my god" happens all the time
             if m1: w = m1.group(0)
             if v:
                 for j in range(max(0, i - 2), min(T, i + 3)):
@@ -423,12 +423,21 @@ def analyse(sid):
     L = float(SET['clip_len'])
     want = int(SET['max_clips'])
     smart = SET.get('smart', True) and whisper_ok()
+    # a reaction needs a reason: what you say only counts fully when something else happens close by
+    # (the game, gunshots, laughing or screaming, chat, a sudden loud bit, a marker). "oh my god" on its own is not a moment
+    other_ = np.zeros(T, dtype=bool)
+    for i in range(T):
+        w_ = why[i]
+        if any(k in w_ for k in ('game', 'sound', 'chat', 'marker', 'tclip')): other_[i] = True   # not 'audio': talking loud is not a reason by itself
+    near_ = np.convolve(other_.astype(np.float32), np.ones(int(10 / step)), mode='same') > 0
+    for i in range(T):
+        if 'say' in why[i] and not near_[i] and not CLIP_SAY.search(str(why[i].get('say', '')).lower()): score[i] *= 0.4
     order = np.argsort(-score); taken = []; cands = []
     for i in order:
         if len(cands) >= (want * 2 + 4 if smart else want): break
         if score[i] < 1.0 and (len(cands) >= min(3, int(dur // 90)) or score[i] < 0.35): break   # a calm stream still gets a few to choose from
         t = i * step
-        if any(abs(t - u) < L * 0.8 for u in taken): continue
+        if any(abs(t - u) < max(10.0, L * 0.4) for u in taken): continue   # two different things 15 s apart are two moments (copies are removed later)
         taken.append(t)
         w = why[i]; mk = 'marker' in w
         said = None
@@ -543,15 +552,24 @@ def analyse(sid):
             for n, c in enumerate(top):
                 if c.get('said'): continue   # "clip that" moments keep the cut around what you asked
                 prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
-                lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd)
+                texts_ = []
+                if n < int(SET.get('screen_text_n') or 15) and vision_ok():   # the text on screen around it: chat messages, killfeed
+                    try: texts_ = screen_texts(path, max(0, c['t'] - 45), min(dur, c['t'] + 12))
+                    except Exception: traceback.print_exc()
+                lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd, max(0, c['t'] - 45), c['t'] + 15, texts_)
                 rb_ = brief_rules(c, items, a0, c['t'])
                 b_ = brief_merge(llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}, rb_, items)
                 if not b_: continue
                 st, en = max(0, b_['start']), min(dur, b_['end'])
                 if en - st < 6: en = min(dur, st + 6)
-                if en - st > L + 10: st = max(st, b_['payoff'] - (L + 10) * 0.7)
-                c['start'], c['end'] = round(st, 1), round(en, 1); c['t'] = b_['payoff']
-                c['brief'] = {k: b_.get(k) for k in ('about', 'type', 'payoff', 'zoom', 'replay', 'layout', 'music', 'by') if b_.get(k) not in (None, '', [])}
+                if en - st > L + 10:
+                    keep_ = b_.get('cause') if b_.get('cause') is not None else b_['payoff']
+                    st = min(max(st, b_['payoff'] - (L + 10) * 0.7), keep_ - 2.5)   # never cut away what you react to
+                    if en - st > 60: st = en - 60
+                c['start'], c['end'] = round(float(st), 1), round(float(en), 1); c['t'] = float(b_['payoff'])
+                def _fl(v): return float(v) if hasattr(v, 'item') else ([_fl(x) for x in v] if isinstance(v, list) else v)
+                c['brief'] = {k: _fl(b_.get(k)) for k in ('about', 'type', 'cause', 'payoff', 'zoom', 'replay', 'focus', 'layout', 'music', 'by')
+                              if b_.get(k) is not None and b_.get(k) is not False and not (isinstance(b_.get(k), (str, list)) and len(b_.get(k)) == 0)}
                 if b_.get('about'): c['reasons'].insert(0, b_['about'][0].lower() + b_['about'][1:])
                 t_ = tidy_title(b_.get('title') or '')
                 if t_ and title_fits(t_, c): c['title'] = t_; c['hooks'] = [t_] + [h for h in (c.get('hooks') or []) if h != t_][:2]

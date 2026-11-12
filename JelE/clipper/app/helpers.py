@@ -107,12 +107,23 @@ def fx_suggest(sid, start, end, job=None):
         bz = [round(z - start, 2) for z in (br.get('zoom') or []) if start < z < end]
         if bz: fx['zooms'] = bz
         if br.get('music'): fx['music_mood'] = br['music']; fx['music_file'] = music_for_mood(br['music'])
+        if br.get('cause') is not None and start <= br['cause'] <= end: fx['cause'] = round(br['cause'] - start, 2)
+        fo = br.get('focus')
+        if fo and fo.get('box') and start <= fo['t'] <= end:   # show what you react to big: the chat message, the killfeed
+            fx['focus'] = [{'t': round(fo['t'] - start + 0.2, 2), 'dur': float(fo.get('dur') or 3.0), 'box': fo['box'], 'region': fo.get('region'), 'text': fo.get('text', '')}]
         if br.get('about'): fx['about'] = br['about']; fx['type'] = br.get('type')
         if br.get('layout'): fx['layout'] = br['layout']
     fx['peak'] = round(peak, 2) if peak is not None else None; fx['peak_why'] = why_peak
+    # the teaser shows what you react to (the cause: the kill, the angle, the message), not you reacting.
+    # a replay only for a real play (a kill from the match data, or the story says clutch / skill), never for talking or a chat message
+    cz = fx.get('cause')
     if peak is not None and why_peak in ('event', 'shout', 'marker', 'story') and dur > 10:
-        if SET.get('fx_teaser', True) and peak > 5: fx['teaser'] = {'t': round(max(0, peak - 1.1), 2), 'len': 0.9, 'text': ''}
-        if SET.get('fx_replay', True) and peak < dur - 0.4 and (why_peak != 'story' or br.get('replay')): fx['replay'] = {'a': round(max(0, peak - 1.8), 2), 'b': round(min(dur, peak + 0.7), 2), 'speed': 0.5}
+        tz_at = cz if cz is not None else peak - 0.6
+        if SET.get('fx_teaser', True) and tz_at > 2.5: fx['teaser'] = {'t': round(max(0, tz_at - 0.4), 2), 'len': 1.1, 'text': ''}
+        play = (why_peak == 'event') or (why_peak == 'story' and br.get('replay') and br.get('type') in ('clutch', 'skill'))
+        if SET.get('fx_replay', True) and play and not fx.get('focus'):
+            ra = cz if cz is not None else peak
+            if ra < dur - 0.4: fx['replay'] = {'a': round(max(0, ra - 1.6), 2), 'b': round(min(dur, ra + 0.8), 2), 'speed': 0.5}
     return fx
 
 def clip_peak(s, ws, start, end):

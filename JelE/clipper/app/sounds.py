@@ -80,6 +80,9 @@ def sound_scan(x, base_db=None, step=0.5, voice=True):
     per = int(step / SOUND_HOP); nb = len(db) // per
     if base_db is None: base_db = float(np.percentile(db, 60))
     loud = db > base_db - 2
+    # your normal talking level: screaming is measured against how loud you usually talk, not against silence
+    talk = db[(db > base_db + 8) & (vo > 0.3)] if voice else np.array([])
+    talk_db = float(np.percentile(talk, 40)) if len(talk) > 50 else base_db + 12
     out = []
     # gunshots: a jump of 18 dB or more within 30 ms, broadband, and 150 ms later much quieter again
     on = np.zeros(len(db), dtype=bool)
@@ -92,9 +95,9 @@ def sound_scan(x, base_db=None, step=0.5, voice=True):
         r = {'laugh': 0.0, 'scream': 0.0, 'cheer': 0.0, 'shots': int(on[a0:a1].sum()), 'music': 0.0}
         if voice and ld.mean() > 0.3:
             r['laugh'] = _laugh_score(ld, vo[w0:w1], f0[w0:w1])
-        hi = db[a0:a1] > base_db + 14
+        hi = db[a0:a1] > max(base_db + 14, talk_db + 7)
         if voice and hi.mean() > 0.6:
-            r['scream'] = round(float(np.clip((np.mean(db[a0:a1]) - base_db - 14) / 10 + 0.4, 0, 1) * (1 if np.mean(cent[a0:a1]) > 900 else 0.5)), 2)
+            r['scream'] = round(float(np.clip((np.mean(db[a0:a1]) - max(base_db + 14, talk_db + 7)) / 8 + 0.4, 0, 1) * (1 if np.mean(cent[a0:a1]) > 900 else 0.5)), 2)
         if not voice:
             noisy = (flat[w0:w1] > 0.25) & ld
             if noisy.mean() > 0.7 and _mod_strength(seg_db, 2, 8) < 0.25 and np.mean(seg_db) > base_db + 3:
