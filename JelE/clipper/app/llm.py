@@ -104,11 +104,15 @@ def llm_titles(text, reasons, game='', lang='en', n=3, port=None):
     msg = [{'role': 'system', 'content': f'You write hooks for gaming shorts on TikTok. Each hook is at most 6 words, in {lang_name}, in capitals, no hashtags, no emojis, no quotes. '
                                           'Only claim what really happened. Answer with one hook per line, nothing else.'},
            {'role': 'user', 'content': f'Game: {game or "unknown"}\nWhy it is a moment: {", ".join(reasons or [])}\nWhat the streamer said: "{(text or "")[:500]}"\nWrite {n} different hooks.'}]
-    out = []
-    for ln in llm_chat(msg, 120, 0.8, port).splitlines():
-        t = re.sub(r'^[\s\-\d.)*#"]+', '', ln).strip().strip('"\'').upper()
+    out = []; raw = llm_chat(msg, 160, 0.8, port); LLM['last'] = raw[:400]
+    for ln in re.split(r'[\n;|]+', raw):
+        t = re.sub(r'^\s*(hook\s*)?[\-\d.)*#:"\u2022]+\s*', '', ln, flags=re.I).strip().strip('"\'').upper()
         t = re.sub(r"[^\w' !?]", '', t).strip()
-        if 2 <= len(t.split()) <= 8 and len(t) <= 40 and t not in out: out.append(t)
+        w = t.split()
+        if len(w) < 2: continue
+        while len(' '.join(w)) > 40 and len(w) > 2: w.pop()   # too long: cut on a word
+        t = ' '.join(w)
+        if t not in out and not t.startswith(('HERE ARE', 'SURE')): out.append(t)
     return out[:n]
 
 # ---------------------------------------------------------------- "make it shorter": a sentence -> an editor action

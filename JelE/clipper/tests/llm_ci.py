@@ -8,7 +8,7 @@ print('ready', c.llm_ready(), c.llm_exe(), os.path.getsize(c.llm_model()) // 104
 t0 = time.time(); port = c.llm_start(); print('started on port', port, 'in', round(time.time() - t0, 1), 's', c.LLM['error'])
 if not port: sys.exit(1)
 ti = c.llm_titles('no way no way he was one hp and I hit the one tap oh my god', ['you said "no way"', 'chat went off'], 'Valorant', 'en')
-print('TITLES', ti)
+print('TITLES', ti, 'RAW', repr(c.LLM.get('last')))
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 c.llm_stop()
