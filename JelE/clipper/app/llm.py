@@ -81,12 +81,14 @@ def llm_install():
 def llm_start():
     """start llama-server when it is not running yet (low priority, never during your stream). -> port or 0"""
     with LLM['lock']:
-        if LLM['proc'] and LLM['proc'].poll() is None: return LLM['port']
+        if LLM['proc'] and LLM['proc'].poll() is None and (not LLM.get('want') or LLM.get('path') == llm_model(LLM['want'])): return LLM['port']
+        if LLM['proc'] and LLM['proc'].poll() is None: llm_stop()   # another model was asked for: switch
         if not llm_ready() or SET.get('llm', True) is False: return 0
         if STATE.get('live') or CUR.get('id'): return 0   # your stream comes first
         import socket
         s_ = socket.socket(); s_.bind(('127.0.0.1', 0)); port = s_.getsockname()[1]; s_.close()
-        args = [llm_exe(), '-m', llm_model(), '--host', '127.0.0.1', '--port', str(port), '-c', '8192', '-t', str(max(2, CORES // 2)), '-ngl', '99']
+        mp_ = llm_model(LLM['want']) if LLM.get('want') and os.path.exists(llm_model(LLM['want'])) else llm_model(); LLM['path'] = mp_
+        args = [llm_exe(), '-m', mp_, '--host', '127.0.0.1', '--port', str(port), '-c', '8192', '-t', str(max(2, CORES // 2)), '-ngl', '99']
         try:
             LLM['proc'] = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=(0x08000000 | 0x00004000) if os.name == 'nt' else 0)
         except Exception as e: LLM['error'] = str(e)[:200]; return 0
@@ -100,6 +102,13 @@ def llm_start():
             except Exception: pass
         return 0
 
+def llm_use(size):
+    """small model to filter many moments fast, smart model to decide on the few best (only when both are downloaded)"""
+    p_ = os.path.join(DATA, 'models', LLM_MODELS[size]['file'])
+    if os.path.exists(p_) and os.path.getsize(p_) > LLM_MODELS[size]['min']: LLM['want'] = size
+    return llm_start()
+def llm_two():
+    return SET.get('llm_two_stage', True) and all(os.path.exists(os.path.join(DATA, 'models', v['file'])) and os.path.getsize(os.path.join(DATA, 'models', v['file'])) > v['min'] for v in LLM_MODELS.values())
 def llm_stop():
     p = LLM.get('proc')
     if p and p.poll() is None:
@@ -124,6 +133,10 @@ def llm_titles(text, reasons, game='', lang='en', n=3, port=None):
     """3 short hooks for the top of the short, from what was said and why it is a moment"""
     lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
     rules = f'You write hooks for gaming clips on TikTok. Rules: at most 6 words, in {lang_name}, in capitals, no hashtags, no emojis, no quotes, no labels. Only claim what really happened. Reply with exactly {n} lines, one hook per line, nothing else.'
+    try:
+        mine = my_titles()
+        if mine: rules += ' Write in the style of hooks this streamer picked before: ' + ' / '.join(mine) + '.'   # learned from titles you kept or typed yourself
+    except Exception: pass
     ex_u = 'Valorant clip. The streamer says: "he is one hp, no way, I got him with the knife". Why it is a moment: you said "no way", chat went off.'
     ex_a = 'KNIFED HIM AT ONE HP\nNO WAY THAT WORKED\nTHE KNIFE NEVER MISSES' if lang != 'nl' else 'GEMESD OP EEN HP\nDIT KAN GEWOON NIET\nHET MES MIST NOOIT'
     msg = [{'role': 'system', 'content': rules}, {'role': 'user', 'content': ex_u}, {'role': 'assistant', 'content': ex_a},
@@ -170,7 +183,7 @@ TIME_ACTS = ('shorter', 'longer', 'start_later', 'start_earlier', 'end_earlier',
 CMD_ACTIONS = TIME_ACTS + ('start_at_peak', 'end_after_peak', 'zoom_off', 'zoom_on', 'zoom_here', 'music_off', 'music_on', 'music_quieter', 'music_louder',
                'captions_off', 'captions_on', 'captions_bigger', 'captions_smaller', 'captions_up', 'captions_down', 'style', 'anim', 'layout',
                'teaser_off', 'teaser_on', 'replay_off', 'replay_on', 'effects_off', 'stickers_off', 'killfeed_off', 'sfx_off', 'sfx_on',
-               'title', 'cut_silence', 'keep_silence', 'loop_on', 'loop_off', 'bleep_on', 'bleep_off', 'cut_word', 'undo', 'export', 'preview')
+               'title', 'cut_silence', 'keep_silence', 'loop_on', 'loop_off', 'bleep_on', 'bleep_off', 'cut_word', 'undo', 'export', 'preview', 'why')
 _W = lambda *x: r'\b(?:' + '|'.join(x) + r')\b'
 NEG = _W('no', 'geen', 'without', 'zonder', 'remove', 'delete', 'weg', 'uit', 'off', 'take', 'haal', 'stop', 'disable', 'verwijder', 'drop', 'kill', 'lose', 'get rid of', 'skip', "don't", 'dont', 'niet')
 POS = _W('add', 'on', 'aan', 'enable', 'zet', 'met', 'with', 'wel', 'more', 'meer', 'put', 'give', 'want', 'wil', 'use', 'gebruik', 'turn on')
@@ -257,10 +270,32 @@ def _one(t, raw):
     return None
 
 CMD_MISS = [0]
+# vague wishes: one sentence, a few changes at once (shown first, you say yes)
+VAGUE = [
+    (r'\b(spannender|more exciting|exciting|hype it up|more hype|more energy|meer energie|meer actie|more action|less boring|minder saai|te saai|too boring|punchier|snappier)\b',
+     [{'action': 'start_later', 'value': 2}, {'action': 'zoom_on', 'value': 0}, {'action': 'sfx_on', 'value': 0}, {'action': 'cut_silence', 'value': 0}]),
+    (r'\b(rustiger|calmer|less busy|minder druk|te druk|too busy|too much going on|simpeler|simpler|cleaner|strakker|professioneler|more professional)\b',
+     [{'action': 'stickers_off', 'value': 0}, {'action': 'sfx_off', 'value': 0}, {'action': 'zoom_off', 'value': 0}, {'action': 'music_quieter', 'value': 0}]),
+    (r'\b(grappiger|funnier|more funny|leuker)\b', [{'action': 'sfx_on', 'value': 0}, {'action': 'captions_bigger', 'value': 0}, {'action': 'zoom_on', 'value': 0}]),
+    (r'\b(meer (van )?mij|more of me|show my face|mijn gezicht|my reaction matters)\b', [{'action': 'layout', 'value': 'split'}]),
+    (r'\b(meer game|more game|only the game|alleen (de )?game|the play matters)\b', [{'action': 'layout', 'value': 'gameonly'}]),
+    (r'^\s*(te lang|too long|korter|shorter)\s*[.!]?\s*$', [{'action': 'shorter', 'value': 5}]),
+]
+CMD_EXAMPLES = ['5 seconds shorter', 'start at the kill', 'no music', 'captions bigger', 'cut out where I say sorry', 'no replay', 'zoom here',
+                'start 2 seconds later', 'end after the kill', 'game only', 'title HE DID NOT SEE ME', 'more exciting', 'calmer', 'why this moment']
+def cmd_vague(raw):
+    for rx, acts in VAGUE:
+        if re.search(rx, raw, re.I): return [dict(a) for a in acts]
+    return None
+def cmd_suggest(raw, n=2):
+    import difflib
+    return difflib.get_close_matches((raw or '').lower(), CMD_EXAMPLES, n=n, cutoff=0.3) or CMD_EXAMPLES[:n]
+
 def cmd_rules(text):
     """a sentence -> a list of actions, or None. several commands in one sentence are split on and / en / , / ; / then"""
     raw = (text or '').strip()
     if not raw: return None
+    if re.search(r'\b(why|waarom)\b', raw, re.I) and len(raw.split()) <= 6: return [{'action': 'why', 'value': 0}]
     if re.match(r'^\s*(title|titel|hook)\b', raw, re.I):
         r = _one(raw.lower(), raw); return [r] if r else None
     parts = [p for p in re.split(r'\s*(?:,|;|\.\s|\band then\b|\bthen\b|\ben dan\b|\bdaarna\b|\band\b|\ben\b|\balso\b|\book\b|\bplus\b)\s*', raw, flags=re.I) if p and p.strip()]
@@ -279,6 +314,8 @@ def cmd_rules(text):
 
 def cmd_parse(text):
     """a sentence -> {'actions': [...], 'by': rules|model} or None"""
+    v_ = cmd_vague(text or '')
+    if v_ and not re.search(r'\d', text or ''): return {'actions': v_, 'by': 'rules', 'vague': True}
     r = cmd_rules(text)
     if r and (not CMD_MISS[0] or not llm_ready()): return {'actions': r, 'by': 'rules'}
     if not llm_ready(): return None

@@ -2,6 +2,35 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.56 · 12 November 2026
+
+**Picture and sound**
+- **Slow motion right where it happens** instead of a replay at the end (for clutches and skill plays). You can still pick a replay.
+- **Freeze frame**: on a fail or a funny moment the picture stops for a second on what you react to, with "WAIT...".
+- Both show up in the editor's timeline and in "Done for you", so you can move or remove them.
+- **Zooms land on the beat** of your music.
+- **Noise filter on your mic track** (fan, keyboard), only on your voice, not on the game.
+- **Blur names in chat** (setting blur_names): other players' names are blurred when a chat message is shown big.
+- **Best cover picture**: the cover maker starts on the frame right after the payoff.
+- Agent, weapon and map hashtags (#viper, #operator) from what you say.
+
+**Editor**
+- **Vague wishes work**: "more exciting", "calmer", "funnier", "more of me", "too long". You first see what it will do, then say Do it.
+- **Undo** button right after a command. AI commands are shown first too.
+- **Why?** in the command bar shows why the moment was picked.
+- Did not get it? It suggests what you may have meant.
+- Commands you use a lot become a ★ button.
+- **Check before you export** (step Done): long silences, nothing in the first seconds, the best part late without a teaser, too long, unsure words, or a part you already made a short of. Each with a one-click fix. Exporting with something to check asks first.
+
+**Learning**
+- **Titles in your style**: the AI writes hooks like the titles you kept or typed yourself.
+- **Views teach the score model**: your best third counts as good, the worst third as bad.
+- **How good is the AI for you?** (Settings): how many of the clips you liked were found, and how many removed moments still get picked. Plus what the model learned: what you keep and what you skip.
+
+**Speed**
+- **Search again is quick**: what was heard, the sounds and the screen are kept per stream (a search again of the same video went from 24 to 1 second in the test).
+- With both AI models downloaded, the small one reads all moments fast and the smart one decides on the best.
+
 ## 6.55 · 12 November 2026
 
 **Picking moments**

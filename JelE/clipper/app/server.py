@@ -145,6 +145,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/engine': return self.j(wcpp_status())
         if p == '/api/llm': return self.j(llm_status())
         if p == '/api/vision': return self.j(vision_status())
+        if p == '/api/ai-check': return self.j({**ai_check(), 'learned': learned_summary()})
         if p == '/api/learned': return self.j({g: learned_look(g) for g in GP.ORDER} if GP and SET.get('learn_look', True) else {})
         if p == '/api/games': return self.j({'games': GP.public() if GP else [], 'default': SET.get('default_game') or 'valorant'})
         if p == '/api/vod-check': return self.j(vod_check())
@@ -349,7 +350,9 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/vision-install': threading.Thread(target=vision_install, daemon=True).start(); return self.j({'ok': True})
         if p == '/api/command':   # plan F4.7: "make it shorter and no music" -> editor actions
             r = cmd_parse(b.get('text', ''))
-            return self.j({'ok': bool(r), **(r or {}), 'why': '' if r else ('I did not understand that. Try for example "5 seconds shorter", "start at the kill", "no music", "captions bigger" or "cut out where I say sorry".' + ('' if llm_ready() else ' With the local AI model (Settings > Captions) I understand more.'))})
+            sug_ = cmd_suggest(b.get('text', ''))
+            if r: r['missed'] = CMD_MISS[0] if r.get('by') == 'rules' else 0
+            return self.j({'ok': bool(r), **(r or {}), 'suggest': sug_, 'why': '' if r else ('I did not get that. Did you mean "' + '" or "'.join(sug_) + '"?' + ('' if llm_ready() else ' With the local AI on (Settings) I understand more.'))})
         if p == '/api/llm-titles':
             if not llm_ready(): return self.j({'ok': False, 'why': 'The local AI model is not installed (Settings > System).'})
             t = llm_titles(b.get('text', ''), b.get('reasons') or [], (GP.get(b.get('game')) or {}).get('name', '') if GP else '', SET.get('language') or 'en')

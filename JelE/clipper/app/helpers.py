@@ -126,7 +126,11 @@ def fx_suggest(sid, start, end, job=None):
         play = (why_peak == 'event') or (why_peak == 'story' and br.get('replay') and br.get('type') in ('clutch', 'skill'))
         if SET.get('fx_replay', True) and play and not fx.get('focus'):
             ra = cz if cz is not None else peak
-            if ra < dur - 0.4: fx['replay'] = {'a': round(max(0, ra - 1.6), 2), 'b': round(min(dur, ra + 0.8), 2), 'speed': 0.5}
+            if ra < dur - 0.4:
+                if SET.get('slowmo_not_replay', True): fx['slowmo'] = {'a': round(max(0, ra - 0.5), 2), 'b': round(min(dur, ra + 0.6), 2), 'speed': 0.5}   # slow it down right where it happens
+                else: fx['replay'] = {'a': round(max(0, ra - 1.6), 2), 'b': round(min(dur, ra + 0.8), 2), 'speed': 0.5}
+        if SET.get('fx_freeze', True) and cz is not None and br.get('type') in ('fail', 'funny', 'reaction', 'rage') and not fx.get('focus') and 1.0 < cz < dur - 2:
+            fx['freeze'] = {'t': round(cz, 2), 'len': 0.8, 'text': 'WAIT...'}   # the picture stops for a second on what you react to
     return fx
 
 def clip_peak(s, ws, start, end):
@@ -151,6 +155,14 @@ def make_mezz(parts, work):
         p, a, b = pt[:3]; sp = pt[3] if len(pt) > 3 else 1.0
         out = os.path.join(work, f'part{i}.mp4')
         vf = 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1'
+        if sp == 0:   # a freeze frame: the picture at a, standing still for b - a seconds (quiet)
+            L = max(0.2, b - a)
+            r = run(['-y', '-ss', f'{a:.3f}', '-i', p, '-f', 'lavfi', '-t', f'{L:.3f}', '-i', 'anullsrc=r=48000:cl=stereo',
+                     '-filter_complex', f'[0:v:0]trim=end_frame=1,{vf},loop=loop=-1:size=1:start=0,setpts=N/60/TB,fps=60,trim=duration={L:.3f}[v]',
+                     '-map', '[v]', '-map', '1:a', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '15', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2', '-t', f'{L:.3f}', out],
+                    capture_output=True, text=True, errors='replace')
+            if r.returncode != 0 or not os.path.exists(out): raise RuntimeError('making a freeze frame failed: ' + (r.stderr or '')[-200:])
+            return out
         af = 'aformat=sample_rates=48000:channel_layouts=stereo'
         if sp < 0.999:   # slow motion for the replay: smooth frames, lower voice is fine for a replay
             vf += f',setpts={1 / sp:.4f}*PTS,minterpolate=fps=60:mi_mode=blend'
@@ -175,6 +187,29 @@ def make_mezz(parts, work):
     out = os.path.join(work, 'mezz.mp4')
     r = run(['-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', out], capture_output=True, text=True, errors='replace')
     if r.returncode != 0: raise RuntimeError('joining the pieces failed: ' + (r.stderr or '')[-200:])
+    return out
+
+def music_beats(mfile, offset, dur):
+    """the beats of a song (seconds from where it starts playing in the short), so zooms and cuts land on the beat"""
+    import numpy as np
+    sr = 8000
+    r = subprocess.run([FF, '-v', 'error', '-ss', f'{max(0, offset):.2f}', '-t', f'{dur + 1:.2f}', '-i', mfile, '-vn', '-ac', '1', '-ar', str(sr), '-f', 's16le', '-'], capture_output=True, creationflags=NOWIN)
+    x = np.frombuffer(r.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+    hop = 80   # 10 ms
+    n = len(x) // hop
+    if n < 300: return []
+    e = np.sqrt((x[:n * hop].reshape(n, hop) ** 2).mean(1)); on = np.maximum(0, np.diff(np.log(e + 1e-4), prepend=0))
+    on = on - np.convolve(on, np.ones(20) / 20, mode='same'); on[on < 0] = 0
+    lags = np.arange(30, 100)   # 60 to 200 beats per minute
+    ac = np.array([float((on[:-l] * on[l:]).sum()) for l in lags]); per = int(lags[ac.argmax()])
+    ph = int(np.argmax([on[p::per].sum() for p in range(per)]))
+    return [round((ph + k * per) * hop / sr, 3) for k in range(int((n - ph) / per) + 1)]
+
+def snap_to_beats(times, beats, win=0.25):
+    out = []
+    for t in times:
+        b = min(beats, key=lambda b: abs(b - t)) if beats else None
+        out.append(round(b, 3) if b is not None and abs(b - t) <= win else t)
     return out
 
 def clip_env(path, start, dur, step=0.1):

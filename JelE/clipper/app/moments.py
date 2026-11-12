@@ -297,7 +297,7 @@ def analyse(sid):
     if SET.get('sounds', True):
         try:
             prog('Listening for laughing, screams and fights', 3)
-            snd = sound_events(path, dur, step, lambda f: prog(None, 3 + 2 * f))
+            snd = stream_cache(sid, 'sound', [src_key(path), dur, step, 2], lambda: sound_events(path, dur, step, lambda f: prog(None, 3 + 2 * f)))   # kept: searching again skips this
             ssc, swhy = sound_moments(snd, step)
             for i in range(min(T, len(ssc))):
                 if ssc[i] > 0 and (i < int(10 / step) or i > T - int(4 / step)): continue
@@ -313,6 +313,12 @@ def analyse(sid):
         work0 = os.path.join(sdir(sid), 'tmp_full'); os.makedirs(work0, exist_ok=True)
         chunk = LIVE_CHUNK; a0 = 0.0; nchunks = int(math.ceil(dur / chunk)); UNSURE = []
         live = live_cache(sid, path); reused = 0
+        tkey_ = {'src': src_key(path), 'lang': cur_lang(), 'model': SET.get('whisper_model', 'auto'), 'v': 1}
+        try:   # searched before with the same settings: reuse what was heard (with the unsure words already filled in)
+            if not s.get('relisten') and json.load(open(os.path.join(sdir(sid), 'transcript_key.json'), encoding='utf-8')) == tkey_:
+                ALL = [tuple(w) for w in json.load(open(os.path.join(sdir(sid), 'transcript.json'), encoding='utf-8'))]; UNSURE = load_unsure(sid)
+                if ALL: a0 = dur + 1; log('Reusing what was heard last time (same video, same settings)')
+        except Exception: pass
         while a0 < dur:
             c_ = live['chunks'].get(str(int(a0))) if live else None
             if c_ is not None and a0 + chunk + 2 <= dur:   # already heard during the stream: no need to listen again
@@ -333,6 +339,7 @@ def analyse(sid):
         ALL = collapse_loops(ALL)
         try:
             json.dump(ALL, open(os.path.join(sdir(sid), 'transcript.json'), 'w', encoding='utf-8'))
+            json.dump(tkey_, open(os.path.join(sdir(sid), 'transcript_key.json'), 'w', encoding='utf-8'))
             sg_ = speech_game(ALL)
             if sg_:
                 s_ = load_sess(sid); s_['game_speech'] = sg_; save_sess(s_); GAME_TL.v = game_quick(s_)['id']
@@ -534,7 +541,7 @@ def analyse(sid):
                 prog('Looking at the picture', 75 + 23 * (n + 1) / len(cands))
                 st, en = c.get('start', 0), c.get('end', 0)
                 if en - st < 2: continue
-                vs_ = vision_scan(path, max(0, st - 1), min(dur, en + 4), gid); c['_scan'] = vs_
+                vs_ = stream_cache(sid, 'vision', [src_key(path), round(max(0, st - 1), 1), round(min(dur, en + 4), 1), gid, 2], lambda: vision_scan(path, max(0, st - 1), min(dur, en + 4), gid)); c['_scan'] = vs_
                 j = vision_judge(vs_, st, en + 4, c['t'])
                 if not j: continue
                 c['vision'] = {k: j.get(k) for k in ('menu', 'end', 'buy', 'dead_at', 'spectate_from', 'events', 'score', 'hp')}
@@ -566,14 +573,14 @@ def analyse(sid):
     if cands and SET.get('brief', True):
         try:
             top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 30)]
-            port = llm_start() if llm_ready() and SET.get('llm_judge', True) else 0
+            port = (llm_use('small') if llm_two() else llm_start()) if llm_ready() and SET.get('llm_judge', True) else 0   # both models there: the small one reads all 30 fast
             gname = (GP.get(GAME_TL.v or '') or {}).get('name', GAME_TL.v or '') if GP else (GAME_TL.v or '')
             for n, c in enumerate(top):
                 if c.get('said'): continue   # "clip that" moments keep the cut around what you asked
                 prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
                 texts_ = []
                 if n < int(SET.get('screen_text_n') or 15) and vision_ok():   # the text on screen around it: chat messages, killfeed
-                    try: texts_ = screen_texts(path, max(0, c['t'] - 60), min(dur, c['t'] + 12))
+                    try: texts_ = stream_cache(sid, 'screen', [src_key(path), round(max(0, c['t'] - 60), 1), round(min(dur, c['t'] + 12), 1)], lambda: screen_texts(path, max(0, c['t'] - 60), min(dur, c['t'] + 12)))
                     except Exception: traceback.print_exc()
                     nm_ = []   # names on the screen (chat, killfeed): the doubt check uses them to spell names right
                     for g_ in texts_ or []:
@@ -666,7 +673,7 @@ def analyse(sid):
     if SET.get('llm_judge', True) and SET.get('ai_compare', True):
         try:
             if llm_ready():
-                sw_ = compare_top([c for c in cands if not c.get('drop')], llm_start())
+                sw_ = compare_top([c for c in cands if not c.get('drop')], llm_use('smart') if llm_two() else llm_start())   # the smart one decides on the best
                 if sw_: log(f'The AI compared the best moments side by side and changed the order {sw_} time(s)')
         except Exception: traceback.print_exc()
     # what the AI threw out stays out. nothing good enough? then no moments, and the app says so (no forced bad clips)

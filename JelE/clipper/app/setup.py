@@ -242,7 +242,7 @@ def make_thumbnail(file=None, sid=None, t=None, text='', kind='yt'):
     """a cover picture: a frame of the moment, big text, your orange style. kind yt = 1280x720, cover = 1080x1920"""
     from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
     lib = lib_load(); e = lib.get(os.path.basename(file)) if file else None
-    if e: sid = sid or e.get('sid'); t = t if t is not None else (e.get('start', 0) + e.get('end', 0)) / 2; text = text or e.get('title') or ''
+    if e: sid = sid or e.get('sid'); t = t if t is not None else (e.get('cover_t') or (e.get('start', 0) + e.get('end', 0)) / 2); text = text or e.get('title') or ''
     ss = load_sess(sid); W, H = (1280, 720) if kind == 'yt' else (1080, 1920)
     d_ = os.path.join(OUT, 'thumbnails'); os.makedirs(d_, exist_ok=True)
     fr = os.path.join(d_, '_frame.jpg'); run(['-y', '-ss', f'{float(t or 0):.2f}', '-i', ss['path'], '-frames:v', '1', '-q:v', '2', fr])

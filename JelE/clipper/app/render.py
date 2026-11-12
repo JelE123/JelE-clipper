@@ -80,6 +80,12 @@ def post_text(hook, words):
     tags = ((SET.get('game_hashtags') or {}).get(g) or (SET.get('hashtags') if g == 'valorant' else '') or P.get('hashtags') or '').split()
     for k, v in (P.get('word_tags') or {}).items():
         if re.search(r'\b' + re.escape(k) + r'\b', said) and v not in tags: tags.insert(2, v)
+    if g == 'valorant' and gamewords:   # the agent, weapon or map you talk about gets its own hashtag (#viper, #operator)
+        for nm in list(gamewords.AGENTS)[:40] + gamewords.WEAPONS + gamewords.MAPS:
+            if len(nm) >= 4 and re.search(r'\b' + re.escape(nm.lower()) + r'\b', said):
+                t_ = '#' + re.sub(r'\W', '', nm.lower())
+                if t_ not in tags: tags.insert(min(len(tags), 3), t_)
+                if sum(1 for x in tags if x.startswith('#')) >= 9: break
     title = (hook or '').strip().capitalize() or P.get('fallback') or 'Stream moment'
     if not re.search(r'[.!?]$', title): title += '!' if re.search(r'no way|insane|crazy|let.?s go|what|wow|holy', title, re.I) else ''
     quote = re.sub(r'\s+', ' ', ' '.join(w[2] for w in words if w[2] != UNCLEAR)).strip()
@@ -172,18 +178,42 @@ def _render(job):
                 keep = nk or keep
                 log(f'{len(cuts)} piece(s) cut out in the editor')
             tz, rp = fx.get('teaser'), fx.get('replay')
-            if job.get('loop'): tz = rp = None   # a loop flows from the end straight into the start: no opening glimpse, no replay
+            fz_, sm_ = fx.get('freeze'), fx.get('slowmo')
+            if job.get('loop'): tz = rp = fz_ = sm_ = None   # a loop flows from the end straight into the start: no opening glimpse, no replay
             if tz: tz = {'t': max(0.0, min(dur - 0.5, float(tz['t']))), 'len': max(0.6, min(2.5, float(tz.get('len', 1.2)))), 'text': tz.get('text', 'WAIT FOR IT...')}
             if rp: rp = {'a': max(0.0, float(rp['a'])), 'b': min(dur, float(rp['b'])), 'speed': max(0.25, min(1.0, float(rp.get('speed', 0.5))))}
             if rp and rp['b'] - rp['a'] < 0.4: rp = None
-            if tz or rp or len(keep) > 1:
+            ins_ = []   # extra time inside the clip: a freeze frame (the picture stops) and slow motion (right where it happens)
+            if fz_:
+                ft_ = float(fz_['t']); fl_ = max(0.3, min(2.0, float(fz_.get('len', 0.8))))
+                if any(x + 0.2 < ft_ < y - 0.2 for x, y in keep): ins_.append(('F', ft_, ft_, fl_))
+            if sm_ and not rp:
+                sa_, sb_, ss_ = float(sm_['a']), float(sm_['b']), max(0.25, min(0.9, float(sm_.get('speed', 0.5))))
+                if sb_ - sa_ >= 0.3 and any(x <= sa_ and sb_ <= y for x, y in keep): ins_.append(('S', sa_, sb_, ss_))
+            def extra_(t_):
+                e_ = 0.0
+                for k_, a_, b_, v_ in ins_:
+                    if k_ == 'F' and t_ > a_: e_ += v_
+                    if k_ == 'S': e_ += (min(t_, b_) - a_) * (1 / v_ - 1) if t_ > a_ else 0
+                return e_
+            if tz or rp or len(keep) > 1 or ins_:
                 prog('Building the timeline', 12); segs = []
                 if tz: segs.append((path, start + tz['t'], start + tz['t'] + tz['len'], 1.0)); teaser_len = tz['len']
-                segs += [(path, start + a_, start + b_, 1.0) for a_, b_ in keep]
+                for a_, b_ in keep:
+                    cur_ = a_
+                    for k_, x_, y_, v_ in sorted(ins_, key=lambda e: e[1]):
+                        if not (a_ <= x_ < b_): continue
+                        if x_ - cur_ > 0.04: segs.append((path, start + cur_, start + x_, 1.0))
+                        if k_ == 'F': segs.append((path, start + x_, start + x_ + v_, 0.0)); cur_ = x_
+                        else: segs.append((path, start + x_, start + y_, v_)); cur_ = y_
+                    if b_ - cur_ > 0.04: segs.append((path, start + cur_, start + b_, 1.0))
                 if rp: segs.append((path, start + rp['a'], start + rp['b'], rp['speed']))
                 path = make_mezz(segs, work); prepared = True
-                main_len = sum(b_ - a_ for a_, b_ in keep)
-                mp = lambda t_: teaser_len + remap(t_, keep)
+                main_len = sum(b_ - a_ for a_, b_ in keep) + extra_(1e9)
+                mp = lambda t_: teaser_len + remap(t_, keep) + extra_(t_)
+                for k_, x_, y_, v_ in ins_:
+                    if k_ == 'F': stickers.append({'t': x_, 'dur': v_, 'text': fz_.get('text') or 'WAIT...', 'x': 0.5, 'y': 0.2, 'kind': 'pill'})
+                    if k_ == 'S': stickers.append({'t': x_, 'dur': min(1.4, (y_ - x_) / v_), 'text': 'SLOW MO', 'x': 0.5, 'y': 0.16, 'kind': 'replay'})
                 ws = [(mp(a_ - start), mp(b_ - start), t_) for a_, b_, t_ in ws if any(x <= a_ - start <= y for x, y in keep)]
                 ztimes = [mp(z) for z in ztimes]; kf_times = [mp(z) for z in kf_times]
                 for x in focus: x['t'] = mp(float(x['t']))
@@ -197,6 +227,13 @@ def _render(job):
                 ws = [(a_ - start, b_ - start, t_) for a_, b_, t_ in ws]; start_shift = start
         if not prepared and not job.get('parts'):
             pass
+        try:   # music: zooms land on the beat
+            mus_ = fx.get('music') or job.get('music')
+            mf_ = os.path.join(MUSIC_DIR, os.path.basename(mus_['file'])) if mus_ and mus_.get('file') else None
+            if mf_ and os.path.exists(mf_) and ztimes and SET.get('beat_sync', True):
+                bt_ = music_beats(mf_, float(mus_.get('offset', 0)), dur)
+                if bt_: ztimes = snap_to_beats(ztimes, bt_)   # times are seconds into the short, the music starts at 0
+        except Exception: traceback.print_exc()
         sw, sh = probe_size(path); k = sw / 1920.0
         if prepared: k = 1.0   # the glued video is always 1920x1080
         layout = job.get('layout') or SET.get('layout') or 'split'
@@ -298,7 +335,7 @@ def _render(job):
         # focus: what you react to, big in the middle for a few seconds (a chat message, the killfeed)
         for x in [x for x in focus if 0 <= float(x['t']) < dur and (replay_at is None or float(x['t']) < replay_at)][:2]:
             try:
-                nx, ny, nw, nh = [float(v) for v in x['box']]
+                nx, ny, nw, nh = [float(v) for v in x['box']]; onx_, onw_ = nx, nw
                 pad = 0.012; nx, ny = max(0.0, nx - pad), max(0.0, ny - pad * 1.6); nw, nh = min(1 - nx, nw + 2 * pad), min(1 - ny, nh + 3.2 * pad)
                 if x.get('region') == 'chat':   # the whole chat line plus the lines above it, not just the words it read
                     nw = min(1 - nx, max(nw, 0.30)); add_ = nh * 2.5; ny = max(0.0, ny - add_); nh = min(1 - ny, nh + add_)
@@ -308,7 +345,14 @@ def _render(job):
                 t0_, t1_ = float(x['t']), float(x['t']) + float(x.get('dur') or 3.0)
                 fy = int(OH * (0.36 if layout != 'landscape' else 0.12))
                 inputs += ['-ss', f'{start:.3f}', '-t', f'{dur:.3f}', '-i', path]
-                f += (f";[{n}:v]crop={bw}:{bh}:{bx}:{by},scale={ow2}:{oh2}:flags=lanczos,pad={ow2 + 16}:{oh2 + 16}:8:8:color={BHEX()},setsar=1[fc{n}];"
+                blur_ = ''
+                if SET.get('blur_names', False) and x.get('region') == 'chat':   # other players' names in chat: blurred, the message stays readable
+                    m_ = re.match(r"\s*(?:\([^)]*\)\s*|\[[^\]]*\]\s*)?[\w#.-]{2,20}\s*:", x.get('text') or '')
+                    fr_ = (len(m_.group(0)) / max(1, len(x.get('text') or ''))) if m_ else 0.25
+                    bwid_ = max(8, min(bw, int(((onx_ - nx) + onw_ * fr_) * sw + 6)) // 2 * 2)
+                    r_ = max(1, min(10, bh // 2 - 1, bwid_ // 2 - 1))
+                    blur_ = f",split[fa{n}][fb{n}];[fb{n}]crop={bwid_}:{bh}:0:0,boxblur={r_}:2[fbl{n}];[fa{n}][fbl{n}]overlay=0:0"
+                f += (f";[{n}:v]crop={bw}:{bh}:{bx}:{by}{blur_},scale={ow2}:{oh2}:flags=lanczos,pad={ow2 + 16}:{oh2 + 16}:8:8:color={BHEX()},setsar=1[fc{n}];"
                       f"[{last}][fc{n}]overlay=(W-w)/2:{fy}:enable='between(t,{t0_:.2f},{t1_:.2f})'[t{n}]"); last = f't{n}'; n += 1
             except Exception: traceback.print_exc()
         if layout != 'landscape' and (B().get('tag') or '').strip() and not job.get('chapters'):
@@ -371,7 +415,8 @@ def _render(job):
                 mt_ = int(SET.get('mic_track') or 0)
                 ms_ = (stream_of(path, mt_) if mt_ > 0 else find_mic(path)[0]) or 0
             if ms_ > 1:
-                f += (f";[0:a:{ms_ - 1}]{a_fx},highpass=f=90,acompressor=threshold=0.06:ratio=3:attack=5:release=150,volume=0.5,afade=t=in:d=0.12[vk]"
+                dn_ = ',afftdn=nf=-28:tn=1' if SET.get('mic_denoise', True) else ''   # fan and keyboard noise out of your mic (only your mic track)
+                f += (f";[0:a:{ms_ - 1}]{a_fx},highpass=f=90{dn_},acompressor=threshold=0.06:ratio=3:attack=5:release=150,volume=0.5,afade=t=in:d=0.12[vk]"
                       f";[vk]asplit=3[vkm][vks][vkk];[a0][vks]sidechaincompress=threshold=0.025:ratio=3:attack=25:release=350[a0d]")
                 labels = ['[a0d]', '[vkm]']; vkey = '[vkk]'
         except Exception: traceback.print_exc(); vkey = None
@@ -427,7 +472,7 @@ def _render(job):
         mo = next((m for m in s.get('moments', []) if m.get('id') == job.get('mid')), {})
         lib = lib_load(); lib[os.path.basename(dst)] = {'test': bool(job.get('test')), 'sid': sid, 'mid': job.get('mid'), 'start': o_start, 'end': o_end, 'layout': layout, 'style': style, 'fx': fx, 'dur': round(dur, 1),
             'title': job.get('hook') or mo.get('title') or '', 'auto': bool(job.get('auto')), 'status': 'nieuw' if job.get('auto') else 'goed',
-            'reasons': mo.get('reasons', []), 'score': mo.get('score', 0), 'session': s.get('title'), 'at': time.time(), 'game': cur_game(),
+            'reasons': mo.get('reasons', []), 'score': mo.get('score', 0), 'session': s.get('title'), 'at': time.time(), 'game': cur_game(), 'cover_t': cover_frame(s, mo, o_start, o_end),
             'post': post_text(job.get('hook') or mo.get('title') or '', ws or [tuple(w) for w in (job.get('words') or mo.get('words') or [])]),
             'opts': {k: job.get(k) for k in ('cap_y', 'cap_scale', 'game_x', 'cam_h', 'progress', 'endcard', 'zoom', 'captions', 'jumpcut', 'sfx', 'voice')}, 'montage': bool(job.get('parts')), 'kind': job.get('kind', 'short')}
         if chapters:   # highlights: chapters for the YouTube description
