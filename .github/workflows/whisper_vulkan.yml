@@ -18,16 +18,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: humbletim/install-vulkan-sdk@v1.2
-        with:
-          version: latest
-          cache: true
+      - name: Install the Vulkan SDK (LunarG)
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe -OutFile vk.exe
+          $p = Start-Process vk.exe -ArgumentList '--root', 'C:\VulkanSDK', '--accept-licenses', '--default-answer', '--confirm-command', 'install' -Wait -PassThru
+          Write-Host "installer exit $($p.ExitCode)"
+          Get-ChildItem C:\VulkanSDK | Format-Table Name
+          "VULKAN_SDK=C:\VulkanSDK" | Out-File -Append $env:GITHUB_ENV
+          "C:\VulkanSDK\Bin" | Out-File -Append $env:GITHUB_PATH
 
       - name: Build whisper.cpp with Vulkan
         shell: pwsh
         run: |
           git clone --depth 1 --branch $env:WVER https://github.com/ggml-org/whisper.cpp wcpp
-          cmake -S wcpp -B wcpp/build -DGGML_VULKAN=ON -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake -S wcpp -B wcpp/build -DVulkan_ROOT=C:/VulkanSDK -DGGML_VULKAN=ON -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF -DCMAKE_BUILD_TYPE=Release
           if ($LASTEXITCODE -ne 0) { exit 1 }
           cmake --build wcpp/build --config Release -j 4 --target whisper-cli
           if ($LASTEXITCODE -ne 0) { exit 1 }
