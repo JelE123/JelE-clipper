@@ -576,8 +576,9 @@ def analyse(sid):
                 if b_.get('by') == 'ai':
                     try:
                         sc_ = max(1, min(10, int(b_.get('score') or 5))); c['ai'] = {'score': sc_, 'why': b_.get('about', '')}
-                        c['score'] = round(c['score'] * (0.2 + 0.16 * sc_), 1)   # the AI decides: a 10 counts almost double, a 4 or lower is out
-                        if sc_ <= 4: c['drop'] = True
+                        strong_ = bool(rb_.get('focus')) or (rb_.get('cause') is not None and any(k_ in ' '.join(c['reasons']) for k_ in ('screamed', 'laughed', 'chat went', 'messages')))
+                        c['score'] = round(c['score'] * max(1.0 if strong_ else 0, 0.2 + 0.16 * sc_), 1)   # the AI decides: a 10 counts almost double, a 4 or lower is out
+                        if sc_ <= 4 and not strong_: c['drop'] = True   # ...unless the facts are clear: you read a message from the screen, or a real cause plus a scream or laugh
                     except Exception: pass
                 elif any(x['k'] == 'speech' for x in items) and any(x['k'] == 'note' for x in items):
                     c['score'] = round(c['score'] * 0.35, 1)   # mumbling while nothing happens: not a moment

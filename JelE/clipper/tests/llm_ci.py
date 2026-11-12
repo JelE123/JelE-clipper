@@ -35,12 +35,16 @@ print('MUMBLE brief', bm, '| judge', jm)
 tox = ['   0s you say: "okay we need this round"', '   4s on screen (chat): "xToxicGuy: jele is the worst player ever uninstall"', '  10s game sound: 2 gunshots',
        '  18s you say: "wait what did he say"', '  19s you say: "he said jele is the worst player ever uninstall"', '  22s you: screaming', '  23s you say: "WHAT bro I have 30 kills"',
        '  26s chat: 25 messages in 10s', '  29s you say: "okay okay focus"']
-bt = c.llm_brief({'t': 22}, tox, 300.0, 'Valorant', 'en', port)
-print('TOXIC brief', bt)
+bt_raw = c.llm_brief({'t': 22}, tox, 300.0, 'Valorant', 'en', port)
+ti_ = [{'t': 300.0, 'e': 301.5, 'k': 'say', 'v': 'okay we need this round'}, {'t': 304.0, 'k': 'on screen (chat)', 'v': 'xToxicGuy: jele is the worst player ever uninstall', 'box': [0.02, 0.79, 0.43, 0.03], 'region': 'chat'},
+       {'t': 310.0, 'k': 'game sound', 'v': '2 gunshots'}, {'t': 318.0, 'e': 319.0, 'k': 'say', 'v': 'wait what did he say'}, {'t': 319.2, 'e': 321.5, 'k': 'say', 'v': 'he said jele is the worst player ever uninstall'},
+       {'t': 322.0, 'k': 'you', 'v': 'screaming'}, {'t': 323.0, 'e': 325.0, 'k': 'say', 'v': 'WHAT bro I have 30 kills'}, {'t': 326.0, 'k': 'chat', 'v': '25 messages'}, {'t': 329.0, 'e': 330.0, 'k': 'say', 'v': 'okay okay focus'}]
+bt = c.brief_merge(bt_raw, c.brief_rules({'t': 322}, ti_, 300.0, 322.0), ti_)
+print('TOXIC raw', bt_raw, '| merged', {k: bt.get(k) for k in ('start', 'cause', 'payoff', 'end')}, 'focus' if bt.get('focus') else 'no focus')
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = bool(bt) and bt['start'] <= 304 and (bt.get('cause') is None or bt['cause'] <= 305) and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(bt.get('focus')) and bt['start'] <= 302 and bt['cause'] <= 304.5 and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)

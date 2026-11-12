@@ -408,7 +408,8 @@ def llm_brief(c, lines, a, game='', lang='en', port=None):
     lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
     sysm = ('You are the editor of gaming shorts. You get a timeline of a stream, second by second: what the streamer says, game sounds, what is on screen, chat. '
             'Find the ONE story in it: the setup (where it starts making sense), the cause (the second the thing the streamer reacts to happens or first appears on screen: a kill, a death, a weird angle, a message in the game chat), '
-            'the payoff (the big reaction) and where the reaction is over. When the streamer reads a chat message out loud, the cause is when that message appeared on screen, and the clip must start before it. '
+            'the payoff (the big reaction) and where the reaction is over. When the streamer reads a chat message out loud, the cause is the second the message line says "on screen" (NOT when it is read), and the clip must start before it. '
+            'Reacting to trash talk, a toxic or funny chat message, a weird angle or a lucky shot is good content (score 6 to 8 when the reaction is strong). '
             'Then decide the edit. Answer only with JSON: {"about": "what happens, max 12 words", "type": one of ' + '/'.join(MOMENT_TYPES) +
             ', "start": seconds, "cause": seconds, "payoff": seconds, "end": seconds, "zoom": [seconds, max 2, on the payoff or a big reaction], '
             '"replay": true only for an insane play (clutch, multi kill, crazy shot) worth seeing twice, else false, "focus": "chat" when the story is a chat message, "killfeed" when it is a kill or death in the killfeed, else "none", '
