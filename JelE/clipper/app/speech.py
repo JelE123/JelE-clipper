@@ -3,11 +3,27 @@
 _WHISPER = {}
 LANG_TL = threading.local()   # a language for this one job (for example when you make a short again in another language)
 def cur_lang(): return getattr(LANG_TL, 'v', None) or SET.get('language') or 'en'
+def hub_root():
+    return os.environ.get('HF_HUB_CACHE') or os.path.join(os.environ.get('HF_HOME') or os.path.join(os.path.expanduser('~'), '.cache', 'huggingface'), 'hub')
+def hub_dir(name):
+    """the folder of one speech model in the download cache, as faster-whisper names it.
+    small.en lives in models--Systran--faster-whisper-small.en (with a dot), large-v3 is not large-v3-turbo"""
+    repo = None
+    try:
+        from faster_whisper.utils import _MODELS
+        repo = _MODELS.get(name)
+    except Exception: pass
+    repo = repo or {'large-v3-turbo': 'mobiuslabsgmbh/faster-whisper-large-v3-turbo', 'turbo': 'mobiuslabsgmbh/faster-whisper-large-v3-turbo'}.get(name) or f'Systran/faster-whisper-{name}'
+    return os.path.join(hub_root(), 'models--' + repo.replace('/', '--'))
 def model_cached(name):
-    hub = os.path.join(os.path.expanduser('~'), '.cache', 'huggingface', 'hub')
-    key = name.replace('.', '-').replace('large-v3-turbo', 'large-v3-turbo')
-    try: return any(key in d for d in os.listdir(hub))
-    except OSError: return False
+    """the model is really there: its model.bin in a finished snapshot"""
+    snap = os.path.join(hub_dir(name), 'snapshots')
+    try:
+        for d in os.listdir(snap):
+            f = os.path.join(snap, d, 'model.bin')
+            if os.path.exists(f) and os.path.getsize(f) > 10e6: return True
+    except OSError: pass
+    return False
 
 def whisper_ok():
     try:   # only look, do not load it: the model itself runs in the speech process

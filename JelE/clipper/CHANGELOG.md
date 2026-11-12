@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.44 · 12 November 2026
+
+### Speech model shows the right status
+- Fixed: after "Get it now", small.en kept showing as not downloaded. The app looked for the wrong folder name (small-en instead of small.en), so it never saw the model, even when it was there
+- A model now only counts as ready when its model file is really in place, and large-v3 is no longer mixed up with large-v3-turbo
+
 ## 6.43 · 12 November 2026
 
 ### Local AI

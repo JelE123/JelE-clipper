@@ -53,21 +53,21 @@ def model_names():
         if n not in out: out.append(n)
     return out
 def hub_mb(name):
-    hub = os.path.join(os.path.expanduser('~'), '.cache', 'huggingface', 'hub'); key = name.replace('.', '-'); tot = 0
-    try:
-        for d in os.listdir(hub):
-            if key in d and 'whisper' in d:
-                for r, _, fs in os.walk(os.path.join(hub, d)):
-                    for f in fs:
-                        try: tot += os.path.getsize(os.path.join(r, f))
-                        except OSError: pass
-    except OSError: pass
+    """how much of this speech model is downloaded (MB). files are counted once, also when the cache uses links"""
+    tot = 0; seen = set()
+    for r, _, fs in os.walk(hub_dir(name)):
+        for f in fs:
+            p_ = os.path.realpath(os.path.join(r, f))
+            if p_ in seen or p_.endswith('.incomplete'): continue
+            seen.add(p_)
+            try: tot += os.path.getsize(p_)
+            except OSError: pass
     return tot / 1e6
 def model_status():
     ms = []
     for n in model_names():
         mb = hub_mb(n); total = MODEL_MB.get(n, 1500)
-        ms.append({'name': n, 'mb': round(mb), 'total': total, 'ready': model_cached(n) and mb > total * 0.9})
+        ms.append({'name': n, 'mb': round(min(mb, total)), 'total': total, 'ready': model_cached(n) and mb > total * 0.8})
     return {'models': ms, 'busy': MODELDL['busy'], 'now': MODELDL['name'], 'error': MODELDL['err'], 'whisper': whisper_ok()}
 def model_get():
     if MODELDL['busy']: return {'ok': True}
