@@ -2,6 +2,23 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.52 · 12 November 2026
+
+### I find what you react to
+- Around every good moment I now read all the text that appears on screen in the 45 seconds before it: messages in the game chat, the killfeed, banners. It goes on the timeline of the moment
+- When you read a message out loud ("he said jele is the worst player..."), I find that message on screen. The clip starts just before the message appeared, not when you start reading it, and the message is shown big in the middle for 3 seconds, even when the layout cuts the chat off
+- The cause of a reaction (the kill, the death, the weird angle, the message) is worked out for every moment. The clip always starts before it, and the opening teaser now shows that cause instead of you reacting
+- The local AI knows this too: it is told that reacting to trash talk, a toxic or funny message, a weird angle or a lucky shot is good content, and that the cause is when something shows up, not when you talk about it
+- A moment with clear facts (a message you read out loud, or a real cause plus your scream or laugh) is never thrown out by the AI
+
+### Fewer replays
+- The slow-motion replay at the end now only comes after a real play: a kill from the match data, or a clutch or skill moment. Never for talking, a reaction or a chat message
+
+### "Oh my god" is not a moment
+- What you say counts much less on its own. "Oh my god", "no way" and the like only count fully when something else happens close by: the game, gunshots, laughing or screaming, chat going off or a marker. Talking loudly is not a reason by itself
+- A scream is now measured against how loud you normally talk, not against silence, so talking after a quiet bit no longer counts as screaming
+- Two different things 15 seconds apart are now two moments (before, the second one was often lost)
+
 ## 6.51 · 12 November 2026
 
 ### Captions learn from your edits, without asking
