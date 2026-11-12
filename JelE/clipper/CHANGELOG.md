@@ -2,6 +2,20 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.48 · 12 November 2026
+
+### The AI judges every moment
+- With the local AI installed, after every stream the AI reads what you said and what happened in the 20 best moments, and gives each one a mark from 1 to 10 with a short reason ("AI: knife kill at one hp, huge reaction")
+- Good marks push a moment up, "just buy phase talk" pushes it far down. The AI also writes the title when it has a better one
+- Tested with the real models: a clip with an ace and a big reaction got an 8, buy phase talk got a 2
+
+### A smart AI model
+- Settings > Captions > Local AI: choose Smart (4.7 GB, for a real graphics card like yours) or Small (1 GB, any pc). "Best for this pc" picks Smart when you have an AMD Radeon RX, NVIDIA RTX/GTX or Intel Arc card
+- Smart writes clearly better titles and understands harder editor commands. Already have the small one? Click Install to get the smart one, the small one keeps working until then
+
+### Editor
+- "The ending feels flat" now ends the short earlier. When I only understand part of a sentence, the AI model takes the whole sentence
+
 ## 6.47 · 12 November 2026
 
 ### Editor

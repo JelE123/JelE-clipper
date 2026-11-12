@@ -202,8 +202,8 @@ def _one(t, raw):
     if m and (neg or has('cut', 'knip')): return {'action': 'cut_word', 'value': m.group(1).strip()}
     m = re.search(r'\b(?:waar|wanneer|als)\s+ik\s+["\u201c\']?([\w\' ]{2,40}?)["\u201d\']?\s+(?:zeg|zei|roep|riep)\b', t)
     if m and (neg or has('knip', 'cut')): return {'action': 'cut_word', 'value': m.group(1).strip()}
-    if re.search(r'\b(drags?|sleept|duurt te lang|too slow|te traag|boring at the end|saai aan het eind)\b', t):
-        return {'action': 'end_earlier' if has('end', 'eind', 'einde', 'at the end', 'aan het eind') else 'start_later' if has('start', 'begin', 'begint', 'opening') else 'shorter', 'value': _secs(t, 3)}
+    if re.search(r'\b(drags?|sleept|duurt te lang|too slow|te traag|boring at the end|saai aan het eind|flat|vlak|dies|kabbelt|fizzles)\b', t):
+        return {'action': 'end_earlier' if has('end', 'ending', 'eind', 'einde', 'slot', 'at the end', 'aan het eind') else 'start_later' if has('start', 'begin', 'begint', 'opening') else 'shorter', 'value': _secs(t, 3)}
     # time: where it starts and ends
     if has('start', 'begin', 'starts', 'begint', 'opening', 'begins'):
         if has('kill', 'peak', 'action', 'actie', 'hoogtepunt', 'moment', 'shot', 'schreeuw', 'scream', 'shout', 'climax', 'payoff'): return {'action': 'start_at_peak', 'value': 0}
@@ -256,6 +256,7 @@ def _one(t, raw):
     if has('cam', 'webcam', 'facecam', 'camera') and (pos or has('top', 'boven', 'split')): return {'action': 'layout', 'value': 'split'}
     return None
 
+CMD_MISS = [0]
 def cmd_rules(text):
     """a sentence -> a list of actions, or None. several commands in one sentence are split on and / en / , / ; / then"""
     raw = (text or '').strip()
@@ -263,10 +264,11 @@ def cmd_rules(text):
     if re.match(r'^\s*(title|titel|hook)\b', raw, re.I):
         r = _one(raw.lower(), raw); return [r] if r else None
     parts = [p for p in re.split(r'\s*(?:,|;|\.\s|\band then\b|\bthen\b|\ben dan\b|\bdaarna\b|\band\b|\ben\b|\balso\b|\book\b|\bplus\b)\s*', raw, flags=re.I) if p and p.strip()]
-    acts = []
+    acts = []; CMD_MISS[0] = 0
     for p in parts:
         r = _one(p.lower(), p)
         if r and r not in acts: acts.append(r)
+        elif not r and len(re.findall(r'\w{3,}', p)) >= 2: CMD_MISS[0] += 1   # a part I did not understand
     if not acts:
         r = _one(raw.lower(), raw)
         if r: acts = [r]
@@ -278,8 +280,13 @@ def cmd_rules(text):
 def cmd_parse(text):
     """a sentence -> {'actions': [...], 'by': rules|model} or None"""
     r = cmd_rules(text)
-    if r: return {'actions': r, 'by': 'rules'}
+    if r and (not CMD_MISS[0] or not llm_ready()): return {'actions': r, 'by': 'rules'}
     if not llm_ready(): return None
+    m_ = _cmd_model(text)
+    if r and (not m_ or len(m_['actions']) <= len(r)): return {'actions': r, 'by': 'rules'}
+    return m_
+
+def _cmd_model(text):
     msg = [{'role': 'system', 'content': 'You turn a request about editing a gaming short into actions. Allowed actions: ' + ', '.join(CMD_ACTIONS) +
             '. Answer only with a JSON list like [{"action":"shorter","value":3}]. value: seconds for ' + ', '.join(TIME_ACTS) +
             '; jele, purple, classic or clean for style; pop, bounce, type, word or none for anim; split, frame, gameonly or landscape for layout; the text for title or cut_word; else 0.'},
