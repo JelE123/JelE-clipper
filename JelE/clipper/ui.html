@@ -732,6 +732,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
 <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
 <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
 <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></symbol>
@@ -1165,13 +1166,13 @@ async function loadSessions(){ SESSIONS=await api('/api/sessions');
   $('slist').innerHTML= SESSIONS.length? '<div class="grid">'+SESSIONS.map(s=>`<div class="card sc" data-sess="${esc(s.id)}">
       <div class="thumb" style="${s.top||s.path?`background-image:url('${s.top?`/thumb?sid=${encodeURIComponent(s.id)}&mid=${s.top}`:`/sthumb?sid=${encodeURIComponent(s.id)}`}')`:''}">${s.top||s.path?'':`<div class="ph">${s.status==='opnemen'?'<span class="badge opnemen"><i></i>recording</span>':ic('film')}</div>`}
         ${s.duration?`<span class="tl">${fmt(s.duration)}</span>`:''}<span class="badge ${esc(s.status)}"><i></i>${esc(stLabel(s.status))}</span></div>
-      <div class="bd"><b>${esc(s.title)}</b><div class="meta">${s.game?gameBadge(s.game):''}<span>${ic('spark')}${s.n_moments} moments</span><span>${ic('flag')}${s.n_markers} marked</span><span>${ic('film')}${s.n_shorts||0} shorts</span></div></div></div>`).join('')+'</div>'
+      <div class="bd"><b>${esc(s.title)}</b><div class="meta">${s.game?gameBadge(s.game):''}<span>${ic('spark')}${s.n_moments} moments</span><span>${ic('flag')}${s.n_markers} marked</span><span>${ic('film')}${s.n_shorts||0} shorts</span>${s.mic?`<span title="${esc(s.mic.why||'')}">${ic('mic')}${s.mic.track?'track '+s.mic.track:'all audio'}</span>`:''}</div></div></div>`).join('')+'</div>'
     : '<div class="empty"><div class="eic"><svg class="i"><use href="#i-spark"/></svg></div><b>No streams yet</b>Leave the clipper on and start recording in OBS (or let OBS record automatically when you go live). After your stream your best moments are here.</div>';
   $$('[data-sess]').forEach(c=>c.onclick=async()=>{ await openSession(c.dataset.sess); tab('mom'); }); renderLast(); }
 function renderLast(){ const el=$('lastS'); if(!el) return; const s=SESSIONS[0];
   if(!s){ el.innerHTML='<div class="empty"><div class="eic"><svg class="i"><use href="#i-spark"/></svg></div><b>No streams yet</b>Start recording in OBS (or let OBS record automatically when you go live). The clipper needs to be on, it starts by itself with OBS.</div>'; return; }
   el.innerHTML=`<div class="card lastS"><div class="thumb" style="${s.top||s.path?`background-image:url('${s.top?`/thumb?sid=${encodeURIComponent(s.id)}&mid=${s.top}`:`/sthumb?sid=${encodeURIComponent(s.id)}`}')`:''}">${s.top||s.path?'':`<div class="ph">${ic('film')}</div>`}<span class="badge ${esc(s.status)}"><i></i>${esc(stLabel(s.status))}</span></div>
-    <div class="bd"><b>${esc(s.title)}</b><div class="meta">${s.game?gameBadge(s.game):''}<span>${ic('clock')}${s.duration?fmt(s.duration):'...'}</span><span>${ic('spark')}${s.n_moments} moments</span><span>${ic('flag')}${s.n_markers} marked</span><span>${ic('film')}${s.n_shorts||0} shorts</span></div>
+    <div class="bd"><b>${esc(s.title)}</b><div class="meta">${s.game?gameBadge(s.game):''}<span>${ic('clock')}${s.duration?fmt(s.duration):'...'}</span><span>${ic('spark')}${s.n_moments} moments</span>${s.mic?`<span title="${esc(s.mic.why||'')}">${ic('mic')}${s.mic.track?'captions: track '+s.mic.track:'captions: all audio'}</span>`:''}<span>${ic('flag')}${s.n_markers} marked</span><span>${ic('film')}${s.n_shorts||0} shorts</span></div>
       <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap"><button class="btn pri" id="lsMom">${ic('spark')}View moments</button><button class="btn" id="lsMan">${ic('cut')}Go through the video yourself</button><button class="btn ghost" id="lsRc" title="Text with your best moments for Discord or X">${ic('text')}Recap</button></div></div></div>`;
   $('lsMom').onclick=async()=>{ await openSession(s.id); tab('mom'); }; $('lsMan').onclick=async()=>{ await openSession(s.id); manualEdit(); }; $('lsRc').onclick=()=>recapOpen(s.id); }
 $$('#impT button').forEach(b=>b.onclick=()=>{ $$('#impT button').forEach(x=>x.classList.toggle('on',x===b)); $$('.impbox').forEach(x=>x.classList.toggle('on',x.dataset.ib===b.dataset.it)); });
@@ -1340,7 +1341,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
   tiles($('styT'),STYLES,styleTile,ED.style,v=>{ ED.style=v; $('capOn').checked=true; ED.caps=true; });
   $('capOn').onchange=()=>ED.caps=$('capOn').checked; $('zoomOn').onchange=()=>ED.zoom=$('zoomOn').checked;
   $('jcOn').onchange=()=>{ ED.jumpcut=$('jcOn').checked; autoCuts(); }; $('sfxOn').onchange=()=>ED.sfx=$('sfxOn').checked;
-  $('hookOpts').innerHTML=(m.hooks||[]).filter(h=>h&&h!==(m.title||'').toUpperCase()).map(h=>`<button title="Use this title">${esc(h)}</button>`).join('');
+  $('hookOpts').innerHTML=(m.hooks||[]).map((h,i)=>[h,(m.hooks_src||[])[i]]).filter(([h])=>h&&h!==(m.title||'').toUpperCase()).map(([h,src])=>`<button title="Use this title${src?' · from '+esc(src):''}">${esc(h)}</button>`).join('');
   $$('#hookOpts button').forEach(b=>b.onclick=()=>{ $('hook').value=b.textContent; $('tit').value=b.textContent.toLowerCase(); });
   presetInit(); histInit(); fxInit(m,opt).then(()=>draftLoad()); musicInit(); ed61Init();
   $('playClip').onclick=()=>togglePlay(true); optInit();

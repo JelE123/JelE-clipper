@@ -11,6 +11,7 @@ DATA = os.path.join(HERE, 'data')
 os.makedirs(DATA, exist_ok=True)
 PORT = 8765
 URL = f'http://localhost:{PORT}'
+API = f'http://127.0.0.1:{PORT}'   # for our own checks: no IPv6 detour
 LOG = os.path.join(DATA, 'clipper.log')
 NOWIN = 0x08000000 if os.name == 'nt' else 0
 RESTART = 75                      # exit code the Clipper uses for "start me again" (updates, going back)
@@ -38,14 +39,14 @@ def py(window=False):
 
 def running():
     try:
-        urllib.request.urlopen(URL + '/api/status', timeout=1.5).read(); return True
+        urllib.request.urlopen(API + '/api/status', timeout=1.5).read(); return True
     except Exception:
         return False
 
 
 def call(path, body=None):
     try:
-        req = urllib.request.Request(URL + path, data=json.dumps(body).encode() if body is not None else None, headers={'Content-Type': 'application/json'})
+        req = urllib.request.Request(API + path, data=json.dumps(body).encode() if body is not None else None, headers={'Content-Type': 'application/json'})
         return json.loads(urllib.request.urlopen(req, timeout=5).read() or b'{}')
     except Exception:
         return {}

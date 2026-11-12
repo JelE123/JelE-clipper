@@ -32,7 +32,7 @@ def list_sess():
     for f in glob.glob(os.path.join(SESS, '*', 'sessie.json')):
         try:
             s = json.load(open(f, encoding='utf-8'))
-            out.append({k: s.get(k) for k in ('id', 'title', 'start', 'stop', 'path', 'status', 'duration', 'kind', 'parent', 'imported')} | {'game': game_quick(s)['id'], 'n_markers': len(s.get('markers', [])),  'n_moments': len(s.get('moments', [])), 'n_shorts': per.get(s.get('id'), 0), 'top': (s.get('moments') or [{}])[0].get('id')})
+            out.append({k: s.get(k) for k in ('id', 'title', 'start', 'stop', 'path', 'status', 'duration', 'kind', 'parent', 'imported', 'mic')} | {'game': game_quick(s)['id'], 'n_markers': len(s.get('markers', [])),  'n_moments': len(s.get('moments', [])), 'n_shorts': per.get(s.get('id'), 0), 'top': (s.get('moments') or [{}])[0].get('id')})
         except Exception: pass
     return sorted(out, key=lambda x: x.get('start') or 0, reverse=True)
 

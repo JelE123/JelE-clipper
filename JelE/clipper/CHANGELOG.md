@@ -2,6 +2,21 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.25 · 12 November 2026
+
+### Faster app on Windows
+- The speed test found that on Windows every click in the app could wait about 2 seconds: Windows first tries the IPv6 address of "localhost", where the Clipper did not listen. The Clipper now listens there too, so the app answers right away
+
+### Titles that fit the story (plan F2.8, first part)
+- A title never claims something the match data says did not happen (no "ACE" when it was a 3K)
+- New title from the facts of the play, for example "ACE WITH THE SHERIFF" or "1V3 CLUTCH TO WIN THE ROUND"
+- "Clip that" is now a reason for a moment, never its title
+- Words the speech model could not understand are never part of a title
+- When you hover over a title suggestion, you see where it comes from: what you said, the match data, or why it is a moment
+
+### Your mic track (plan F2.3, first part)
+- Every stream now shows which audio track the captions listened to (your mic track or all audio), and why
+
 ## 6.24 · 12 November 2026
 
 ### Moments right after your stream (plan F2.1)

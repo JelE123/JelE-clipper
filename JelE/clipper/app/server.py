@@ -546,6 +546,10 @@ def main():
     threading.Thread(target=make_shortcuts, daemon=True).start()
     for fn in (live_listen_loop, guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop):
         threading.Thread(target=fn, daemon=True).start()
+    try:   # also on the IPv6 loopback: on Windows "localhost" tries ::1 first and would wait 2 seconds per request otherwise
+        class _Srv6(ThreadingHTTPServer): address_family = socket.AF_INET6
+        srv6 = _Srv6(('::1', PORT), H); threading.Thread(target=srv6.serve_forever, daemon=True).start()
+    except Exception: pass
     log(f'Open http://localhost:{PORT} in your browser')
     if SET.get('phone'): phone_start()
     if os.name == 'nt' and '--no-browser' not in sys.argv:

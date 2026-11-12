@@ -194,6 +194,13 @@ def analyse(sid):
     if dur < 5:
         s['status'] = 'recording too short or unreadable'; save_sess(s); log('Could not read the length of the recording:', path); return
     s['duration'] = dur; log(f'Recording is {fmt(dur)} long')
+    try:   # which audio the captions listen to, shown with the stream (plan F2.3)
+        mt = int(SET.get('mic_track') or 0)
+        if mt > 0: s['mic'] = {'track': mt, 'why': f'you picked track {mt} in Settings'}
+        elif mt < 0: s['mic'] = {'track': 0, 'why': 'you picked all audio in Settings'}
+        else: pk, wy, _ = find_mic(path); s['mic'] = {'track': pk, 'why': wy}
+        save_sess(s)
+    except Exception: pass
     T = int(dur / step) + 1
     score = np.zeros(T, dtype=np.float32); why = [dict() for _ in range(T)]
     # 1. getting loud (voice band). the first and last seconds are skipped: starting the recording is not a moment
@@ -376,7 +383,8 @@ def analyse(sid):
             c['start'], c['end'] = round(st, 1), round(en, 1)
             c['words'] = [w for w in words if st - 1 <= w[0] <= en + 1]
             c['text'] = ' '.join(w[2] for w in c['words'])[:400]
-            c['title'] = title_from(near, hw) or fallback_title(c, s)
+            c['title'] = title_from(near, hw) or fact_title(c) or fallback_title(c, s)
+            if not title_fits(c['title'], c): c['title'] = fact_title(c) or fallback_title(c, s)
             c['hooks'] = hook_options(near, hw, c, s)
             s = load_sess(sid); s['status'] = f'luisteren ({n+1}/{len(cands)})'; save_sess(s); prog('Picking the moments', 75 + 23 * (n + 1) / len(cands))
         shutil.rmtree(work, ignore_errors=True)
@@ -435,11 +443,12 @@ def fallback_title(c, s=None):
 
 def hook_options(near, hw, c, s):
     """up to 3 different hooks to choose from"""
-    out = []
-    def add(x):
+    out = []; src = []
+    def add(x, why='standard'):
         x = re.sub(r'\s+', ' ', (x or '').strip().upper())
-        if x and x not in out: out.append(x)
-    add(title_from(near, hw))
+        if x and x not in out and title_fits(x, c) and not CLIP_SAY.search(x.lower()): out.append(x); src.append(why)
+    add(title_from(near, hw), 'what you said')
+    add(fact_title(c), 'the match data')
     if near:   # the second best phrase
         phrases = []; cur = [near[0]]
         for a, b in zip(near, near[1:]):
@@ -449,14 +458,15 @@ def hook_options(near, hw, c, s):
         ranked = sorted(phrases, key=lambda ph: -(len(SAY_STRONG.findall(' '.join(w[2] for w in ph))) * 3 + len(SAY_HYPE.findall(' '.join(w[2] for w in ph)))))
         for ph in ranked[:3]:
             t = re.sub(r"[^\w' !?]", '', ' '.join(w[2] for w in ph[:6] if w[2] != UNCLEAR)).strip()
-            if 2 <= len(t) <= 40 and not SAY_LAUGH.fullmatch(t.lower()): add(t)
-    add(fallback_title(c, s))
+            if 2 <= len(t) <= 40 and not SAY_LAUGH.fullmatch(t.lower()): add(t, 'what you said')
+    add(fallback_title(c, s), 'why it is a moment')
     g = c.get('game')
     if g: add({'ACE': 'THEY NEVER STOOD A CHANCE', '4K': 'ONE MORE AND IT WAS AN ACE'}.get(g['label'], 'HOW DID I WIN THIS'))
     else:
         hk = gprof().get('hooks') or []
         if hk: add(hk[(int(c.get('t', 0)) // 7) % len(hk)])
     add('WAIT FOR IT...')
+    c['hooks_src'] = src[:3]   # where each title comes from, shown when you pick one
     return out[:3]
 
 def title_from(near, hw):
@@ -474,10 +484,33 @@ def title_from(near, hw):
         sc = len(SAY_STRONG.findall(txt)) * 3 + len(SAY_HYPE.findall(txt)) + len(SAY_LAUGH.findall(txt)) - (len(ph) > 6)
         if hw and any(w in ph for w in hw): sc += 1
         if best is None or sc > best[0]: best = (sc, ph)
-    words = [w[2] for w in best[1]][:6]
+    words = [w[2] for w in best[1] if w[2] != UNCLEAR][:6]
     t = re.sub(r"[^\w' !?]", '', ' '.join(words)).strip().upper()
-    if SAY_LAUGH.fullmatch(t.lower() or 'x'): return ''
+    if SAY_LAUGH.fullmatch(t.lower() or 'x') or CLIP_SAY.search(t.lower()): return ''   # "clip that" is the reason, not the title
     return t[:38]
+
+CLAIMS = re.compile(r"\b(ACE|[2-5]K|1 ?V ?[2-5]|CLUTCH|ONE ?TAP|NINJA ?DEFUSE)\b")
+def title_fits(t, c):
+    """a title must not claim something the game data says did not happen (an "ACE" that was a 3K)"""
+    g = c.get('game')
+    m = CLAIMS.search((t or '').upper())
+    if not m or not g: return True
+    claim = m.group(1).replace(' ', '')
+    lab = (g.get('label') or '').upper().replace(' ', '')
+    if claim in ('ACE', '2K', '3K', '4K', '5K'): return claim == lab or (claim == '5K' and lab == 'ACE') or (claim == 'ACE' and lab == '5K')
+    if claim.startswith('1V') or claim == 'CLUTCH': return 'CLUTCH' in lab or lab.startswith('1V')
+    return True
+
+def fact_title(c):
+    """a title from what happened (situation, action, result), from the match data"""
+    g = c.get('game')
+    if not g: return ''
+    lab = (g.get('label') or '').upper(); wpn = (g.get('weapon') or '').upper(); mp = (g.get('map') or '').upper()
+    if lab in ('ACE', '5K'): return f'ACE WITH THE {wpn}' if wpn else (f'ACE ON {mp}' if mp else 'ACE')
+    if lab == '4K': return f'4K WITH THE {wpn}' if wpn else '4 KILLS IN ONE ROUND'
+    if 'CLUTCH' in lab or lab.startswith('1V'): return f'{lab} TO WIN THE ROUND'
+    if lab == '3K': return f'3K ON {mp}' if mp else '3 KILLS, ONE ROUND'
+    return ''
 
 
 # ---------------------------------------------------------------- 7.0: listening along during the stream (plan F2.1)
