@@ -8,6 +8,14 @@ end
 
 function script_load(settings)
   local dir = script_path():gsub("/", "\\")
+  local pyw = dir .. ".venv\\Scripts\\pythonw.exe"
+  local f = io.open(pyw, "r")
+  if f ~= nil then
+    -- no black window: only the JelE icon next to the clock. if the clipper already runs, nothing happens
+    f:close()
+    os.execute('start "" "' .. pyw .. '" "' .. dir .. 'launcher.pyw" --no-window')
+    return
+  end
   local bat = dir .. "start.bat"
   -- minimised window; if the clipper already runs, the second copy closes itself
   os.execute('start "JelE Clipper" /min cmd /c ""' .. bat .. '" --no-browser"')

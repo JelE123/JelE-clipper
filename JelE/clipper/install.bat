@@ -26,6 +26,9 @@ if %errorlevel% neq 0 (
   exit /b
 )
 echo.
-echo  Done! From now on, start the clipper with start.bat
+echo  Done! The Clipper starts now, in its own window.
+echo  From now on, start it with the "JelE Clipper" icon on your desktop.
+echo  (start.bat still works too: that one shows the black window, handy when something is wrong)
 echo.
-pause
+start "" .venv\Scripts\pythonw.exe launcher.pyw
+timeout /t 6 >nul

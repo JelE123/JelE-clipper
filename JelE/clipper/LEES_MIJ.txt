@@ -10,10 +10,10 @@ What it does
 
 Install once
 1. Double-click install.bat and wait until it says "Done!".
-2. Start the Clipper with start.bat and go through the setup wizard (Settings > Setup wizard).
+2. Start the Clipper with the "JelE Clipper" icon on your desktop (or start.bat, which also shows the black window) and go through the setup wizard (Settings > Setup wizard).
 
 Every stream
-1. Start start.bat (or let OBS start it with the script jele_clipper.lua). Leave the black window open.
+1. Start the Clipper with the "JelE Clipper" icon (or let OBS start it with the script jele_clipper.lua). It keeps running in the background: you find it as the J icon next to the clock (Open, Clip now, Restart, Quit).
 2. Record in OBS while you stream. Tip: Settings > Output > Recording format MKV, and
    Settings > Advanced > "Automatically record when streaming".
 3. Good moment? Press Ctrl+Alt+K, "Clip!" in your JelE panel, or let a mod type !clip.

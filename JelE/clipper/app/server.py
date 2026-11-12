@@ -52,6 +52,7 @@ class H(BaseHTTPRequestHandler):
             try: GAME_TL.v = (lib_load().get(os.path.basename(q['f'][0])) or {}).get('game')
             except Exception: pass
         if p == '/': return self.file(UI, 'text/html; charset=utf-8')
+        if p in ('/icon.png', '/favicon.ico'): return self.file(os.path.join(HERE, 'icon.png' if p == '/icon.png' else 'jele.ico'), 'image/png' if p == '/icon.png' else 'image/x-icon')
         if p == '/api/status':
             cur = None
             if CUR['id']:
@@ -330,6 +331,11 @@ class H(BaseHTTPRequestHandler):
             JOBS.put(('analyse', s['id'])); return self.j({'ok': True, 'sid': s['id']})
         if p == '/api/marker':
             return self.j({'ok': add_marker('website')})
+        if p == '/api/quit':   # from the icon next to the clock: close (or restart) the Clipper
+            log('Restarting the Clipper' if b.get('restart') else 'The Clipper is closed')
+            restart_app(0.3) if b.get('restart') else threading.Thread(target=lambda: (time.sleep(0.3), os._exit(0)), daemon=True).start()
+            return self.j({'ok': True})
+        if p == '/api/shortcuts': return self.j({'ok': make_shortcuts(True)})
         if p == '/api/settings':
             SET.update({k: v for k, v in b.items() if k in DEFAULTS}); save_settings(SET); return self.j({'ok': True, 'settings': SET})
         if p == '/api/open':
@@ -536,6 +542,7 @@ def main():
     threading.Thread(target=chat_loop, daemon=True).start()
     JOBS.restore()
     for _ in range(n_workers()): threading.Thread(target=worker, daemon=True).start()
+    threading.Thread(target=make_shortcuts, daemon=True).start()
     for fn in (guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop):
         threading.Thread(target=fn, daemon=True).start()
     log(f'Open http://localhost:{PORT} in your browser')

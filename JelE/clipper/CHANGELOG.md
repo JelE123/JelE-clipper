@@ -2,6 +2,19 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.19 · 12 November 2026
+
+### No more black window (plan F1.3)
+- New: a "JelE Clipper" shortcut with the J icon, on your desktop and in the start menu. The Clipper puts it there by itself at the next start
+- That shortcut starts the Clipper without the black window and opens it in its own app window, without tabs or an address bar
+- The Clipper keeps running in the background as a J icon next to the clock: Open, Clip now, Log, Restart and Quit
+- Updates and going back to an older version now restart the Clipper without opening new windows
+- If the Clipper ever stops unexpectedly, it starts again by itself. If it keeps stopping, it opens the log so you can see why
+- A new version that does not start is still put back to the previous one by itself
+- The OBS script now starts the Clipper without a window too (only the icon next to the clock)
+- The log of the last run is kept in data/clipper.log (and the run before that in clipper_vorige.log)
+- start.bat still works and still shows the black window, handy when something is wrong
+
 ## 6.18 · 12 November 2026
 
 ### Safer and steadier (plan F1.1 and F1.2)

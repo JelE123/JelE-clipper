@@ -179,9 +179,11 @@ def install_update():
         return {'ok': False, 'why': str(e)[:160] if isinstance(e, ValueError) else friendly(str(e))}
     finally: UPD['busy'] = False
 
+RESTART_CODE = 75   # the launcher (launcher.pyw) starts the Clipper again when it stops with this code
 def restart_app(delay=1.5):
     def go():
         time.sleep(delay)
+        if os.environ.get('JELE_LAUNCHER'): os._exit(RESTART_CODE)   # no new window: the launcher restarts it
         if os.name == 'nt': subprocess.Popen(['cmd', '/c', 'start', '', '/min', os.path.join(HERE, 'start.bat'), '--no-browser'], cwd=HERE)
         else: subprocess.Popen([sys.executable] + sys.argv, cwd=HERE)
         os._exit(0)
@@ -478,3 +480,25 @@ def phone_guard_loop():
                     SET['phone'] = False; save_settings(SET); phone_stop(); log('Phone access turned off: not used for a week')
         except Exception: pass
         time.sleep(3600)
+
+# ---------------------------------------------------------------- 7.0: shortcuts with the JelE icon (no black window)
+def make_shortcuts(force=False):
+    """a "JelE Clipper" shortcut on your desktop and in the start menu. it opens the Clipper in its own window, without the black window"""
+    if os.name != 'nt': return False
+    if SET.get('shortcuts_made') and not force: return False
+    pyw = os.path.join(HERE, '.venv', 'Scripts', 'pythonw.exe')
+    if not os.path.exists(pyw): return False
+    q = lambda x: x.replace("'", "''")   # PowerShell quoting
+    pyw, tgt, ico, here = q(pyw), q(os.path.join(HERE, 'launcher.pyw')), q(os.path.join(HERE, 'jele.ico')), q(HERE)
+    ps = ("$s = New-Object -ComObject WScript.Shell; "
+          "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { "
+          "$l = $s.CreateShortcut((Join-Path $d 'JelE Clipper.lnk')); "
+          f"$l.TargetPath = '{pyw}'; $l.Arguments = '\"{tgt}\"'; $l.WorkingDirectory = '{here}'; "
+          f"$l.IconLocation = '{ico},0'; $l.Description = 'JelE Clipper'; $l.Save() }}")
+    try:
+        r = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', ps], capture_output=True, text=True, timeout=30, creationflags=NOWIN)
+        ok = r.returncode == 0
+    except Exception: ok = False
+    if ok:
+        SET['shortcuts_made'] = True; save_settings(SET); log('Shortcut "JelE Clipper" put on your desktop and in the start menu')
+    return ok
