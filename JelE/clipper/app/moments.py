@@ -5,6 +5,8 @@ HYPE = re.compile(r'\b(lul|kekw|omegalul|lmao+|lmfao|lol+|w+|clip|clipit|clip it
 SAY_HYPE = GameRe(r"\b(no+ way|oh my god|oh my gosh|omg|let'?s go+|lets go+|what the|wha+t|bro+|yo+|holy|insane|crazy|ace|clutch|one tap|onetap|no+|yes+|wow|sheesh|are you kidding|are you serious|how did|did you see|i can'?t believe|nah+|wait|oh no|get out|sick|beautiful|perfect|unreal|disgusting|nasty|cracked)\b", 'hype')
 SAY_STRONG = GameRe(r"\b(no+ way|oh my god|oh my gosh|let'?s go+|lets go+|what the|holy|insane|crazy|ace|clutch|one tap|are you kidding|are you serious|i can'?t believe|unreal|disgusting|cracked|sheesh)\b", 'strong')
 SAY_LAUGH = re.compile(r'\b(ha(ha)+|he(he)+|lmao|lol)\b', re.I)
+# you say the moment should be a clip, in English or Dutch: the strongest reason there is
+CLIP_SAY = re.compile(r"(someone |somebody |iemand |yo |oh |ok |okay |bro )?(clip (that|it|this|dat|die|het|deze|em|'m)|clipt? dat|that'?s a clip|thats a clip|dat is een clip|dit moet een clip|dat moet (een clip|geclipt)|dit moet geclipt|clip clip|clippen)\b")
 try: import gamewords             # agents, abilities, maps, weapons, callouts and stream talk (gamewords.py)
 except Exception: gamewords = None
 
@@ -136,6 +138,7 @@ def extract_wav(path, start, dur, out):
         # clean the voice a bit: rumble out, quiet words up. helps the speech model
         r = run(base + ['-af', 'highpass=f=70,lowpass=f=7800,dynaudnorm=f=200:g=11'] + tail, capture_output=True, text=True, errors='replace')
         if r.returncode == 0 and os.path.exists(out) and os.path.getsize(out) > 1000: return True
+        if getattr(LIVE_TL, 'on', False) or getattr(LIVE_TL, 'reading', False): return False   # a file that is still being recorded: try again later
         _AF_OK['ok'] = False; log('Audio filter does not work with this ffmpeg, continuing without it:', (r.stderr or '').strip()[-200:])
     r = run(base + tail, capture_output=True, text=True, errors='replace')
     if r.returncode != 0 or not os.path.exists(out):
@@ -145,6 +148,16 @@ def extract_wav(path, start, dur, out):
         if r.returncode != 0 or not os.path.exists(out):
             log('Getting the audio out of the recording failed:', (r.stderr or '').strip()[-300:]); return False
     return True
+
+def said_start(words, want, en):
+    """a start near `want` that falls in a pause between sentences, so the clip does not begin mid-sentence"""
+    best, bs = max(0.0, want), -1.0
+    for a, b in zip(words, words[1:]):
+        g = b[0] - a[1]
+        if want - 4 <= b[0] <= want + 4 and b[0] < en - 6:
+            sc = g - abs(b[0] - want) * 0.05
+            if g > 0.35 and sc > bs: best, bs = max(0.0, b[0] - 0.25), sc
+    return best
 
 def sentence_cut(words, peak, L, dur):
     """clip start and end on natural pauses: start before the moment, end once the reaction is over"""
@@ -197,8 +210,13 @@ def analyse(sid):
     ALL = []
     if SET.get('smart', True) and whisper_ok() and (dur <= 1800 or has_cuda() or (CORES >= 8 and dur <= 5 * 3600)):
         work0 = os.path.join(sdir(sid), 'tmp_full'); os.makedirs(work0, exist_ok=True)
-        chunk = 300.0; a0 = 0.0; nchunks = int(math.ceil(dur / chunk)); UNSURE = []
+        chunk = LIVE_CHUNK; a0 = 0.0; nchunks = int(math.ceil(dur / chunk)); UNSURE = []
+        live = live_cache(sid, path); reused = 0
         while a0 < dur:
+            c_ = live['chunks'].get(str(int(a0))) if live else None
+            if c_ is not None and a0 + chunk + 2 <= dur:   # already heard during the stream: no need to listen again
+                ALL += [tuple(w) for w in c_['words'] if w[0] >= (ALL[-1][0] + 0.01 if ALL else 0)]; UNSURE += c_.get('unsure') or []
+                reused += 1; a0 += chunk; continue
             s = load_sess(sid); s['status'] = f'luisteren ({int(a0 // chunk) + 1}/{nchunks})'; save_sess(s); prog('Listening to the whole stream', 5 + 70 * a0 / dur)
             wav = os.path.join(work0, 'c.wav'); extract_wav(path, a0, min(chunk + 2, dur - a0), wav)
             try:
@@ -206,6 +224,10 @@ def analyse(sid):
                 UNSURE += [round(u + a0, 2) for u in getattr(UNSURE_TL, 'v', [])]
             except Exception: traceback.print_exc()
             a0 += chunk
+        if reused:
+            log(f'{reused} of {nchunks} parts were already heard during the stream')
+            try: json.dump({'live': True}, open(os.path.join(sdir(sid), 'transcript_bron.json'), 'w'))
+            except OSError: pass
         shutil.rmtree(work0, ignore_errors=True)
         try:
             json.dump(ALL, open(os.path.join(sdir(sid), 'transcript.json'), 'w', encoding='utf-8'))
@@ -266,14 +288,17 @@ def analyse(sid):
             for j in range(max(0, i - int(6 / step)), min(T, i + int(3 / step))):
                 score[j] += 9; why[j]['tclip'] = c_
     # 2d. you said "clip that" / "clip it": counts like the clip button
-    said_clip = []
+    said_clip = []   # (start, end) of the words "clip that"
     for i_, w in enumerate(ALL):
-        ph = ' '.join(x[2] for x in ALL[i_:i_ + 2]).lower()
-        if re.match(r"clip (that|it|this)\b", re.sub(r"[^\w ]", '', ph)) and (not said_clip or w[0] - said_clip[-1] > 10): said_clip.append(w[0])
+        seg = [x for x in ALL[i_:i_ + 4] if x[0] - w[0] < 2.5]
+        ph = re.sub(r"[^\w' ]", '', ' '.join(x[2] for x in seg).lower())
+        m_ = CLIP_SAY.match(ph)
+        if m_ and (not said_clip or w[0] - said_clip[-1][0] > 10):
+            n_ = len(m_.group(0).split()); said_clip.append((w[0], seg[min(n_, len(seg)) - 1][1]))
     if said_clip:
         s = load_sess(sid); have = [m['t'] for m in s.get('markers', [])]
-        for t_ in said_clip:
-            if not any(abs(t_ - 2 - h) < 8 for h in have): s.setdefault('markers', []).append({'t': round(t_ - 2, 2), 'src': 'stem', 'note': ''})
+        for t_, e_ in said_clip:
+            if not any(abs(t_ - 2 - h) < 8 for h in have): s.setdefault('markers', []).append({'t': round(t_ - 2, 2), 'src': 'stem', 'note': '', 'said': [round(t_, 2), round(e_, 2)]})
         save_sess(s); log(f'You said "clip that" {len(said_clip)}x, those count as the Clip button')
     # talk moments: stretches where you talk a lot and people laugh (for the highlights video)
     if ALL:
@@ -304,17 +329,19 @@ def analyse(sid):
         if any(abs(t - u) < L * 0.8 for u in taken): continue
         taken.append(t)
         w = why[i]; mk = 'marker' in w
-        if mk: t = min((m['t'] for m in s.get('markers', [])), key=lambda x: abs(x - t)) - 2
+        said = None
+        if mk:
+            mm_ = min(s.get('markers', []), key=lambda m: abs(m['t'] - t)); t = mm_['t'] - 2; said = mm_.get('said')
         reasons = []
         g = w.get('game')
         if g: reasons.append(f"{g['label']} in round {g['round']}" + (f" on {g['map']}" if g.get('map') else '')); t = g['t'] - 1
         if w.get('tclip'): reasons.append(f"Twitch clip by {w['tclip']['by'] or 'a viewer'}")
-        if mk: reasons.append({'paneel': 'Clip button', 'sneltoets': 'Clip hotkey', 'chat': '!clip in chat', 'website': 'Clip button', 'streamdeck': 'Stream Deck', 'stem': 'you said "clip that"'}.get(w['marker'], 'Clip button'))
+        if mk: reasons.insert(0, (f'you said "clip that" at {fmt(said[0])}' if said else {'paneel': 'Clip button', 'sneltoets': 'Clip hotkey', 'chat': '!clip in chat', 'website': 'Clip button', 'streamdeck': 'Stream Deck', 'stem': 'you said "clip that"'}.get(w['marker'], 'Clip button')))
         if w.get('chat'): reasons.append(f"chat went off ({w['chat']} messages in 10 sec)")
         if w.get('hype'): reasons.append(f"{w['hype']}x LUL, W, clip and the like")
         if w.get('audio'): reasons.append('it suddenly got loud')
         if w.get('say'): reasons.append(f'you said "{w["say"].strip(".,!?")}"')
-        cands.append({'id': uuid.uuid4().hex[:8], 't': round(t, 1), 'score': round(float(score[i]), 1), 'reasons': reasons or ['standout moment'], 'marker': mk, 'game': g})
+        cands.append({'id': uuid.uuid4().hex[:8], 't': round(t, 1), 'score': round(float(score[i]), 1), 'reasons': reasons or ['standout moment'], 'marker': mk, 'game': g, 'said': said})
     # fine pass: listen to what you say around each moment
     if smart and cands:
         s['status'] = f'luisteren (0/{len(cands)})'; save_sess(s)
@@ -344,6 +371,8 @@ def analyse(sid):
             if c.get('game'):   # the whole play must be in it: from the first kill to just after the last
                 st = max(0, min(st, c['game']['t0'] - 4)); en = min(dur, max(en, c['game']['t'] + 2.5))
                 if en - st > L + 15: st = max(0, en - L - 15)
+            if c.get('said'):   # "clip that": the moment is what happened before, and it ends right after you say it
+                en = min(dur, c['said'][1] + 0.6); st = said_start(words, en - L, en)
             c['start'], c['end'] = round(st, 1), round(en, 1)
             c['words'] = [w for w in words if st - 1 <= w[0] <= en + 1]
             c['text'] = ' '.join(w[2] for w in c['words'])[:400]
@@ -353,7 +382,8 @@ def analyse(sid):
         shutil.rmtree(work, ignore_errors=True)
     else:
         for c in cands:
-            if c['marker']: st = c['t'] + 7 - L
+            if c.get('said'): st = c['said'][1] + 0.6 - L
+            elif c['marker']: st = c['t'] + 7 - L
             else: st = c['t'] - L * 0.72
             c['start'] = round(max(0, st), 1); c['end'] = round(min(dur, max(0, st) + L), 1)
     try: story_bonus(ALL, cands, s)
@@ -448,3 +478,58 @@ def title_from(near, hw):
     t = re.sub(r"[^\w' !?]", '', ' '.join(words)).strip().upper()
     if SAY_LAUGH.fullmatch(t.lower() or 'x'): return ''
     return t[:38]
+
+
+# ---------------------------------------------------------------- 7.0: listening along during the stream (plan F2.1)
+# every few minutes the newest finished part of the recording is turned into text, at low priority and with few cores.
+# after the stream the analysis only has to do the last part: the moments are there within minutes, also after 3 hours.
+LIVE_CHUNK = 300.0
+def live_cache_file(sid): return os.path.join(sdir(sid), 'live_luisteren.json')
+def live_cache(sid, path):
+    try:
+        c = json.load(open(live_cache_file(sid), encoding='utf-8'))
+        if c.get('chunk') != LIVE_CHUNK or c.get('mic') != int(SET.get('mic_track') or 0) or c.get('lang') != (SET.get('language') or 'en'): return None
+        if os.path.normcase(os.path.abspath(c.get('path') or '')) != os.path.normcase(os.path.abspath(path)): return None
+        return c
+    except Exception: return None
+LISTEN = {'sid': None, 'done': 0, 'why': '', 'at': 0}
+def live_listen_ok():
+    if not SET.get('live_listen', True) or not whisper_ok() or SET.get('smart', True) is False: return 'off'
+    if not (has_cuda() or CORES >= 8): return 'this pc is not strong enough to do it during the stream'
+    if pc_busy() or (len(_CPU['hist']) >= 2 and sum(_CPU['hist']) / len(_CPU['hist']) > 80): return 'your pc is busy'
+    return ''
+def live_listen_once():
+    sid = CUR.get('id')
+    if not sid: return
+    s = load_sess(sid); path = s.get('live_path')
+    LISTEN['sid'] = sid
+    if not path or not os.path.exists(path): LISTEN['why'] = 'waiting for the recording file'; return
+    why = live_listen_ok()
+    if why: LISTEN['why'] = why; return
+    if os.path.splitext(path)[1].lower() == '.mp4':
+        LISTEN['why'] = 'an MP4 cannot be read while it records (MKV can)'; return
+    c = live_cache(sid, path) or {'path': path, 'chunk': LIVE_CHUNK, 'mic': int(SET.get('mic_track') or 0), 'lang': SET.get('language') or 'en', 'chunks': {}}
+    elapsed = time.time() - float(s.get('start') or time.time())
+    a0 = 0.0
+    while str(int(a0)) in c['chunks']: a0 += LIVE_CHUNK
+    if a0 + LIVE_CHUNK + 20 > elapsed: LISTEN['why'] = ''; return   # the next part is not finished yet
+    work = os.path.join(sdir(sid), 'tmp_live'); os.makedirs(work, exist_ok=True)
+    wav = os.path.join(work, 'c.wav')
+    try:
+        LIVE_TL.on = True
+        try:
+            if not extract_wav(path, a0, LIVE_CHUNK + 2, wav): LISTEN['why'] = 'the recording cannot be read yet'; return
+            words = [(round(a + a0, 2), round(b + a0, 2), w) for a, b, w in transcribe(wav, 'scan')]
+        finally: LIVE_TL.on = False
+        c['chunks'][str(int(a0))] = {'words': words, 'unsure': [round(u + a0, 2) for u in getattr(UNSURE_TL, 'v', [])], 'at': time.time()}
+        tmp = live_cache_file(sid) + '.tmp'; json.dump(c, open(tmp, 'w', encoding='utf-8')); os.replace(tmp, live_cache_file(sid))
+        LISTEN.update(done=len(c['chunks']), why='', at=time.time())
+        log(f'Listened along during the stream: {fmt(a0 + LIVE_CHUNK)} done')
+    except Exception: traceback.print_exc(); LISTEN['why'] = 'did not work this time'
+    finally: shutil.rmtree(work, ignore_errors=True)
+LIVE_TL = threading.local()
+def live_listen_loop():
+    while True:
+        time.sleep(45)
+        try: live_listen_once()
+        except Exception: traceback.print_exc()

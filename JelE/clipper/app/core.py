@@ -138,6 +138,7 @@ DEFAULTS = {
     'vocab': '',                        # your own words for the captions (names of teammates, emotes)
     'game_words': True,                 # put Valorant and game words in their right spelling (gamewords.py)
     'speech_process': True,             # the speech model runs in its own process: if it crashes, the app keeps running
+    'live_listen': True,                # listen along during the stream (strong pc only), so the moments are there right after
     'pause_busy': True,                 # new heavy work waits a moment when your pc is already at its limit
     'low_priority': True,               # the app works below normal priority, so your game and stream always go first
     'default_game': 'valorant',         # the game when nothing else tells which game a stream is

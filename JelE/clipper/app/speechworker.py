@@ -77,7 +77,7 @@ MODELS = {}
 
 
 def get_model(name, cuda, threads):
-    key = (name, cuda)
+    key = (name, cuda, threads)
     if key not in MODELS:
         from faster_whisper import WhisperModel
         MODELS.clear()   # one model at a time: never two big models in memory

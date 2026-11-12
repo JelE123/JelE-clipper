@@ -60,7 +60,7 @@ def words_for(sid, job, path, start, dur, work):
     """the words you kept in the editor, else what was heard during the analysis, else listen now"""
     if isinstance(job.get('words'), list): return [tuple(w) for w in job['words'] if len(w) == 3]
     s = load_sess(sid)
-    tw = load_transcript(sid)   # the whole stream was already heard: reuse it
+    tw = [] if os.path.exists(os.path.join(sdir(sid), 'transcript_bron.json')) else load_transcript(sid)   # the whole stream was already heard: reuse it (not when heard with the light model during the stream)
     if tw and tw[0][0] <= start + 30 and tw[-1][1] >= start + dur - 30:
         return [tuple(w) for w in tw if start - 1 <= w[0] <= start + dur + 1]
     for m in s.get('moments', []):

@@ -60,7 +60,7 @@ class H(BaseHTTPRequestHandler):
                     cs = load_sess(CUR['id']); cur = {'id': cs['id'], 'title': cs.get('title'), 'start': cs.get('start'), 'markers': cs.get('markers', [])[-8:], 'n_markers': len(cs.get('markers', []))}
                 except Exception: pass
             return self.j({'cur': cur, 'now': time.time(), 'obs': obs.ok, 'recording': bool(CUR['id']), 'job': STATE['job'], 'jobs': STATE.jobs(), 'queue': JOBS.qsize(), 'pending': list(JOBS.waiting.values()) + [x for x in JOBS.pending if not x.get('skip')], 'done': STATE['done'][-10:], 'test': STATE.get('test'), 'ffmpeg': FF, 'settings': SET,
-                           'version': VERSION, 'paused': paused() and bool(STATE.jobs() or JOBS.qsize() or JOBS.waiting), 'pause_why': pause_reason() if (STATE.jobs() or JOBS.qsize() or JOBS.waiting) else None, 'live': bool(STATE.get('live')), 'health': health(), 'safe': SAFE['on'], 'update': bool(UPD.get('newer')),
+                           'version': VERSION, 'paused': paused() and bool(STATE.jobs() or JOBS.qsize() or JOBS.waiting), 'listen': {'done_min': int(LISTEN['done'] * LIVE_CHUNK // 60), 'why': LISTEN['why']} if CUR['id'] and LISTEN['sid'] == CUR['id'] else None, 'pause_why': pause_reason() if (STATE.jobs() or JOBS.qsize() or JOBS.waiting) else None, 'live': bool(STATE.get('live')), 'health': health(), 'safe': SAFE['on'], 'update': bool(UPD.get('newer')),
                            'selftest': SELFTEST, 'last_error': STATE.get('last_error'), 'hersteld': json.load(open(HERSTELD, encoding='utf-8')) if os.path.exists(HERSTELD) else None,
                            'scene': STATE.get('scene'), 'scene_blocked': scene_blocked(), 'hype': hype() if STATE.get('live') else None, 'drop': LIVE['drop'],
                            'live_clips': LIVE['clips'][-8:], 'summary': STATE.get('summary'), 'whatsnew': SET.get('seen_version') != VERSION and bool(changes_for(VERSION)), 'n_errors': len(ERRORS)})
@@ -544,7 +544,7 @@ def main():
     JOBS.restore()
     for _ in range(n_workers()): threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=make_shortcuts, daemon=True).start()
-    for fn in (guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop):
+    for fn in (live_listen_loop, guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop):
         threading.Thread(target=fn, daemon=True).start()
     log(f'Open http://localhost:{PORT} in your browser')
     if SET.get('phone'): phone_start()

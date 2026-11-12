@@ -164,6 +164,8 @@ def raw_transcribe(audio, wav, purpose, on_prog, mic):
               condition_on_previous_text=False, no_speech_threshold=0.5, temperature=[0.0, 0.2, 0.4])
     if SET.get('speech_process', True) and not SPEECH.broken:
         name, cuda = pick_model(purpose, SPEECH.cuda)
+        live = getattr(LIVE_TL, 'on', False)
+        if live: name = 'small.en' if (SET.get('language') or 'en') == 'en' else 'small'   # during the stream: the light model, few cores
         own = [w.strip() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip()]
         base = gamewords.prompt_words(cur_game()) if gamewords else ['Valorant', 'Jett', 'Reyna', 'Raze', 'Sova', 'Omen', 'Killjoy', 'Vandal', 'Phantom', 'spike', 'defuse', 'ult']
         tries = 0
@@ -172,7 +174,7 @@ def raw_transcribe(audio, wav, purpose, on_prog, mic):
             if not (name, cuda) in getattr(SPEECH, 'loaded', set()):
                 log(f'Speech model "{name}" loading ({"graphics card" if cuda else "processor"}). The first time it gets downloaded, hang on.')
                 prog('Loading the speech model' + ('' if model_cached(name) else ' (one-time download, ~1-2 GB)'))
-            req = {'cmd': 'transcribe', 'wav': wav, 'model': name, 'cuda': cuda, 'threads': speech_threads(), 'kw': kw,
+            req = {'cmd': 'transcribe', 'wav': wav, 'model': name, 'cuda': cuda, 'threads': max(2, CORES // 4) if live else speech_threads(), 'kw': kw,
                    'prompt_base': base, 'prompt_mine': ', '.join(['JelE'] + own)[-450:], 'vad': bool(mic)}
             try: m = SPEECH.run(req, on_prog)
             except SpeechCrash as e:

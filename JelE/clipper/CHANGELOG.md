@@ -2,6 +2,21 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.24 · 12 November 2026
+
+### Moments right after your stream (plan F2.1)
+- New: the Clipper listens along while you stream. Every 5 minutes it turns the newest part of the recording into text, with the light speech model, at low priority and with only a quarter of your cores
+- After the stream it only has to do the last few minutes, so the moments of a long stream are there much sooner
+- It only does this on a strong pc (NVIDIA graphics card or 8+ cores), never when your pc is already busy, and only when OBS records to MKV (an MP4 cannot be read while it records; "Set up OBS for me" sets MKV for you)
+- Next to "Recording" you see how many minutes are already heard
+- The captions of your shorts still come from the best speech model, not the light one
+- You can turn it off in Settings > Connections and app > Speed and safety
+
+### "Clip that" works better (plan F2.7, first part)
+- The Clipper now also hears "clip dat", "iemand clip dat", "dat moet geclipt worden", "someone clip that", "that's a clip" and more, in English and Dutch
+- A moment you called with "clip that" now ends right after you say it, and starts at a pause before, so the play itself is in it
+- The reason says when you said it, for example: you said "clip that" at 1:04:12
+
 ## 6.23 · 12 November 2026
 
 ### Speed test (plan F1.8)

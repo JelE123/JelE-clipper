@@ -168,6 +168,7 @@ class OBS:
             st = d.get('outputState')
             if st == 'OBS_WEBSOCKET_OUTPUT_STARTED':
                 s = new_session(); CUR['id'] = s['id']; log('Recording started, logging along:', s['title'])
+                if d.get('outputPath'): s['live_path'] = d['outputPath']; save_sess(s)   # for listening along during the stream
                 threading.Thread(target=remember_cam, args=(s['id'],), daemon=True).start()
                 threading.Thread(target=remember_game, args=(s['id'],), daemon=True).start()
             elif st == 'OBS_WEBSOCKET_OUTPUT_STOPPED' and CUR['id']:

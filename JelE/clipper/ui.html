@@ -939,6 +939,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
           <div class="row2"><label>Graphics card</label><select id="sEnc"><option value="auto">Automatic (NVIDIA, AMD or Intel)</option><option value="x264">Processor only</option></select></div></div>
         <div class="card adv nosave"><h3>Speed and safety</h3><p>During your stream I take it easy, after that as fast as your PC can.</p>
           <div class="row2"><label>During your stream<small>heavy work waits until you are done</small></label><select id="sPause"><option value="true">Wait (your stream does not stutter)</option><option value="false">Just keep going</option></select></div>
+          <div class="row2"><label>Listen along while you stream<small>so the moments are there right after. Only on a strong pc, with few cores, and only when OBS records to MKV</small></label><select id="sListen"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Make at the same time<small>works after a restart</small></label><select id="sPar"><option value="auto">Automatic</option><option value="1">1 at a time</option><option value="2">2 at a time</option><option value="3">3 at a time</option></select></div>
           <div class="row2"><label>Working copy<small>light version to scrub through quickly</small></label><select id="sProxy"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Convert MKV to MP4<small>after every recording</small></label><select id="sRemux"><option value="true">On</option><option value="false">Off</option></select></div>
@@ -1112,7 +1113,7 @@ $('setFind').oninput=setFilter;
 // ---------- status
 async function poll(){ try{ const s=await api('/api/status'); ST=s; try{ if(PAGE==='home') renderTodo(); }catch(e){} renderLive.t0=Date.now()/1000; if(PAGE==='live') renderLive(); if(!SETS.cam) SETS=s.settings;
   $('sObs').className='st'+(s.obs?' ok':''); $('sObs').querySelector('span').textContent=s.obs?'OBS connected':'OBS not connected';
-  $('sRec').className='st'+(s.recording?' rec':''); $('sRec').querySelector('span').textContent=s.recording?'Recording, logging along':'Not recording';
+  $('sRec').className='st'+(s.recording?' rec':''); $('sRec').querySelector('span').textContent=s.recording?(s.listen&&s.listen.done_min?`Recording, ${s.listen.done_min} min already heard`:'Recording, logging along'):'Not recording'; $('sRec').title=s.recording&&s.listen?(s.listen.why?'Listening along: '+s.listen.why:'I listen along, so your moments are ready right after the stream'):'';
   const j=s.job; $('sJob').classList.toggle('on',!!j); renderJobs(s);
   if(j){ const pc=j.pct||0; $('sJob').querySelector('span').textContent=j.kind==='analyse'?'Finding moments':'Making short';
     $('sJobT').textContent=`${j.stage||''} · ${Math.round(pc)}%`; $('sJob').querySelector('.bar i').style.width=Math.max(3,pc)+'%';
@@ -1911,11 +1912,11 @@ async function bkLoad(){ const el=$('bkBox'); if(!el) return; const L=await api(
   $('bkNow').onclick=async()=>{ const r=await api('/api/backup-now',{}); toast(r.ok?'Backup made':(r.why||'Did not work')); bkLoad(); };
   $$('[data-bk]',el).forEach(b=>b.onclick=async()=>{ if(!confirm('Restore this backup? Your settings, library and taste go back to that moment. I first make a backup of how it is now.')) return; const r=await api('/api/backup-restore',{file:b.dataset.bk}); toast(r.ok?'Restored':(r.why||'Did not work')); if(r.ok){ const s=await api('/api/status'); SETS=s.settings; fillSet(); bkLoad(); } }); }
 function pauseTxt(s){ return s.pause_why==='disk'?'Waiting: your disk is almost full':s.pause_why==='busy'?'Waiting: your pc is very busy':'Wait until your stream is done'; }
-function perfFill(){ if(!$('sPause')) return; $('sPause').value=String(SETS.pause_live!==false); $('sPar').value=String(SETS.parallel||'auto'); $('sProxy').value=String(SETS.proxy!==false); $('sRemux').value=String(SETS.remux!==false); $('sDrop').value=String(SETS.remux_drop_mkv!==false); $('sSafe').value=String(!!(ST.safe)); $('sRm').value=localStorageGet('rm')||'auto'; }
+function perfFill(){ if(!$('sPause')) return; $('sPause').value=String(SETS.pause_live!==false); if($('sListen')) $('sListen').value=String(SETS.live_listen!==false); $('sPar').value=String(SETS.parallel||'auto'); $('sProxy').value=String(SETS.proxy!==false); $('sRemux').value=String(SETS.remux!==false); $('sDrop').value=String(SETS.remux_drop_mkv!==false); $('sSafe').value=String(!!(ST.safe)); $('sRm').value=localStorageGet('rm')||'auto'; }
 function localStorageGet(k){ try{ return localStorage.getItem('jele_'+k); }catch(e){ return null; } }
 function localStorageSet(k,v){ try{ localStorage.setItem('jele_'+k,v); }catch(e){} }
 function rmApply(){ const v=localStorageGet('rm')||'auto'; document.documentElement.classList.toggle('rm',v==='on'); } rmApply();
-['sPause','sPar','sProxy','sRemux','sDrop'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const b={pause_live:$('sPause').value==='true',parallel:$('sPar').value,proxy:$('sProxy').value==='true',remux:$('sRemux').value==='true',remux_drop_mkv:$('sDrop').value==='true'}; const r=await api('/api/settings',b); SETS=r.settings; toast(id==='sPar'?'Saved. Works after restarting the Clipper':'Saved'); }; });
+['sPause','sPar','sProxy','sRemux','sDrop','sListen'].forEach(id=>{ const el=$(id); if(el) el.onchange=async()=>{ const b={live_listen:$('sListen').value==='true',pause_live:$('sPause').value==='true',parallel:$('sPar').value,proxy:$('sProxy').value==='true',remux:$('sRemux').value==='true',remux_drop_mkv:$('sDrop').value==='true'}; const r=await api('/api/settings',b); SETS=r.settings; toast(id==='sPar'?'Saved. Works after restarting the Clipper':'Saved'); }; });
 if($('sSafe')) $('sSafe').onchange=async()=>{ const r=await api('/api/safe',{on:$('sSafe').value==='true'}); toast(r.on?'Safe mode on':'Safe mode off'); poll(); };
 if($('sRm')) $('sRm').onchange=()=>{ localStorageSet('rm',$('sRm').value); rmApply(); };
 
