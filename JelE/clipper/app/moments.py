@@ -27,18 +27,53 @@ def vocab_prompt(model=None):
     while base and not fits(', '.join(base) + ', ' + mine): base = base[1:]
     return ', '.join(base + [mine])
 
+LEARN_F = os.path.join(DATA, 'word_learn.json')
+_LEARN = {'d': None}
+def word_learn():
+    if _LEARN['d'] is None:
+        try: _LEARN['d'] = json.load(open(LEARN_F, encoding='utf-8'))
+        except Exception: _LEARN['d'] = {}
+    return _LEARN['d']
+def _wk(t): return re.sub(r"^[^\w']+|[^\w']+$", '', (t or '').lower())
+def word_learn_add(heard, fixed, prev='', nxt=''):
+    """you changed a word in the editor: remember it, with the words around it (no question, no pop-up)"""
+    h, f = _wk(heard), (fixed or '').strip()
+    if not h or not f or h == f.lower() or h == '\u2026' or ' ' in h: return
+    d = word_learn(); e = d.setdefault(h, {}).setdefault(f, {'n': 0, 'ctx': []})
+    e['n'] += 1; e['at'] = time.time()
+    for c in (_wk(prev), _wk(nxt)):
+        if c and c not in e['ctx']: e['ctx'] = (e['ctx'] + [c])[-12:]
+    try: json.dump(d, open(LEARN_F, 'w', encoding='utf-8'), indent=1)
+    except Exception: pass
+def learned_words():
+    """the words you taught me, for the speech model: it then leans towards them when it is not sure"""
+    out = []
+    for h, fs in word_learn().items():
+        for f, e in fs.items():
+            if f not in out: out.append(f)
+    return out[-60:]
+
 def apply_fixes(words, game=None):
-    """the right spelling of game words, then your own corrections ("jet" is always "Jett"), on every transcript"""
+    """the right spelling of game words (also names that sound almost the same), then your own corrections"""
     if gamewords and words and SET.get('game_words', True):
-        try: words = gamewords.fix(words, UNCLEAR, game or cur_game())
+        try:
+            words = gamewords.fix(words, UNCLEAR, game or cur_game())
+            words = gamewords.soundalike(words, UNCLEAR, game or cur_game())
         except Exception: traceback.print_exc()
     rules = [(str(a).strip(), str(b).strip()) for a, b in (SET.get('fixes') or []) if str(a).strip()]
-    if not rules or not words: return words
+    L = word_learn()
+    if (not rules and not L) or not words: return words
     out = []
-    for w in words:
+    for i, w in enumerate(words):
         t = w[2]
         for a, b in rules:
             if re.fullmatch(re.escape(a) + r"([.,!?']*)", t, re.I): t = b + re.sub(r'^' + re.escape(a), '', t, flags=re.I)
+        k = _wk(t)
+        if k in L:   # what you changed before: twice or more = always; once = when the words around it match last time
+            f, e = max(L[k].items(), key=lambda x: x[1]['n'])
+            near = {_wk(x[2]) for x in words[max(0, i - 2):i] + words[i + 1:i + 3]}
+            if e['n'] >= 2 or near & set(e.get('ctx') or []):
+                t = re.sub(re.escape(re.sub(r"^[^\w']+|[^\w']+$", '', t)), f, t, count=1, flags=re.I) if re.sub(r"^[^\w']+|[^\w']+$", '', t) else f
         out.append((w[0], w[1], t) if len(w) == 3 else tuple([w[0], w[1], t] + list(w[3:])))
     return out
 

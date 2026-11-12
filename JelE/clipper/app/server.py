@@ -382,6 +382,11 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': True})
         if p == '/api/trash-restore': restore_short(os.path.basename(b.get('file', ''))); return self.j({'ok': True})
         if p == '/api/feedback': return self.j(feedback_add(b))
+        if p == '/api/word-learn':
+            if b.get('forget'):
+                d = word_learn(); d.pop(_wk(b['forget']), None); json.dump(d, open(LEARN_F, 'w', encoding='utf-8'), indent=1)
+            elif b.get('heard'): word_learn_add(b.get('heard'), b.get('fixed'), b.get('prev', ''), b.get('next', ''))
+            return self.j({'ok': True, 'learned': {h: {f: e['n'] for f, e in fs.items()} for h, fs in word_learn().items()}})
         if p == '/api/analysis-report':
             f_ = analysis_report()
             try:

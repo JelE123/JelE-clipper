@@ -130,6 +130,7 @@ MISHEARS = {
     'jet': 'Jett', 'jets': "Jett's", 'rayna': 'Reyna', 'raina': 'Reyna', 'reina': 'Reyna', 'rena': 'Reyna', 'raena': 'Reyna',
     'kayo': 'KAY/O', 'k.o.': 'KAY/O', 'k o': 'KAY/O', 'kay o': 'KAY/O', 'kay-o': 'KAY/O', 'k-o': 'KAY/O', 'kaio': 'KAY/O',
     'kill joy': 'Killjoy', 'kill-joy': 'Killjoy', 'brim stone': 'Brimstone', 'fenix': 'Phoenix', 'pheonix': 'Phoenix', 'yoro': 'Yoru', 'yuru': 'Yoru',
+    'piper': 'Viper', 'viber': 'Viper', 'vyper': 'Viper', 'vipor': 'Viper', 'bryce': None, 'raise': None, 'raised': None, 'sky': None,
     'gecko': 'Gekko', 'geko': 'Gekko', 'vise': 'Vyse', 'vyce': 'Vyse', 'tayo': 'Tejo', 'teho': 'Tejo', 'tejo': 'Tejo', 'tey ho': 'Tejo',
     'way lay': 'Waylay', 'cipher': 'Cypher', 'sypher': 'Cypher', 'harbour': 'Harbor', 'astro': 'Astra', 'sky': None, 'soba': 'Sova', 'sovah': 'Sova',
     'reyna\'s': "Reyna's", 'miks': 'Miks', 'mix agent': 'Miks agent', 'hush': None, 'veto': None,
@@ -288,6 +289,42 @@ def fix(words, unclear='...', game='valorant'):
                 out.append((chunk[0][0], chunk[-1][1], text) + tuple(chunk[0][3:]))
             i += k; done = True; break
         if not done: out.append(w); i += 1
+    return out
+
+# ---------------------------------------------------------------- names that sound almost the same ("piper" -> "Viper")
+def _snd(t):
+    """a sound key: p/b/f/v, c/k/q, s/z, d/t sound alike, all vowels are one sound"""
+    t = re.sub(r'[^a-z]', '', t.lower()).replace('ph', 'f').replace('ck', 'k')
+    t = re.sub(r'[pbfv]', 'b', t); t = re.sub(r'[ckq]', 'k', t); t = re.sub(r'[sz]', 's', t); t = re.sub(r'[dt]', 't', t)
+    t = re.sub(r'[aeiouy]+', 'a', t)
+    return re.sub(r'(.)\1+', r'\1', t)
+CUES = re.compile(r"^(ult|ulted|ulting|util|utility|smoke|smokes|flash|flashed|molly|wall|walls|their|enemy|enemies|killed|kill|kills|site|push|pushing|lurk|lurking|"
+                  r"rotate|rotating|playing|agent|maining|operator|vandal|phantom|sheriff|spike|plant|defuse|nade|darts?|drone|dash|updraft|tp)$", re.I)
+def _names(game):
+    if game in (None, '', 'valorant'): return list(AGENTS) + WEAPONS + MAPS
+    try:
+        import games
+        return [n for n in (games.WORDS.get(game) or {}).get('names', []) if ' ' not in n]
+    except Exception: return []
+_SNDIDX = {}
+def soundalike(words, unclear='...', game='valorant'):
+    """a word that sounds like a game name and is used like one (written as a name, or next to "ult", "their", "killed"...) becomes that name"""
+    if not words: return words
+    if game not in _SNDIDX:
+        idx = {}
+        for n in _names(game):
+            if len(n) >= 4 and n.isalpha(): idx.setdefault(_snd(n), n)
+        _SNDIDX[game] = idx
+    idx = _SNDIDX[game]
+    out = list(words)
+    for i, w in enumerate(words):
+        raw = w[2]; core = re.sub(r"^[^\w]+|[^\w']+$", '', raw)
+        if raw == unclear or len(core) < 4 or not core.isalpha(): continue
+        hit = idx.get(_snd(core))
+        if not hit or hit.lower() == core.lower() or core.lower() in COMMON: continue
+        near = [re.sub(r"[^\w']", '', x[2]) for x in words[max(0, i - 2):i] + words[i + 1:i + 3]]
+        if core[0].isupper() and i > 0 and not re.search(r'[.!?]$', words[i - 1][2]) or any(CUES.match(x) for x in near if x):
+            out[i] = (w[0], w[1], raw.replace(core, hit)) + tuple(w[3:])
     return out
 
 def all_words():

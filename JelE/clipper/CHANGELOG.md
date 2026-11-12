@@ -2,6 +2,18 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.51 · 12 November 2026
+
+### Captions learn from your edits, without asking
+- No more "Always fix?" pop-up when you change a word. I simply remember it, with the words around it
+- Next time: a word you changed twice or more is always changed. A word you changed once is only changed when the words around it match the last time (so "yellow car" stays yellow, "yellow what is up" becomes "yo what is up")
+- The words you taught me also go to the speech model, so it leans towards them when it is not sure what it heard
+- Settings > Captions > words: "Learned from your edits" shows what I learned, with × to forget one. "Always fix" still works for words that must change every time
+
+### Game names
+- Names that sound almost the same now become the right name: "piper" becomes "Viper", also "viber" or "vyper", when it is used like a name (written as a name, or next to words like ult, their, killed, playing, smoke)
+- Works for all agents, weapons and maps, and for the names in the other games
+
 ## 6.50 · 12 November 2026
 
 ### The AI decides which moments stay

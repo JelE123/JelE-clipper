@@ -246,6 +246,8 @@ def raw_transcribe(audio, wav, purpose, on_prog, mic):
               vad_parameters={'min_silence_duration_ms': 300, 'speech_pad_ms': 250, 'threshold': 0.4},
               condition_on_previous_text=False, no_speech_threshold=0.5, temperature=[0.0, 0.2, 0.4])
     own = [w.strip() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip()]
+    try: own += [w for w in learned_words() if w not in own][:40]   # words you fixed in the editor
+    except Exception: pass
     if use_wcpp() and not SPEECH.broken:   # graphics card of any brand
         base = gamewords.prompt_words(cur_game()) if gamewords else []
         req = {'cmd': 'wcpp', 'exe': wcpp_exe(), 'model_path': wcpp_model(), 'wav': wav, 'lang': cur_lang(), 'threads': speech_threads(),
