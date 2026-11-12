@@ -99,7 +99,7 @@ DEFAULTS = {
     'friends_caps': True,               # show what your friends say in the captions
     'learn_timing': {'lead': 0.0, 'tail': 0.0},   # learned from your feedback: start earlier/later, end later/earlier (seconds)
     'brief': True, 'auto_music': True,   # work out the story of every moment; auto shorts get music that fits (from your music folder)
-    'llm_size': 'auto', 'llm_judge': True, 'llm_judge_n': 20,   # the local AI: small/smart/auto, and judging the moments after a stream
+    'llm_size': 'auto', 'llm_judge': True, 'llm_judge_n': 30,   # the local AI: small/smart/auto, and judging the moments after a stream
     'sounds': True, 'vision': True, 'vision_auto_done': False, 'face_follow': True, 'voice_up': True,
     'loud': True,                       # make the short as loud as other TikToks/Shorts
     'auto_shorts': True,                # make shorts of the best moments by itself after a stream (they land in the inbox)

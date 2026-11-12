@@ -10,16 +10,20 @@ SCREEN_WORDS = {
     'valorant': {'menu': ['AGENTSELECT', 'LOCKIN', 'COLLECTION', 'CAREER', 'BATTLEPASS', 'PLAY', 'QUEUE', 'MATCHFOUND', 'ACCEPT'],
                  'dead': ['KILLEDBY', 'YOUWEREKILLED'], 'spectate': ['SPECTATING'], 'buy': ['BUYPHASE', 'SHOP'],
                  'round_win': ['ROUNDWIN', 'CLUTCH', 'FLAWLESS', 'THRIFTY', 'ACE', 'TEAMACE'], 'round_loss': ['ROUNDLOSS', 'ROUNDLOST'],
-                 'win': ['VICTORY'], 'loss': ['DEFEAT']},
+                 'win': ['VICTORY'], 'loss': ['DEFEAT'],
+                 'end': ['PLAYAGAIN', 'RETURNTOLOBBY', 'MATCHHISTORY', 'COMBATSCORE', 'RANKRATING', 'MATCHMVP', 'TEAMMVP', 'SCOREBOARD', 'ACS', 'ECONRATING', 'FIRSTBLOODS', 'PERFORMANCE', 'TIMELINE', 'SUMMARY']},
     'cs2': {'menu': ['PLAY', 'INVENTORY', 'MATCHMAKING', 'ACCEPT', 'YOURMATCHISREADY'],
             'dead': ['KILLEDBY', 'YOUWEREKILLED'], 'spectate': ['SPECTATING'], 'buy': ['BUYMENU', 'BUYTIME'],
-            'round_win': ['COUNTERTERRORISTSWIN', 'TERRORISTSWIN', 'MVP'], 'round_loss': [], 'win': ['VICTORY', 'YOUWON'], 'loss': ['DEFEAT', 'YOULOST']},
+            'round_win': ['COUNTERTERRORISTSWIN', 'TERRORISTSWIN', 'MVP'], 'round_loss': [], 'win': ['VICTORY', 'YOUWON'], 'loss': ['DEFEAT', 'YOULOST'],
+            'end': ['MATCHSUMMARY', 'PLAYAGAIN', 'MAINMENU', 'SCOREBOARD', 'XPEARNED', 'COMPETITIVERANK']},
     'fortnite': {'menu': ['PLAY', 'LOCKER', 'ITEMSHOP', 'BATTLEPASS', 'READYUP', 'MATCHMAKING'],
                  'dead': ['ELIMINATEDBY', 'YOUWEREELIMINATED', 'YOUPLACED'], 'spectate': ['SPECTATING'], 'buy': [],
-                 'round_win': [], 'round_loss': [], 'win': ['VICTORYROYALE', '#1'], 'loss': []},
+                 'round_win': [], 'round_loss': [], 'win': ['VICTORYROYALE', '#1'], 'loss': [],
+                 'end': ['RETURNTOLOBBY', 'MATCHSTATS', 'XPEARNED', 'PLAYAGAIN', 'SPECTATEPLAYERS']},
 }
 SCREEN_WORDS['other'] = {'menu': ['MAINMENU', 'SETTINGS', 'PRESSANYKEY'], 'dead': ['YOUDIED', 'GAMEOVER', 'WASTED'], 'spectate': ['SPECTATING'], 'buy': [],
-                         'round_win': [], 'round_loss': [], 'win': ['VICTORY', 'YOUWIN'], 'loss': ['DEFEAT', 'YOULOSE']}
+                         'round_win': [], 'round_loss': [], 'win': ['VICTORY', 'YOUWIN'], 'loss': ['DEFEAT', 'YOULOSE'],
+                         'end': ['PLAYAGAIN', 'RETURNTOLOBBY', 'MAINMENU', 'CONTINUE', 'RESULTS', 'SCOREBOARD']}
 
 def vision_ok():
     """the text reader is there (Full setup) and can be used"""
@@ -62,7 +66,9 @@ def screen_state(img, game='other'):
     def has(k): return any(x and (x in words or (len(x) > 4 and x in joined)) for x in W.get(k, []))   # short words (ACE, MVP) only as a whole word
     ev = [k for k in ('round_win', 'round_loss', 'win', 'loss') if has(k)]
     st = 'playing'
-    if has('spectate'): st = 'spectate'
+    endn = sum(1 for x in W.get('end', []) if x in words or (len(x) > 4 and x in joined))
+    if endn >= 2 or (endn >= 1 and ev and any(e in ev for e in ('win', 'loss'))): st = 'end'   # the end screen after a match: scoreboard, play again
+    elif has('spectate'): st = 'spectate'
     elif has('dead'): st = 'dead'
     elif has('buy'): st = 'buy'
     elif sum(1 for x in W['menu'] if x in words) >= 2 or (has('menu') and gray > 0.6 and len(words) > 8): st = 'menu'
@@ -84,6 +90,7 @@ def vision_judge(scan, st, en, peak):
     if not inside: return {}
     n = len(inside)
     menu = sum(1 for x in inside if x['state'] == 'menu') / n
+    endsc = sum(1 for x in inside if x['state'] == 'end') / n
     buy = sum(1 for x in inside if x['state'] == 'buy') / n
     dead = next((x['t'] for x in inside if x['state'] == 'dead'), None)
     spec = next((x['t'] for x in inside if x['state'] == 'spectate' and x['t'] > peak), None)
@@ -95,7 +102,8 @@ def vision_judge(scan, st, en, peak):
     names = {'round_win': 'you won the round', 'round_loss': 'you lost the round', 'win': 'you won the match', 'loss': 'you lost the match'}
     for e in evs: reasons.append(names[e])
     if dead is not None and dead <= peak + 3: reasons.append('you died (a fail can be gold)')
-    return {'menu': round(menu, 2), 'buy': round(buy, 2), 'dead_at': dead, 'spectate_from': spec, 'events': evs, 'reasons': reasons}
+    if endsc > 0.4: reasons.append('end screen after the match')
+    return {'menu': round(menu, 2), 'end': round(endsc, 2), 'buy': round(buy, 2), 'dead_at': dead, 'spectate_from': spec, 'events': evs, 'reasons': reasons}
 
 # ---------------------------------------------------------------- plan F4.3: the cam follows your face
 def face_track(path, start, dur, rect, every=0.5):

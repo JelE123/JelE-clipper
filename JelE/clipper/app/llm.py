@@ -148,7 +148,7 @@ def llm_judge(c, words, game='', lang='en', port=None):
     ev = ', '.join(f"{e.get('kind')} at {e.get('t', 0) - c['start']:.0f}s" for e in (c.get('events') or [])[:6]) if c.get('events') else ''
     lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
     msg = [{'role': 'system', 'content': 'You judge clips from a gaming stream for TikTok and YouTube Shorts. A great clip has a clear payoff: a funny line, a big reaction, '
-            'an insane play, a fail, a story with an ending, or chat going wild. A bad clip is just talking, waiting, a menu, or nothing happening. '
+            'an insane play, a fail, a story with an ending, or chat going wild. A bad clip is just talking, waiting, a menu, or nothing happening. ' + 'Score 1 to 3 for: mumbling or talking to yourself, quiet chatting, an end screen or scoreboard after a match, menus, lobby, queue, waiting, buy phase small talk. Score 7 or more only when a stranger on TikTok would laugh, be amazed or feel the hype. Be strict: most parts of a stream are a 2 to 5.' + ' '
             'Answer only with JSON: {"score": 1-10, "why": "max 8 words", "title": "hook of max 6 words in capitals, in ' + lang_name + ', only what really happened"}.'},
            {'role': 'user', 'content': 'Game: Valorant. Signals: you said "no way", chat went off, a kill. Duration 18s. What was said: "wait wait he is one hp no way NO WAY I got him with the knife chat did you see that"'},
            {'role': 'assistant', 'content': '{"score": 9, "why": "knife kill at one hp, huge reaction", "title": "KNIFED HIM AT ONE HP"}'},
@@ -345,9 +345,15 @@ def moment_timeline(c, words, why, step, scan=None, snd=None, a=None, b=None):
             if r.get('scream', 0) > 0.5 and t - last.get('scream', -99) >= 3: items.append({'t': t, 'k': 'you', 'v': 'screaming'}); last['scream'] = t
     for x in scan or []:
         if not (a <= x['t'] <= b): continue
-        if x['state'] != 'playing' and t_ok(last, 'scr_' + x['state'], x['t'], 6): items.append({'t': x['t'], 'k': 'screen', 'v': {'dead': 'you are dead', 'spectate': 'spectating', 'menu': 'a menu', 'buy': 'buy phase'}.get(x['state'], x['state'])})
+        if x['state'] != 'playing' and t_ok(last, 'scr_' + x['state'], x['t'], 6): items.append({'t': x['t'], 'k': 'screen', 'v': {'dead': 'you are dead', 'spectate': 'spectating', 'menu': 'a menu', 'buy': 'buy phase', 'end': 'END SCREEN: the match is over, scoreboard'}.get(x['state'], x['state'])})
         for e in x.get('events') or []:
             if t_ok(last, 'ev_' + e, x['t'], 8): items.append({'t': x['t'], 'k': 'screen', 'v': {'round_win': 'round won', 'round_loss': 'round lost', 'win': 'match won', 'loss': 'match lost'}.get(e, e)})
+    ws_ = [w for w in words if a <= w[0] <= b]
+    if ws_:
+        unc = sum(1 for w in ws_ if w[2] == UNCLEAR) / len(ws_)
+        if unc > 0.3: items.append({'t': ws_[0][0], 'k': 'speech', 'v': f'{int(unc * 100)}% of the words are unclear (mumbling)'})
+    if not any(x['k'] in ('game', 'game sound', 'screen', 'chat', 'marker', 'chat clip', 'you') for x in items):
+        items.append({'t': a, 'k': 'note', 'v': 'no game events, no gunshots, no chat activity, no laughing or screaming in this part'})
     items.sort(key=lambda x: x['t'])
     lines = [f"{x['t'] - a:4.0f}s {'you say' if x['k'] == 'say' else x['k']}: " + (f'"{x["v"]}"' if x['k'] == 'say' else x['v']) for x in items]
     return lines, items, a
@@ -386,7 +392,7 @@ def llm_brief(c, lines, a, game='', lang='en', port=None):
             'Then decide the edit. Answer only with JSON: {"about": "what happens, max 12 words", "type": one of ' + '/'.join(MOMENT_TYPES) +
             ', "start": seconds, "payoff": seconds, "end": seconds, "zoom": [seconds, max 2, on the payoff or a big reaction], "replay": true/false (only for a play worth seeing twice), '
             '"layout": "split" when the face/reaction matters, "gameonly" when the play matters, "music": "hype"/"funny"/"tension"/"chill"/"none", '
-            '"title": "hook, max 6 words, capitals, in ' + lang_name + '", "score": 1-10}. A good short is 12 to 35 seconds. Never start in the middle of a sentence.')
+            '"title": "hook, max 6 words, capitals, in ' + lang_name + '", "score": 1-10}. A good short is 12 to 35 seconds. Never start in the middle of a sentence. ' + 'Score 1 to 3 for: mumbling or talking to yourself, quiet chatting, an end screen or scoreboard after a match, menus, lobby, queue, waiting, buy phase small talk. Score 7 or more only when a stranger on TikTok would laugh, be amazed or feel the hype. Be strict: most parts of a stream are a 2 to 5.')
     ex_u = ('Game: Valorant. Timeline:\n   0s you say: "okay I will hold B alone"\n   6s game sound: 2 gunshots\n   9s you say: "wait wait they are all coming"\n  12s game sound: 4 gunshots\n'
             '  13s game: kill\n  14s game: kill\n  15s you: screaming\n  16s you say: "NO WAY I got all three"\n  17s chat: 22 messages in 10s\n  20s you say: "chat did you see that"\n  27s you say: "okay buy phase what do we get"')
     ex_a = '{"about": "holds B alone and wins a 1v3", "type": "clutch", "start": 8.5, "payoff": 14, "end": 21.5, "zoom": [14, 16], "replay": true, "layout": "split", "music": "hype", "title": "HELD B ALONE VS THREE", "score": 9}'

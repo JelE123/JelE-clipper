@@ -26,10 +26,16 @@ items = [{'t': 100.0, 'e': 102.5, 'k': 'say', 'v': 'this guy has been camping al
          {'t': 119.0, 'e': 119.8, 'k': 'say', 'v': 'unbelievable'}, {'t': 130.0, 'e': 131.0, 'k': 'say', 'v': 'okay next round'}]
 br = c.brief_merge(raw_br, c.brief_rules({'t': 113}, items, 100.0, 113.0), items)
 print('BRIEF raw', raw_br, '| merged', {k: br.get(k) for k in ('start', 'payoff', 'end', 'zoom', 'about')}, round(time.time() - t0, 1), 's')
+mum = ['   0s screen: END SCREEN: the match is over, scoreboard', '   2s you say: "uh yeah so … … that was … okay"', '   6s speech: 55% of the words are unclear (mumbling)',
+       '   9s you say: "hmm … I think … yeah whatever"', '  14s you say: "okay … let me … queue again maybe"', '   0s note: no game events, no gunshots, no chat activity, no laughing or screaming in this part']
+bm = c.llm_brief({'t': 8}, mum, 500.0, 'Valorant', 'en', port)
+jm = c.llm_judge({'start': 500, 'end': 520, 'reasons': ['it suddenly got loud', 'end screen after the match'], 't': 508},
+                 W('uh yeah so that was okay hmm I think yeah whatever okay let me queue again maybe', 500), 'Valorant', 'en', port)
+print('MUMBLE brief', bm, '| judge', jm)
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= 3) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)

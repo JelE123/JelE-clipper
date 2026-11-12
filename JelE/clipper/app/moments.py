@@ -487,8 +487,9 @@ def analyse(sid):
                 vs_ = vision_scan(path, max(0, st - 1), min(dur, en + 4), gid); c['_scan'] = vs_
                 j = vision_judge(vs_, st, en + 4, c['t'])
                 if not j: continue
-                c['vision'] = {k: j[k] for k in ('menu', 'buy', 'dead_at', 'spectate_from', 'events')}
+                c['vision'] = {k: j.get(k) for k in ('menu', 'end', 'buy', 'dead_at', 'spectate_from', 'events')}
                 if j['menu'] > 0.6: c['score'] = round(c['score'] * 0.25, 1); c['reasons'].append('mostly a menu on screen')
+                elif j.get('end', 0) > 0.4: c['score'] = round(c['score'] * 0.15, 1); c['drop_soft'] = True   # the end screen: talking while the scoreboard shows is almost never a moment
                 elif j['buy'] > 0.7: c['score'] = round(c['score'] * 0.6, 1)
                 if j.get('spectate_from') and j['spectate_from'] > c['t'] + 2 and j['spectate_from'] + 1.5 < en and not c.get('said'):
                     c['end'] = round(max(st + 6, j['spectate_from'] + 1.5), 1); c['reasons'].append('ends before the spectating')
@@ -501,7 +502,7 @@ def analyse(sid):
     # then the story: where it starts making sense, the payoff, where the reaction is over, and the edit that belongs to it
     if cands and SET.get('brief', True):
         try:
-            top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 20)]
+            top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 30)]
             port = llm_start() if llm_ready() and SET.get('llm_judge', True) else 0
             gname = (GP.get(GAME_TL.v or '') or {}).get('name', GAME_TL.v or '') if GP else (GAME_TL.v or '')
             for n, c in enumerate(top):
@@ -520,8 +521,16 @@ def analyse(sid):
                 t_ = tidy_title(b_.get('title') or '')
                 if t_ and title_fits(t_, c): c['title'] = t_; c['hooks'] = [t_] + [h for h in (c.get('hooks') or []) if h != t_][:2]
                 if b_.get('by') == 'ai':
-                    try: sc_ = max(1, min(10, int(b_.get('score') or 5))); c['score'] = round(c['score'] * (0.45 + 0.11 * sc_), 1); c['ai'] = {'score': sc_, 'why': b_.get('about', '')}
+                    try:
+                        sc_ = max(1, min(10, int(b_.get('score') or 5))); c['ai'] = {'score': sc_, 'why': b_.get('about', '')}
+                        c['score'] = round(c['score'] * (0.2 + 0.16 * sc_), 1)   # the AI decides: a 10 counts almost double, a 4 or lower is out
+                        if sc_ <= 4: c['drop'] = True
                     except Exception: pass
+                elif any(x['k'] == 'speech' for x in items) and any(x['k'] == 'note' for x in items):
+                    c['score'] = round(c['score'] * 0.35, 1)   # mumbling while nothing happens: not a moment
+            if port:   # with the AI, a moment it did not look at can never beat one it liked
+                for c in cands:
+                    if c not in top: c['score'] = round(c['score'] * 0.6, 1)
             log(f'Worked out the story of {len(top)} moments' + (' with the AI' if port else ''))
         except Exception: log('Working out the story did not work'); traceback.print_exc()
     for c in cands: c.pop('_scan', None)
@@ -537,7 +546,8 @@ def analyse(sid):
                 prog('The AI is judging the moments', 90 + 9 * (n + 1) / len(top))
                 j = llm_judge(c, ALL or c.get('words') or [], gname, SET.get('language') or 'en', port)
                 if not j: continue
-                c['ai'] = j; c['score'] = round(c['score'] * (0.45 + 0.11 * j['score']), 1)
+                c['ai'] = j; c['score'] = round(c['score'] * (0.2 + 0.16 * j['score']), 1)
+                if j['score'] <= 3: c['drop'] = True
                 if j['score'] >= 8 and j.get('why'): c['reasons'].insert(0, 'AI: ' + j['why'].lower())
                 elif j['score'] <= 3: c['reasons'].append('AI: ' + (j.get('why') or 'not much happens').lower())
                 t_ = tidy_title(j.get('title') or '')
@@ -553,6 +563,10 @@ def analyse(sid):
         if tm_ >= 1.2: c['reasons'].append('you often keep clips like this')
         if not c.get('title'): c['title'] = fallback_title(c, load_sess(sid))
         if not c.get('hooks'): c['hooks'] = hook_options([], [], c, load_sess(sid))   # learn from what you kept before
+    # what the AI threw out stays out (when it threw out everything, the best one stays, so you can see why)
+    kept_ = [c for c in cands if not c.get('drop')]
+    if len(kept_) < len(cands): log(f'The AI threw out {len(cands) - len(kept_)} moments that are not good enough')
+    cands = kept_ or sorted(cands, key=lambda c: -c['score'])[:1]
     # no near-copies: when two clips mostly overlap, keep the best one (and its reasons)
     best = []
     for c in sorted(cands, key=lambda c: -c['score']):
