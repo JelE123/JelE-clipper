@@ -114,7 +114,7 @@ def llm_chat(messages, max_tokens=200, temp=0.7, port=None):
     body = json.dumps({'messages': messages, 'max_tokens': max_tokens, 'temperature': temp, 'stream': False}).encode()
     req = urllib.request.Request(f'http://127.0.0.1:{port}/v1/chat/completions', data=body, headers={'Content-Type': 'application/json'})
     try:
-        with urllib.request.urlopen(req, timeout=90) as r:
+        with urllib.request.urlopen(req, timeout=300) as r:   # a big model on the processor can take a while
             d = json.loads(r.read().decode('utf-8', 'replace'))
         return (d.get('choices') or [{}])[0].get('message', {}).get('content', '') or ''
     except Exception as e:

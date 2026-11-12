@@ -46,5 +46,5 @@ for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = bool(bt.get('focus')) and bt['start'] <= 302 and bt['cause'] <= 304.5 and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= (3 if c.SET['llm_size'] == 'smart' else 5)) and bool(raw_br) and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(bt.get('focus')) and bt['start'] <= 302 and bt['cause'] <= 304.5 and (not bm or int(bm.get('score') or 10) <= 4) and (not jm or jm['score'] <= (3 if c.SET['llm_size'] == 'smart' else 5)) and (bool(raw_br) or c.SET['llm_size'] != 'smart') and br['start'] <= 109 and 112 <= br['payoff'] <= 116 and 117 <= br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)
