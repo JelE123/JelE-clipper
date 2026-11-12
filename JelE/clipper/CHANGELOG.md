@@ -2,6 +2,19 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.30 · 12 November 2026
+
+### The speech model on your graphics card, also AMD and Intel (plan F2.2)
+- New in Settings > Captions > Runs on: "Install graphics card support". It downloads a graphics card engine (whisper.cpp with Vulkan, about 10 MB) and its speech model (large-v3-turbo, about 550 MB), in the background while you keep working
+- After that the captions and the listening are done on your graphics card: AMD, Intel or NVIDIA. Much faster than the processor
+- Never during your stream: while you stream the Clipper still listens along with the light model on a few processor cores, so your game keeps all of your graphics card
+- If the graphics card engine does not work on your pc, the Clipper notes it and goes on with the processor by itself
+- You can pick Automatic, Graphics card or Processor yourself
+- The Full setup now also installs this for AMD and Intel Arc graphics cards
+
+### Small fixes
+- A Dutch word left in the setup ("Nu") is now English
+
 ## 6.29 · 12 November 2026
 
 ### Learns your look (plan F3.7)

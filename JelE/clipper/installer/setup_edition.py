@@ -21,6 +21,39 @@ def nvidia():
         return ''
 
 
+def gpus():
+    """AMD and Intel graphics cards (NVIDIA uses its own support)"""
+    try:
+        r = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', '(Get-CimInstance Win32_VideoController).Name'], capture_output=True, text=True, timeout=30)
+        return [x.strip() for x in r.stdout.splitlines() if x.strip() and any(k in x.lower() for k in ('radeon', 'amd', 'arc', 'intel(r) iris xe'))]
+    except Exception:
+        return []
+
+
+def get(url, dst):
+    import urllib.request
+    req = urllib.request.Request(url, headers={'User-Agent': 'JelE-Clipper-Setup'})
+    with urllib.request.urlopen(req, timeout=60) as r, open(dst + '.part', 'wb') as fh:
+        shutil.copyfileobj(r, fh, 1 << 20)
+    os.replace(dst + '.part', dst)
+
+
+def engine():
+    """whisper.cpp with Vulkan and its speech model: the speech model on an AMD or Intel graphics card"""
+    import zipfile
+    d = os.path.join(HERE, 'engine', 'whisper_vulkan'); os.makedirs(d, exist_ok=True)
+    z = os.path.join(d, 'engine.zip')
+    get('https://github.com/JelE123/JelE-clipper/releases/download/engine-whisper-vulkan-1.9.5/whisper_vulkan_win64.zip', z)
+    with zipfile.ZipFile(z) as zf:
+        for n in zf.namelist():
+            if n.endswith('/') or '..' in n: continue
+            with zf.open(n) as src, open(os.path.join(d, os.path.basename(n)), 'wb') as dst: shutil.copyfileobj(src, dst)
+    os.remove(z)
+    m = os.path.join(DATA, 'models'); os.makedirs(m, exist_ok=True)
+    say('Downloading the speech model for the graphics card (about 550 MB)')
+    get('https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin', os.path.join(m, 'ggml-large-v3-turbo-q5_0.bin'))
+
+
 def main():
     ed = (sys.argv[1] if len(sys.argv) > 1 else 'light').lower()
     info = {'edition': ed, 'at': time.time(), 'gpu': ''}
@@ -33,7 +66,13 @@ def main():
                                 'nvidia-cublas-cu12', 'nvidia-cudnn-cu12==9.*'])
             ok = r.returncode == 0
         else:
-            say('No NVIDIA graphics card found: the speech model runs on the processor')
+            other = gpus()
+            if other:
+                say('Graphics card:', ', '.join(other), '- installing graphics card support (Vulkan) for the speech model')
+                try: engine(); info['gpu'] = ', '.join(other); info['engine'] = 'vulkan'
+                except Exception as e: say('Graphics card support could not be installed:', e, '- you can install it later in Settings > Captions'); ok = False
+            else:
+                say('No graphics card found for the speech model: it runs on the processor')
         try:
             sys.path.insert(0, HERE)
             from faster_whisper.utils import download_model

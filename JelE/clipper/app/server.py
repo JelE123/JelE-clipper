@@ -141,6 +141,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/jumpcut-plan':   # the boring bits that would be cut from this clip, so the editor can show them
             try: return self.j({'cuts': jumpcut_plan(q['sid'][0], float(q['a'][0]), float(q['b'][0]))})
             except Exception as e_: log('Could not plan the cuts:', e_); return self.j({'cuts': []})
+        if p == '/api/engine': return self.j(wcpp_status())
         if p == '/api/learned': return self.j({g: learned_look(g) for g in GP.ORDER} if GP and SET.get('learn_look', True) else {})
         if p == '/api/games': return self.j({'games': GP.public() if GP else [], 'default': SET.get('default_game') or 'valorant'})
         if p == '/api/vod-check': return self.j(vod_check())
@@ -338,6 +339,7 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': True})
         if p == '/api/shortcuts': return self.j({'ok': make_shortcuts(True)})
         if p == '/api/obs-setup': return self.j(obs_auto_setup())
+        if p == '/api/engine-install': threading.Thread(target=wcpp_install, daemon=True).start(); return self.j({'ok': True})
         if p == '/api/remake':   # make shorts again with the newest version; your own edits stay, the old short stays too
             lib = lib_load(); n = 0
             for f in b.get('files') or []:

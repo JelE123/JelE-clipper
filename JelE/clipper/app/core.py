@@ -138,6 +138,7 @@ DEFAULTS = {
     'vocab': '',                        # your own words for the captions (names of teammates, emotes)
     'game_words': True,                 # put Valorant and game words in their right spelling (gamewords.py)
     'speech_process': True,             # the speech model runs in its own process: if it crashes, the app keeps running
+    'speech_engine': 'auto',            # auto | gpu (graphics card of any brand, after installing support) | cpu
     'learn_look': True,                 # the editor starts with your last look per game; what you pick 10 times in a row, the automatic shorts use too
     'cap_fillers': True,                # uh, um and ehm are left out of the captions
     'live_listen': True,                # listen along during the stream (strong pc only), so the moments are there right after

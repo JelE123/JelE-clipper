@@ -899,6 +899,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
           <div class="row2"><label>Captions</label><select id="sCap"><option value="true">On</option><option value="false">Off</option></select></div>
           <div class="row2"><label>Language</label><select id="sLang"><option value="en">English</option><option value="nl">Dutch</option><option value="">Automatic</option></select></div>
           <div class="row2"><label>Speech model</label><select id="sModel"><option value="auto">Automatic (best for your PC)</option><option value="small.en">small.en (fastest)</option><option value="medium.en">medium.en (more accurate)</option><option value="large-v3-turbo">large-v3-turbo (very accurate, still fairly fast)</option><option value="large-v3">large-v3 (best, really only with NVIDIA)</option></select></div>
+          <div class="row2"><label>Runs on<small id="engInfo">checking your graphics card...</small></label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><select id="sEngine"><option value="auto">Automatic</option><option value="gpu">Graphics card</option><option value="cpu">Processor</option></select><button class="btn sm" id="engInst" style="display:none">Install graphics card support</button></div></div>
           <div class="row2"><label>Which audio<small>gets captioned</small></label><select id="sMic"><option value="0">Automatic: find my mic track</option><option value="-1">All together (with filter)</option><option value="1">Track 1</option><option value="2">Track 2</option><option value="3">Track 3</option><option value="4">Track 4</option><option value="5">Track 5</option><option value="6">Track 6</option></select></div>
           <div id="trk" class="trk"></div>
           <p class="dim" style="font-size:12px;margin-top:10px;line-height:1.5">Voicelines and music stay out best with your mic on its own audio track in OBS. Without a separate track I filter out music and known game lines (that list is in <b>voicelines.txt</b>, you can add lines to it).</p></div>
@@ -1079,7 +1080,7 @@ const SUB={out:[['out','Library'],['ins','Insights']],ins:[['out','Library'],['i
 const NAVOF={mom:'streams',ins:'out',sys:'set'};
 function subTabs(id){ const t=SUB[id]; if(!t||document.body.classList.contains('dock')) return; const d=document.createElement('div'); d.className='seg subtabs';
   d.innerHTML=t.map(([k,n])=>`<button data-sub="${k}" class="${k===id?'on':''}">${n}</button>`).join(''); $('pgA').prepend(d); d.querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.sub)); }
-function tab(id){ PAGE=id; const nv=NAVOF[id]||id; $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===nv)); $$('.page').forEach(s=>s.classList.toggle('on',s.id===id));
+function tab(id){ PAGE=id; const nv=NAVOF[id]||id; if(id==='set') setTimeout(()=>{ try{ engFill(); }catch(e){} },50); $$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===nv)); $$('.page').forEach(s=>s.classList.toggle('on',s.id===id));
   $('pgT').textContent=HEAD[id][0]; $('pgS').textContent=HEAD[id][1]; $('pgA').innerHTML=''; $('main').scrollTop=0;
   if(id==='live') renderLive(); if(id==='home'){ loadSessions(); loadShorts(true); } if(id==='streams') loadSessions(); if(id==='mom') renderMoments(); if(id==='out') loadShorts(); if(id==='set') initSettings(); if(id==='sys'){ sysLoad(); logLoad(); storLoad(); } if(id==='edit') edHead(); subTabs(id); }
 $$('.nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
@@ -1130,6 +1131,18 @@ $$('#rmCap button').forEach(b=>b.onclick=()=>{ $$('#rmCap button').forEach(x=>x.
 $('rmX').onclick=$('rmC').onclick=()=>$('rmM').classList.remove('on');
 $('rmGo').onclick=async()=>{ const nw=$('rmCap').querySelector('.on').dataset.c==='new'; const r=await api('/api/remake',{files:RMF,captions:nw?'new':'keep',language:nw?$('rmLang').value:''});
   $('rmM').classList.remove('on'); toast(r.n?`${r.n} shorts are being made again`:'Nothing to make again'); LSEL.clear(); SELMODE=false; selBar(); loadShorts(); };
+
+
+// ---------- F2.2: the speech model on the graphics card, any brand (AMD, Intel, NVIDIA)
+async function engFill(){ if(!$('sEngine')) return; let r; try{ r=await api('/api/engine'); }catch(e){ return; }
+  $('sEngine').value=r.engine||'auto'; const g=(r.gpus||[]).join(', ');
+  let t; if(r.busy) t=`${r.step} · ${r.pct}%`; else if(r.error) t='Installing did not work: '+r.error; else if(r.cuda) t=`NVIDIA found${g?' ('+g+')':''}: the speech model already uses your graphics card.`;
+  else if(r.ready) t=r.active?`Uses your graphics card${g?' ('+g+')':''}. Much faster than the processor.`:'Graphics card support is installed, but switched off.';
+  else if(!r.win) t='Graphics card support is for Windows.'; else t=`${g?'Found: '+g+'. ':''}Install graphics card support (about 560 MB) and the speech model runs on your graphics card: much faster. Never during your stream.`;
+  $('engInfo').textContent=t; $('engInst').style.display=(!r.ready&&!r.cuda&&r.win&&!r.busy)?'':'none'; $('engInst').textContent=r.error?'Try again':'Install graphics card support';
+  if(r.busy) setTimeout(engFill,1500); }
+if($('sEngine')){ $('sEngine').onchange=async()=>{ const r=await api('/api/settings',{speech_engine:$('sEngine').value}); SETS=r.settings; toast('Saved'); engFill(); };
+  $('engInst').onclick=async()=>{ await api('/api/engine-install',{}); toast('Installing graphics card support, you can keep working'); setTimeout(engFill,600); }; }
 
 // ---------- status
 async function poll(){ try{ const s=await api('/api/status'); ST=s; try{ if(PAGE==='home') renderTodo(); }catch(e){} renderLive.t0=Date.now()/1000; if(PAGE==='live') renderLive(); if(!SETS.cam) SETS=s.settings;
@@ -1864,7 +1877,7 @@ const WSTEPS=[
   bind:()=>{ const s=SESSIONS.find(x=>x.path&&x.duration); $$('[data-lis]').forEach(b=>b.onclick=()=>{ const a=$('wzA'); a.src=`/listen?sid=${encodeURIComponent(s.id)}&n=${b.dataset.lis}&t=${Math.min(90,(s.duration||60)/2)}`; a.play(); });
    $$('[data-mic]').forEach(b=>b.onclick=async()=>{ const r=await api('/api/settings',{mic_track:+b.dataset.mic}); SETS=r.settings; $$('[data-mic]').forEach(x=>x.classList.toggle('pri',x===b)); toast('Saved'); }); } },
  {t:'Cam and killfeed', body:async()=>`<h4>Cam and killfeed</h4><p>I need to know where your cam (or mascot) and your killfeed are on screen, so I crop them right. I can usually find your cam in OBS myself.</p>
-   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="wzCam">${ic('spark')}Get cam from OBS</button><button class="btn" id="wzCamSelf">Set it myself</button></div><div id="wzCamR" style="margin-top:10px">${SETS.cam?`<span class="pill2">Nu: x ${SETS.cam[0]}, y ${SETS.cam[1]}, ${SETS.cam[2]} × ${SETS.cam[3]}</span>`:''}</div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="wzCam">${ic('spark')}Get cam from OBS</button><button class="btn" id="wzCamSelf">Set it myself</button></div><div id="wzCamR" style="margin-top:10px">${SETS.cam?`<span class="pill2">Now: x ${SETS.cam[0]}, y ${SETS.cam[1]}, ${SETS.cam[2]} × ${SETS.cam[3]}</span>`:''}</div>
    <p style="margin-top:14px">The killfeed is at the top right by default, like in Valorant. Is yours somewhere else? Drag the purple box in Settings &gt; Where is your cam.</p>`,
   bind:()=>{ $('wzCam').onclick=async()=>{ const r=await api('/api/detect-cam'); if(r.cam){ const s2=await api('/api/settings',{cam:r.cam}); SETS=s2.settings; $('wzCamR').innerHTML=`<span class="pill2 ok">Found: ${r.cam[2]} × ${r.cam[3]} at x ${r.cam[0]}, y ${r.cam[1]}</span>`; } else $('wzCamR').innerHTML=`<span class="pill2">${r.obs?'Your mascot cam is not in your OBS scenes. Set it yourself.':'OBS is not connected. Go back to step 1.'}</span>`; };
    $('wzCamSelf').onclick=()=>{ $('wzM').classList.remove('on'); tab('set'); setTimeout(()=>$('pick').scrollIntoView({behavior:'smooth',block:'center'}),250); }; } },

@@ -133,6 +133,55 @@ def transcribe(req):
     say(ok=True, segs=out, vad=vad)
 
 
+# ---------------------------------------------------------------- graphics card on any brand (AMD, Intel, NVIDIA): whisper.cpp with Vulkan
+def parse_wcpp(path):
+    """whisper-cli -ojf -ml 1 -sow: one segment per word, with the chance per token. -> segments like faster-whisper gives"""
+    d = json.load(open(path, encoding='utf-8', errors='replace'))
+    words = []
+    for sg in d.get('transcription') or []:
+        txt = sg.get('text') or ''
+        if not txt.strip() or txt.strip().startswith('[_'): continue
+        off = sg.get('offsets') or {}
+        a, b = (off.get('from') or 0) / 1000.0, (off.get('to') or 0) / 1000.0
+        ps = [t.get('p', 1.0) for t in sg.get('tokens') or [] if not (t.get('text') or '').startswith('[_')]
+        words.append([a, b, txt, min(ps) if ps else 1.0])
+    segs, cur = [], []
+    for w in words:   # words back into sentences: a new one after a pause
+        if cur and (w[0] - cur[-1][1] > 0.8 or cur[-1][2].rstrip().endswith(('.', '?', '!'))):
+            segs.append(cur); cur = []
+        cur.append(w)
+    if cur: segs.append(cur)
+    return [{'start': c[0][0], 'end': c[-1][1], 'text': ''.join(w[2] for w in c), 'no_speech_prob': 0.0, 'compression_ratio': 1.0,
+             'avg_logprob': 0.0, 'words': c} for c in segs], d.get('result', {}).get('language')
+
+
+def transcribe_wcpp(req):
+    """run whisper-cli (its own process again), report progress, answer like transcribe()"""
+    import subprocess, tempfile, re as _re
+    exe, model = req['exe'], req['model_path']
+    out = os.path.join(tempfile.gettempdir(), f'jele_wcpp_{os.getpid()}')
+    args = [exe, '-m', model, '-f', req['wav'], '-l', (req.get('lang') or 'en'), '-t', str(int(req.get('threads') or 4)),
+            '-ojf', '-ml', '1', '-sow', '-pp', '-np', '-sns', '-of', out]
+    if req.get('prompt'): args += ['--prompt', req['prompt'][:800]]
+    if req.get('no_gpu'): args += ['-ng']
+    p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors='replace',
+                         creationflags=0x08000000 if os.name == 'nt' else 0)
+    tail = []
+    for ln in p.stderr:
+        m = _re.search(r'progress =\s*(\d+)%', ln)
+        if m: say(p=round(int(m.group(1)) / 100.0, 3))
+        else: tail = (tail + [ln.strip()])[-12:]
+    code = p.wait()
+    if code != 0 or not os.path.exists(out + '.json'):
+        return say(err='fail', msg=f'graphics card engine stopped (code {code}): ' + ' | '.join(tail[-3:])[-280:])
+    try:
+        segs, lang = parse_wcpp(out + '.json')
+    finally:
+        try: os.remove(out + '.json')
+        except OSError: pass
+    say(ok=True, segs=segs, vad=[], engine='vulkan', lang=lang)
+
+
 def main():
     low_priority()
     cuda_dlls()
@@ -150,6 +199,8 @@ def main():
             req = json.loads(line)
             if req.get('cmd') == 'transcribe':
                 transcribe(req)
+            elif req.get('cmd') == 'wcpp':
+                transcribe_wcpp(req)
             elif req.get('cmd') == 'ping':
                 say(ok=True)
             elif req.get('cmd') == 'quit':

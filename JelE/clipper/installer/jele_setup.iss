@@ -59,6 +59,7 @@ Filename: "{app}\clipper\python\pythonw.exe"; Parameters: """{app}\clipper\launc
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\clipper\python"
+Type: filesandordirs; Name: "{app}\clipper\engine"
 Type: filesandordirs; Name: "{app}\clipper\app\__pycache__"
 Type: filesandordirs; Name: "{app}\clipper\__pycache__"
 
@@ -70,8 +71,10 @@ var
 
 function NvidiaFound(): Boolean;
 begin
+  { NVIDIA, AMD or Intel Arc graphics card: their drivers leave these files }
   Result := FileExists(ExpandConstant('{sys}\nvidia-smi.exe')) or
-            FileExists(ExpandConstant('{commonpf64}\NVIDIA Corporation\NVSMI\nvidia-smi.exe'));
+            FileExists(ExpandConstant('{commonpf64}\NVIDIA Corporation\NVSMI\nvidia-smi.exe')) or
+            FileExists(ExpandConstant('{sys}\amdxc64.dll')) or FileExists(ExpandConstant('{sys}\amdvlk64.dll'));
 end;
 
 function Txt(Top: Integer; Caption: String; Bold: Boolean; Size: Integer; Color: Integer; Indent: Integer): TNewStaticText;
@@ -113,9 +116,9 @@ var
 begin
   HasNvidia := NvidiaFound();
   EdPage := CreateCustomPage(wpWelcome, 'Light or Full?', 'Pick the version that fits your PC. Both have the same features.');
-  RbLight := Choice(0, 'Light', 'About 0.5 GB  -  for laptops and PCs without an NVIDIA graphics card',
+  RbLight := Choice(0, 'Light', 'About 0.5 GB  -  for laptops and PCs without a gaming graphics card',
     'Installs the Clipper with everything it needs. The speech model for captions downloads by itself the first time you need it.', not HasNvidia);
-  RbFull := Choice(ScaleY(118), 'Full', 'About 4 GB  -  for gaming PCs with an NVIDIA graphics card',
+  RbFull := Choice(ScaleY(118), 'Full', 'About 1 to 4 GB  -  for gaming PCs with a graphics card (NVIDIA, AMD or Intel Arc)',
     'Also installs graphics card support for the speech model (much faster, best captions) and downloads the speech models right away, so your first short is quick.', HasNvidia);
   N := Txt(ScaleY(240), 'You can switch later by running this setup again.', False, 0, clGray, 0);
   RbFull.Checked := HasNvidia;
@@ -130,7 +133,7 @@ end;
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 begin
   Result := MemoDirInfo + NewLine + NewLine + 'Version:' + NewLine + Space;
-  if IsFull() then Result := Result + 'Full (graphics card support and speech models, about 4 GB)'
+  if IsFull() then Result := Result + 'Full (graphics card support and speech models, about 1 to 4 GB)'
   else Result := Result + 'Light (about 0.5 GB, the speech model downloads when you first need it)';
   Result := Result + NewLine + NewLine + 'This needs an internet connection: the setup downloads the parts the Clipper uses.';
 end;

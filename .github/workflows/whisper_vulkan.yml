@@ -1,0 +1,63 @@
+name: Build graphics card engine
+
+# Builds whisper.cpp with Vulkan (the speech model on AMD, Intel and NVIDIA graphics cards) and puts it on a
+# separate pre-release. The Clipper downloads it itself when you click "Install graphics card support". Started by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      WVER: v1.9.5
+      TAG: engine-whisper-vulkan-1.9.5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: latest
+          cache: true
+
+      - name: Build whisper.cpp with Vulkan
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch $env:WVER https://github.com/ggml-org/whisper.cpp wcpp
+          cmake -S wcpp -B wcpp/build -DGGML_VULKAN=ON -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          cmake --build wcpp/build --config Release -j 4 --target whisper-cli
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          New-Item -ItemType Directory pkg | Out-Null
+          Get-ChildItem -Recurse wcpp/build/bin -Include *.exe, *.dll | Copy-Item -Destination pkg/
+          Copy-Item wcpp/LICENSE pkg/LICENSE-whisper.cpp.txt
+          Get-ChildItem pkg | Format-Table Name, Length
+          if (-not (Test-Path pkg/whisper-cli.exe)) { Write-Host 'whisper-cli.exe was not built'; exit 1 }
+
+      - name: Test it (tiny model; this machine has no graphics card)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin -OutFile tiny.bin
+          & pkg/whisper-cli.exe -m tiny.bin -f wcpp/samples/jfk.wav -l en -ojf -ml 1 -sow -pp -np -sns -of out
+          Write-Host "graphics card run: exit $LASTEXITCODE"
+          if (-not (Test-Path out.json)) {
+            & pkg/whisper-cli.exe -m tiny.bin -f wcpp/samples/jfk.wav -l en -ojf -ml 1 -sow -np -sns -ng -of out
+            Write-Host "processor run: exit $LASTEXITCODE"
+          }
+          python -c "import sys; sys.path.insert(0, 'JelE/clipper/app'); import speechworker as w; s, l = w.parse_wcpp('out.json'); sys.stderr.write('PARSED ' + str(l) + ' ' + str([(round(x['start'], 2), x['text']) for x in s]) + '\n')"
+
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path pkg/* -DestinationPath whisper_vulkan_win64.zip
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:TAG --prerelease --latest=false --title "Graphics card engine (whisper.cpp 1.9.5 with Vulkan)" --notes "Used by JelE Clipper to run the speech model on AMD, Intel and NVIDIA graphics cards. The app downloads it itself (Settings > Captions > Runs on). This is not an app version."
+          }
+          gh release upload $env:TAG whisper_vulkan_win64.zip --clobber

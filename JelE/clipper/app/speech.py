@@ -91,6 +91,71 @@ def total_ram_mb():
     except Exception: pass
     return 0
 
+# ---------------------------------------------------------------- graphics card on any brand (AMD, Intel, NVIDIA) via whisper.cpp + Vulkan (plan F2.2)
+WCPP_TAG = 'engine-whisper-vulkan-1.9.5'
+WCPP_MODEL = 'ggml-large-v3-turbo-q5_0.bin'
+WCPP = {'bad': False, 'busy': False, 'step': '', 'pct': 0, 'error': '', 'gpus': None}
+def wcpp_dir(): return os.path.join(HERE, 'engine', 'whisper_vulkan')
+def wcpp_exe():
+    for n in ('whisper-cli.exe', 'whisper-cli'):
+        p_ = os.path.join(wcpp_dir(), n)
+        if os.path.exists(p_): return p_
+    return None
+def wcpp_model(): return os.path.join(DATA, 'models', WCPP_MODEL)
+def wcpp_ready(): return bool(wcpp_exe()) and os.path.exists(wcpp_model()) and os.path.getsize(wcpp_model()) > 100e6
+def gpu_names():
+    """the graphics cards in this pc (Windows), for the choice in Settings"""
+    if WCPP['gpus'] is None:
+        WCPP['gpus'] = []
+        if os.name == 'nt':
+            try:
+                r = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', '(Get-CimInstance Win32_VideoController).Name'],
+                                   capture_output=True, text=True, timeout=20, creationflags=NOWIN)
+                WCPP['gpus'] = [x.strip() for x in r.stdout.splitlines() if x.strip() and 'basic' not in x.lower() and 'virtual' not in x.lower()]
+            except Exception: pass
+    return WCPP['gpus']
+def use_wcpp():
+    eng = SET.get('speech_engine', 'auto')
+    if eng == 'cpu' or WCPP['bad'] or getattr(LIVE_TL, 'on', False) or not wcpp_ready(): return False   # during the stream: never on the graphics card
+    return eng == 'gpu' or not has_cuda()
+def wcpp_status():
+    return {'ready': wcpp_ready(), 'busy': WCPP['busy'], 'step': WCPP['step'], 'pct': WCPP['pct'], 'error': WCPP['error'], 'gpus': gpu_names(),
+            'engine': SET.get('speech_engine', 'auto'), 'cuda': has_cuda(), 'active': use_wcpp(), 'win': os.name == 'nt'}
+def _download(url, dst, label, lo, hi):
+    tmp = dst + '.part'
+    req = urllib.request.Request(url, headers={'User-Agent': 'JelE-Clipper'})
+    with urllib.request.urlopen(req, timeout=60) as r, open(tmp, 'wb') as fh:
+        total = int(r.headers.get('Content-Length') or 0); got = 0
+        while True:
+            b = r.read(1 << 20)
+            if not b: break
+            fh.write(b); got += len(b)
+            if total: WCPP['pct'] = int(lo + (hi - lo) * got / total)
+            WCPP['step'] = f'{label} ({got // 1048576} MB' + (f' of {total // 1048576} MB)' if total else ')')
+    os.replace(tmp, dst)
+def wcpp_install():
+    """download the graphics card engine (about 10 MB) and its speech model (about 550 MB). runs in the background"""
+    import zipfile
+    if WCPP['busy']: return
+    WCPP.update(busy=True, error='', pct=0, step='Starting')
+    try:
+        if os.name != 'nt': raise RuntimeError('this only works on Windows')
+        repo = re.sub(r'^(https?://)?(www\.)?github\.com/', '', (SET.get('update_repo') or 'JelE123/JelE-clipper')).strip('/')
+        os.makedirs(wcpp_dir(), exist_ok=True); os.makedirs(os.path.dirname(wcpp_model()), exist_ok=True)
+        z = os.path.join(wcpp_dir(), 'engine.zip')
+        _download(f'https://github.com/{repo}/releases/download/{WCPP_TAG}/whisper_vulkan_win64.zip', z, 'Downloading the graphics card engine', 0, 5)
+        with zipfile.ZipFile(z) as zf:
+            for n in zf.namelist():
+                if n.endswith('/') or '..' in n: continue
+                with zf.open(n) as src, open(os.path.join(wcpp_dir(), os.path.basename(n)), 'wb') as dst: shutil.copyfileobj(src, dst)
+        os.remove(z)
+        if not os.path.exists(wcpp_model()) or os.path.getsize(wcpp_model()) < 100e6:
+            _download(f'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{WCPP_MODEL}', wcpp_model(), 'Downloading the speech model', 5, 100)
+        WCPP.update(step='Ready', pct=100, bad=False); log('Graphics card support for the speech model is installed')
+    except Exception as e:
+        WCPP['error'] = str(e)[:200]; log('Graphics card support could not be installed:', e)
+    finally: WCPP['busy'] = False
+
 class SpeechCrash(RuntimeError): pass
 class SpeechProc:
     """the speech model in its own process (app/speechworker.py). It stays loaded between jobs (fast),
@@ -164,11 +229,23 @@ def raw_transcribe(audio, wav, purpose, on_prog, mic):
     kw = dict(language=cur_lang() if cur_lang() != 'auto' else None, beam_size=5, word_timestamps=True, vad_filter=True,
               vad_parameters={'min_silence_duration_ms': 300, 'speech_pad_ms': 250, 'threshold': 0.4},
               condition_on_previous_text=False, no_speech_threshold=0.5, temperature=[0.0, 0.2, 0.4])
+    own = [w.strip() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip()]
+    if use_wcpp() and not SPEECH.broken:   # graphics card of any brand
+        base = gamewords.prompt_words(cur_game()) if gamewords else []
+        req = {'cmd': 'wcpp', 'exe': wcpp_exe(), 'model_path': wcpp_model(), 'wav': wav, 'lang': cur_lang(), 'threads': speech_threads(),
+               'prompt': ', '.join(base[-60:] + ['JelE'] + own)}
+        try: m = SPEECH.run(req, on_prog)
+        except SpeechCrash as e: m = {'err': 'fail', 'msg': str(e)}
+        if m is None: return [], []
+        if m.get('ok'):
+            if not WCPP.get('said'): WCPP['said'] = True; log('The speech model runs on your graphics card')
+            return [_O(dict(sg, words=[_O({'start': w[0], 'end': w[1], 'word': w[2], 'probability': w[3]}) for w in sg['words']])) for sg in m['segs']], []
+        WCPP['bad'] = True; note_error('graphics card engine', m.get('msg') or '?')
+        log('The graphics card engine did not work (' + (m.get('msg') or '?')[:120] + '). Using the processor from now on, the app keeps going.')
     if SET.get('speech_process', True) and not SPEECH.broken:
         name, cuda = pick_model(purpose, SPEECH.cuda)
         live = getattr(LIVE_TL, 'on', False)
         if live: name = 'small.en' if (SET.get('language') or 'en') == 'en' else 'small'   # during the stream: the light model, few cores
-        own = [w.strip() for w in re.split(r'[,\n]+', SET.get('vocab') or '') if w.strip()]
         base = gamewords.prompt_words(cur_game()) if gamewords else ['Valorant', 'Jett', 'Reyna', 'Raze', 'Sova', 'Omen', 'Killjoy', 'Vandal', 'Phantom', 'spike', 'defuse', 'ult']
         tries = 0
         while name and tries < 3:
