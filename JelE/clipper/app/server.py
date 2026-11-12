@@ -337,6 +337,20 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': True})
         if p == '/api/shortcuts': return self.j({'ok': make_shortcuts(True)})
         if p == '/api/obs-setup': return self.j(obs_auto_setup())
+        if p == '/api/remake':   # make shorts again with the newest version; your own edits stay, the old short stays too
+            lib = lib_load(); n = 0
+            for f in b.get('files') or []:
+                e = lib.get(os.path.basename(f))
+                if not e or e.get('test'): continue
+                job = dict(e.get('job') or {k: e.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'style', 'fx', 'mid')})
+                if not job.get('sid'): continue
+                for k in ('replace', 'auto', 'live', 'preview', 'fresh_words', 'language'): job.pop(k, None)
+                job['remake_of'] = os.path.basename(f); job.setdefault('hook', e.get('title') or '')
+                if b.get('captions') == 'new':
+                    job.pop('words', None); job['fresh_words'] = True
+                    if b.get('language'): job['language'] = b['language']
+                JOBS.put(('render', job)); n += 1
+            return self.j({'ok': True, 'n': n})
         if p == '/api/settings':
             SET.update({k: v for k, v in b.items() if k in DEFAULTS}); save_settings(SET); return self.j({'ok': True, 'settings': SET})
         if p == '/api/open':

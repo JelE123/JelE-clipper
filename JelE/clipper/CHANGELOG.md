@@ -2,6 +2,13 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.26 · 12 November 2026
+
+### Make shorts again (plan F3.6, first part)
+- New: "Make again" on every short, and for many shorts at once (Shorts > Select > Make again). Handy after an update: your shorts get everything that got better
+- You choose: keep your captions (your own edits, cuts and effects stay exactly as they are), or new captions from your voice, in the language you pick (English, Dutch, German, French, Spanish, or let it find out)
+- The old short stays next to the new one, and a short you posted stays posted
+
 ## 6.25 · 12 November 2026
 
 ### Faster app on Windows

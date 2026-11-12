@@ -408,6 +408,7 @@ def worker():
         STATE['cancel'] = False; STATE['why'] = None
         job = {'kind': kind, 'arg': arg if kind in ('analyse', 'remux', 'proxy') else {k: arg.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'hook')}, 'since': time.time(), 'stage': 'Starting', 'pct': 0, 'est': tempo_est(kind, arg)}
         STATE['job'] = job; t0 = time.time(); ok = False
+        LANG_TL.v = arg.get('language') if isinstance(arg, dict) else None
         if kind in ('analyse', 'remux', 'proxy'): use_game(arg)
         elif isinstance(arg, dict): use_game(arg.get('sid'), arg.get('start'))
         try:

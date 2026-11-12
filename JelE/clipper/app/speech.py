@@ -1,6 +1,8 @@
 # JelE Clipper part: speech to text. Loaded by clipper.py into one shared namespace, do not run on its own.
 # ---------------------------------------------------------------- speech to text
 _WHISPER = {}
+LANG_TL = threading.local()   # a language for this one job (for example when you make a short again in another language)
+def cur_lang(): return getattr(LANG_TL, 'v', None) or SET.get('language') or 'en'
 def model_cached(name):
     hub = os.path.join(os.path.expanduser('~'), '.cache', 'huggingface', 'hub')
     key = name.replace('.', '-').replace('large-v3-turbo', 'large-v3-turbo')
@@ -48,13 +50,13 @@ def pick_model(purpose='captions', cuda=None):
     if cuda is None: cuda = has_cuda()
     if name == 'auto': name = 'large-v3' if cuda else ('large-v3-turbo' if purpose == 'captions' and CORES >= 8 else 'small.en')
     if name in _BAD_MODEL: name = 'medium.en' if purpose == 'captions' and 'medium.en' not in _BAD_MODEL else 'small.en'
-    if SET.get('language', 'en') != 'en': name = name.replace('.en', '')
+    if cur_lang() != 'en': name = name.replace('.en', '')
     return name, cuda
 
 def smaller_model(name, purpose):
     if name in ('small.en', 'small', 'base.en', 'base'): return None
     nxt = 'medium.en' if purpose == 'captions' and not name.startswith('medium') else 'small.en'
-    return nxt if SET.get('language', 'en') == 'en' else nxt.replace('.en', '')
+    return nxt if cur_lang() == 'en' else nxt.replace('.en', '')
 
 def whisper_model(purpose='captions'):
     """the model inside the app itself: only used when the separate speech process cannot start"""
@@ -159,7 +161,7 @@ class _O:
 
 def raw_transcribe(audio, wav, purpose, on_prog, mic):
     """the speech model's own output (segments with words). first choice: the separate speech process"""
-    kw = dict(language=SET.get('language') or None, beam_size=5, word_timestamps=True, vad_filter=True,
+    kw = dict(language=cur_lang() if cur_lang() != 'auto' else None, beam_size=5, word_timestamps=True, vad_filter=True,
               vad_parameters={'min_silence_duration_ms': 300, 'speech_pad_ms': 250, 'threshold': 0.4},
               condition_on_previous_text=False, no_speech_threshold=0.5, temperature=[0.0, 0.2, 0.4])
     if SET.get('speech_process', True) and not SPEECH.broken:

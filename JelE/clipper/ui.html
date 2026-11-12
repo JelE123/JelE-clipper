@@ -841,7 +841,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 
   <section class="page" id="out"><div class="jobsSlot" id="jobsBox"></div><div id="planBox"></div><div class="libbar"><div class="seg fseg" id="lfilt"><button data-f="all" class="on">All</button><button data-f="nieuw">To review</button><button data-f="goed">Ready to post</button><button data-f="gepland">Scheduled</button><button data-f="gepost">Posted</button><button data-f="fav">★ Favourite</button><button data-f="arch">Archive</button><button data-f="trash">Recycle bin</button></div>
   <input id="lbQ" placeholder="Search by title or text"><select id="lbTag"><option value="">All tags</option></select><select id="lbSort"><option value="new">Newest first</option><option value="score">Highest score</option><option value="views">Most views</option><option value="len">Longest</option></select><button class="btn sm" id="lbSelB">Select</button></div>
-  <div class="trsel" id="lbSel"><span id="lbSelN">Select shorts</span><button class="btn sm" data-bulk="tag">Tag</button><button class="btn sm" data-bulk="posted">Posted</button><button class="btn sm" data-bulk="pack">Export pack</button><button class="btn sm" data-bulk="arch">Archive</button><button class="btn sm danger" data-bulk="del">Delete</button></div><div id="olist"><div class="skgrid"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div></section>
+  <div class="trsel" id="lbSel"><span id="lbSelN">Select shorts</span><button class="btn sm" data-bulk="tag">Tag</button><button class="btn sm" data-bulk="posted">Posted</button><button class="btn sm" data-bulk="pack">Export pack</button><button class="btn sm" data-bulk="remake">Make again</button><button class="btn sm" data-bulk="arch">Archive</button><button class="btn sm danger" data-bulk="del">Delete</button></div><div id="olist"><div class="skgrid"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div></section>
 
   <section class="page" id="sys">
     <div class="sets">
@@ -997,11 +997,11 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 <div class="modal" id="wnM"><div class="box2"><h3 class="disp">New in version <span id="wnV" style="color:var(--or);margin-left:6px"></span><button class="btn sm ghost" id="wnX"><svg class="i"><use href="#i-x"/></svg></button></h3>
   <p class="dim" style="font-size:13.5px;margin-top:6px">This is what changed since last time.</p><ul class="wn" id="wnL" style="margin-top:12px;max-height:46vh;overflow:auto"></ul>
   <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn pri" id="wnOk" style="flex:1;justify-content:center">Nice, continue</button><button class="btn" id="wnWiz"><svg class="i"><use href="#i-check"/></svg>Go through setup (2 min)</button><button class="btn ghost" id="wnAll">All versions</button></div></div></div>
-<div class="modal" id="clM"><div class="box2 cl"><h3 class="disp">Changelog <span class="dim" style="font:600 12px 'Segoe UI';margin-left:8px">what changed per version</span><button class="btn sm ghost" onclick="document.getElementById('clM').classList.remove('on')"><svg class="i"><use href="#i-x"/></svg></button></h3>
+<div class="modal" id="clM"><div class="box2 cl"><h3 class="disp">Changelog <span class="dim" style="font:600 12px var(--font);margin-left:8px">what changed per version</span><button class="btn sm ghost" onclick="document.getElementById('clM').classList.remove('on')"><svg class="i"><use href="#i-x"/></svg></button></h3>
   <div id="clL" style="margin-top:18px;max-height:68vh;overflow:auto;padding-right:6px"></div></div></div>
 <div class="modal" id="watchM"><div class="box2 watch" style="width:min(460px,100%)"><h3 class="disp"><span id="watchT" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Short</span><button class="btn sm" data-close><svg class="i"><use href="#i-x"/></svg>Close</button></h3>
   <video id="watchV" controls playsinline loop></video></div></div>
-<div class="modal" id="pvM"><div class="box2" style="width:min(440px,100%)"><h3 class="disp">Preview <span class="dim" style="font:600 12px 'Segoe UI';margin-left:8px">small version of the result</span><button class="btn sm ghost" onclick="document.getElementById('pvM').classList.remove('on');document.getElementById('pvV').pause()"><svg class="i"><use href="#i-x"/></svg></button></h3>
+<div class="modal" id="pvM"><div class="box2" style="width:min(440px,100%)"><h3 class="disp">Preview <span class="dim" style="font:600 12px var(--font);margin-left:8px">small version of the result</span><button class="btn sm ghost" onclick="document.getElementById('pvM').classList.remove('on');document.getElementById('pvV').pause()"><svg class="i"><use href="#i-x"/></svg></button></h3>
   <video id="pvV" controls playsinline style="width:100%;max-height:70vh;border-radius:12px;margin-top:12px;background:#000"></video>
   <div style="display:flex;gap:8px;margin-top:12px"><button class="btn pri" style="flex:1;justify-content:center" onclick="document.getElementById('pvM').classList.remove('on');document.getElementById('pvV').pause();document.getElementById('make').click()"><svg class="i"><use href="#i-down"/></svg>Looks good, export</button></div></div></div>
 <div class="modal" id="qM"><div class="box2" style="width:min(560px,100%)"><h3 class="disp">Post-ready score <button class="btn sm ghost" onclick="document.getElementById('qM').classList.remove('on')"><svg class="i"><use href="#i-x"/></svg></button></h3>
@@ -1019,7 +1019,13 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 <div class="modal" id="rcM"><div class="box2" style="width:min(520px,100%)"><h3 class="disp">Stream recap <button class="btn sm ghost" onclick="document.getElementById('rcM').classList.remove('on')"><svg class="i"><use href="#i-x"/></svg></button></h3>
   <p class="dim" style="font-size:13.5px;margin-top:6px">Ready to paste in Discord or on X. Feel free to edit.</p><textarea id="rcT" rows="10" style="width:100%;margin-top:10px"></textarea>
   <button class="btn pri" id="rcCopy" style="width:100%;justify-content:center;margin-top:10px"><svg class="i"><use href="#i-copy"/></svg>Copy</button></div></div>
-<div class="modal" id="wzM"><div class="box2 wz"><h3 class="disp">Setup <span class="dim" id="wzN" style="font:600 12px 'Segoe UI';margin-left:8px"></span><button class="btn sm ghost" id="wzX"><svg class="i"><use href="#i-x"/></svg></button></h3>
+<div class="modal" id="rmM"><div class="box2"><h3 class="disp">Make again <span class="dim" id="rmN" style="font:600 12px var(--font);margin-left:8px"></span><button class="btn sm ghost" id="rmX"><svg class="i"><use href="#i-x"/></svg></button></h3>
+  <p class="dim" style="margin:6px 0 14px">Makes these shorts again with the newest version of the Clipper. The old ones stay, and posted stays posted.</p>
+  <div class="seg wide" id="rmCap"><button data-c="keep" class="on">Keep my captions</button><button data-c="new">New captions</button></div>
+  <p class="dim" id="rmCapT" style="font-size:12px;margin:8px 0 0">Your own caption edits, cuts and effects stay exactly as they are.</p>
+  <div class="row2" id="rmLangR" style="display:none;margin-top:10px"><label>Language of the captions</label><select id="rmLang"><option value="">Same as in Settings</option><option value="en">English</option><option value="nl">Dutch</option><option value="de">German</option><option value="fr">French</option><option value="es">Spanish</option><option value="auto">Find out by itself</option></select></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn" id="rmC">Cancel</button><button class="btn pri" id="rmGo">Make again</button></div></div></div>
+<div class="modal" id="wzM"><div class="box2 wz"><h3 class="disp">Setup <span class="dim" id="wzN" style="font:600 12px var(--font);margin-left:8px"></span><button class="btn sm ghost" id="wzX"><svg class="i"><use href="#i-x"/></svg></button></h3>
   <div class="steps2" id="wzS"></div><div class="wbody" id="wzB"></div>
   <div class="wfoot"><button class="btn ghost" id="wzPrev">Back</button><span class="sp"></span><button class="btn pri" id="wzNext">Next</button></div></div></div>
 <div class="modal" id="planM"><div class="box2"><h3 class="disp">Schedule post <button class="btn sm ghost" onclick="document.getElementById('planM').classList.remove('on')"><svg class="i"><use href="#i-x"/></svg></button></h3>
@@ -1110,6 +1116,17 @@ function setFilter(){ const g=($('setGrp').querySelector('.on')||{}).dataset?.g|
   $('setNone').style.display=n?'none':''; }
 $$('#setGrp button').forEach(b=>b.onclick=()=>{ $$('#setGrp button').forEach(x=>x.classList.toggle('on',x===b)); setFilter(); });
 $('setFind').oninput=setFilter;
+
+
+// ---------- F3.6: make shorts again (newest version, keep or redo the captions, pick the language)
+let RMF=[];
+function remakeOpen(files){ RMF=files; $('rmN').textContent=files.length===1?'1 short':files.length+' shorts'; $$('#rmCap button').forEach(b=>b.classList.toggle('on',b.dataset.c==='keep')); rmCapSet(); $('rmM').classList.add('on'); }
+function rmCapSet(){ const nw=$('rmCap').querySelector('.on').dataset.c==='new'; $('rmLangR').style.display=nw?'':'none';
+  $('rmCapT').textContent=nw?'The captions are made again from your voice (your own caption edits are not kept). Cuts and effects stay.':'Your own caption edits, cuts and effects stay exactly as they are.'; }
+$$('#rmCap button').forEach(b=>b.onclick=()=>{ $$('#rmCap button').forEach(x=>x.classList.toggle('on',x===b)); rmCapSet(); });
+$('rmX').onclick=$('rmC').onclick=()=>$('rmM').classList.remove('on');
+$('rmGo').onclick=async()=>{ const nw=$('rmCap').querySelector('.on').dataset.c==='new'; const r=await api('/api/remake',{files:RMF,captions:nw?'new':'keep',language:nw?$('rmLang').value:''});
+  $('rmM').classList.remove('on'); toast(r.n?`${r.n} shorts are being made again`:'Nothing to make again'); LSEL.clear(); SELMODE=false; selBar(); loadShorts(); };
 
 // ---------- status
 async function poll(){ try{ const s=await api('/api/status'); ST=s; try{ if(PAGE==='home') renderTodo(); }catch(e){} renderLive.t0=Date.now()/1000; if(PAGE==='live') renderLive(); if(!SETS.cam) SETS=s.settings;
@@ -1629,7 +1646,7 @@ async function loadShorts(quiet){ SHORTS=(await api('/api/shorts')).filter(s=>!s
   $('olist').innerHTML=list.length? '<div class="sgrid">'+list.map(s=>`<div class="card shc"><div class="shv"><video src="/short?f=${encodeURIComponent(s.file)}" preload="metadata" muted loop playsinline></video><span class="fmt">short</span>${qBadge(s)}${s.status==='nieuw'?'<span class="new" style="position:absolute;right:10px;top:10px;background:var(--or);color:#111827;font-size:12px;font-weight:800;padding:3px 8px;border-radius:99px">new</span>':''}</div>
       <div class="bd">${SELMODE?`<label class="selbox"><input type="checkbox" data-sel="${esc(s.file)}" ${LSEL.has(s.file)?'checked':''}></label>`:''}<b title="${esc(s.file)}">${esc(s.title||s.file.replace(/\.mp4$/,''))}</b>${libMeta(s)}<div class="dim" style="font-size:12px">${s.auto?'automatic · ':''}${(s.size/1048576).toFixed(1)} MB · ${new Date(s.at*1000).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
       ${postRow(s)}${s.status==='gepost'?`<label class="vwr" title="How many views did it get? Then I learn what really works">Views<input class="vw" type="number" min="0" placeholder="fill in" data-vw="${esc(s.file)}" value="${s.views||''}"></label>`:''}
-      <div class="ft"><a class="btn pri sm" href="/short?f=${encodeURIComponent(s.file)}" download>${ic('down')}Download</a>${s.sid?`<button class="btn sm" data-fix="${esc(s.file)}" title="Edit">${ic('cut')}</button>`:''}<button class="btn sm" data-post="${esc(s.file)}" title="Text to post">${ic('text')}</button><button class="btn sm" data-plan="${esc(s.file)}" title="Schedule when you post it">${ic('clock')}</button><button class="btn sm" data-thumb="${esc(s.file)}" title="Make thumbnail">${ic('film')}</button><button class="btn sm" data-pack="${esc(s.file)}" title="Export pack: video, post text, cover and captions per platform">${ic('folder')}</button><button class="btn sm danger" data-del="${esc(s.file)}" style="margin-left:auto" title="Delete">${ic('trash')}</button></div></div></div>`).join('')+'</div>'
+      <div class="ft"><a class="btn pri sm" href="/short?f=${encodeURIComponent(s.file)}" download>${ic('down')}Download</a>${s.sid?`<button class="btn sm" data-fix="${esc(s.file)}" title="Edit">${ic('cut')}</button>`:''}<button class="btn sm" data-post="${esc(s.file)}" title="Text to post">${ic('text')}</button><button class="btn sm" data-plan="${esc(s.file)}" title="Schedule when you post it">${ic('clock')}</button><button class="btn sm" data-thumb="${esc(s.file)}" title="Make thumbnail">${ic('film')}</button><button class="btn sm" data-pack="${esc(s.file)}" title="Export pack: video, post text, cover and captions per platform">${ic('folder')}</button>${s.sid?`<button class="btn sm" data-remake="${esc(s.file)}" title="Make again with the newest version (keep or redo the captions)">${ic('redo')}</button>`:''}<button class="btn sm danger" data-del="${esc(s.file)}" style="margin-left:auto" title="Delete">${ic('trash')}</button></div></div></div>`).join('')+'</div>'
     : `<div class="empty"><div class="eic"><svg class="i"><use href="#i-film"/></svg></div><b>${LF==='all'?'No shorts yet':'Nothing in this list'}</b>${LF==='all'?'After your next stream I make them automatically, or open a moment and click Export short.':''}</div>`;
   hoverVids($('olist')); libBind($('olist'));
   $$('#olist [data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm('Move this short to the recycle bin? You can get it back for 7 days.')) return; await api('/api/delete-short',{file:b.dataset.del}); loadShorts(); });
@@ -1637,7 +1654,7 @@ async function loadShorts(quiet){ SHORTS=(await api('/api/shorts')).filter(s=>!s
   $$('#olist [data-pon]').forEach(b=>b.onclick=async()=>{ const s=SHORTS.find(x=>x.file===b.dataset.pon), on=!((s.posted_on||{})[b.dataset.pl]);
     const r=await api('/api/short-posted',{file:s.file,platform:b.dataset.pl,on}); toast(on?`Posted on ${PLATN[b.dataset.pl]||b.dataset.pl}. In a few days I ask for the views`:`No longer marked as posted on ${PLATN[b.dataset.pl]||b.dataset.pl}`); loadShorts(true); });
   $$('#olist [data-vw]').forEach(i=>i.onchange=async()=>{ await api('/api/short-views',{file:i.dataset.vw,views:+i.value||0}); toast('Views saved, I learn from it'); });
-  $$('#olist [data-fix]').forEach(b=>b.onclick=()=>openFromLib(SHORTS.find(x=>x.file===b.dataset.fix))); $$('#olist [data-post]').forEach(b=>b.onclick=()=>postText(b.dataset.post)); }
+  $$('#olist [data-remake]').forEach(b=>b.onclick=()=>remakeOpen([b.dataset.remake]));  $$('#olist [data-fix]').forEach(b=>b.onclick=()=>openFromLib(SHORTS.find(x=>x.file===b.dataset.fix))); $$('#olist [data-post]').forEach(b=>b.onclick=()=>postText(b.dataset.post)); }
 $$('#lfilt button').forEach(b=>b.onclick=()=>{ LF=b.dataset.f; $$('#lfilt button').forEach(x=>x.classList.toggle('on',x===b)); loadShorts(); });
 function hoverVids(root){ $$('.shv video',root).forEach(v=>{ v.addEventListener('loadedmetadata',()=>{ const f=v.parentElement.querySelector('.fmt'); if(f) f.textContent=v.videoWidth>v.videoHeight?'landscape 16:9':'portrait 9:16'; });
     v.parentElement.onmouseenter=()=>v.play().catch(()=>{}); v.parentElement.onmouseleave=()=>{ v.pause(); };
@@ -2246,6 +2263,7 @@ async function bulk(a){ const files=[...LSEL]; if(!files.length) return toast('S
   if(a==='tag'){ const t=prompt('Which tag?'); if(!t) return; await api('/api/short-meta',{files,add_tag:t}); }
   if(a==='arch') await api('/api/short-meta',{files,archived:true});
   if(a==='posted') await api('/api/short-posted',{files,platform:'all',on:true});
+  if(a==='remake'){ return remakeOpen(files); }
   if(a==='pack'){ for(const f of files) await api('/api/pack',{file:f,platforms:SETS.platforms||['tiktok','shorts','reels'],open:false}); toast('Packs made in shorts/pakketten'); }
   LSEL.clear(); SELMODE=false; selBar(); loadShorts(); }
 async function trashRender(){ const L=await api('/api/trash');

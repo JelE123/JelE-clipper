@@ -60,6 +60,9 @@ def words_for(sid, job, path, start, dur, work):
     """the words you kept in the editor, else what was heard during the analysis, else listen now"""
     if isinstance(job.get('words'), list): return [tuple(w) for w in job['words'] if len(w) == 3]
     s = load_sess(sid)
+    if job.get('fresh_words'):   # made again with new captions (maybe in another language): listen again
+        prog('Listening to what you say', 4); wav = os.path.join(work, 'a.wav'); extract_wav(path, start, dur, wav)
+        return [(a + start, b + start, w) for a, b, w in transcribe(wav, 'captions', lambda f: prog(None, 5 + 25 * f))]
     tw = [] if os.path.exists(os.path.join(sdir(sid), 'transcript_bron.json')) else load_transcript(sid)   # the whole stream was already heard: reuse it (not when heard with the light model during the stream)
     if tw and tw[0][0] <= start + 30 and tw[-1][1] >= start + dur - 30:
         return [tuple(w) for w in tw if start - 1 <= w[0] <= start + dur + 1]
@@ -382,6 +385,7 @@ def _render(job):
         if chapters:   # highlights: chapters for the YouTube description
             lib[os.path.basename(dst)]['post']['description'] = 'Chapters:\n' + '\n'.join(f'{fmt(ct)} {cl}' for ct, cl in chapters) + '\n\n' + lib[os.path.basename(dst)]['post']['description']
         lib[os.path.basename(dst)]['job'] = {k: v for k, v in job.items() if k not in ('replace', 'variant', 'test', 'preview')}
+        if job.get('remake_of'): lib[os.path.basename(dst)]['remake_of'] = job['remake_of']
         lib[os.path.basename(dst)]['file'] = os.path.basename(dst); lib[os.path.basename(dst)]['brand'] = B().get('id')
         lib_save(lib)
         try:
