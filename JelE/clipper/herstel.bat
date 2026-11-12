@@ -5,6 +5,6 @@ title Restoring JelE Clipper
 echo.
 echo  Putting the previous version of JelE Clipper back.
 echo.
-.venv\Scripts\python herstel.py
+if exist python\python.exe (python\python.exe herstel.py) else (.venv\Scripts\python herstel.py)
 echo.
 pause

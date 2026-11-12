@@ -196,6 +196,7 @@ def main():
     if running():                # already running: only open the window
         if not QUIET: open_window()
         return
+    if not os.path.exists(os.path.join(DATA, 'requirements.hash')): deps()   # first start: the packages must be there before the Clipper runs
     g = threading.Thread(target=guard, daemon=True); g.start()
     if wait_ready():
         if not QUIET: open_window()

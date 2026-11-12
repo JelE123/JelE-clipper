@@ -8,8 +8,12 @@ end
 
 function script_load(settings)
   local dir = script_path():gsub("/", "\\")
-  local pyw = dir .. ".venv\\Scripts\\pythonw.exe"
+  local pyw = dir .. "python\\pythonw.exe"   -- installed with the setup
   local f = io.open(pyw, "r")
+  if f == nil then
+    pyw = dir .. ".venv\\Scripts\\pythonw.exe"
+    f = io.open(pyw, "r")
+  end
   if f ~= nil then
     -- no black window: only the JelE icon next to the clock. if the clipper already runs, nothing happens
     f:close()

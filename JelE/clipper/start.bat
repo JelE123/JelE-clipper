@@ -117,18 +117,30 @@ rem one block, so Windows reads it at once and never reads this file again.
 chcp 65001 >nul
 cd /d "%~dp0"
 title JelE Clipper
-if not exist .venv (
-  echo Run install.bat first.
-  pause
-  exit /b
-)
-.venv\Scripts\python -m pip install -q --disable-pip-version-check -r requirements.txt
-.venv\Scripts\python clipper.py %*
-if errorlevel 1 if exist data\update_pending.json (
-  echo.
-  echo  The new version does not start properly. Putting the previous version back...
-  .venv\Scripts\python herstel.py
+if exist python\python.exe (
+  rem installed with the setup: its own Python
+  python\python.exe -m pip install -q --disable-pip-version-check --no-warn-script-location -r requirements.txt
+  python\python.exe clipper.py %*
+  if errorlevel 1 if exist data\update_pending.json (
+    echo.
+    echo  The new version does not start properly. Putting the previous version back...
+    python\python.exe herstel.py
+    python\python.exe clipper.py %*
+  )
+) else (
+  if not exist .venv (
+    echo Run install.bat first.
+    pause
+    exit /b
+  )
+  .venv\Scripts\python -m pip install -q --disable-pip-version-check -r requirements.txt
   .venv\Scripts\python clipper.py %*
+  if errorlevel 1 if exist data\update_pending.json (
+    echo.
+    echo  The new version does not start properly. Putting the previous version back...
+    .venv\Scripts\python herstel.py
+    .venv\Scripts\python clipper.py %*
+  )
 )
 if "%~1"=="" pause
 exit /b

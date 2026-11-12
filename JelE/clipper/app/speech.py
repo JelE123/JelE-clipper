@@ -14,7 +14,21 @@ def whisper_ok():
     except Exception:
         return False
 
+def cuda_dlls():
+    """graphics card support installed by the Full setup (nvidia pip packages): tell Windows where its files are"""
+    if os.name != 'nt' or getattr(cuda_dlls, 'done', False): return
+    cuda_dlls.done = True
+    try:
+        import site
+        for sp in site.getsitepackages() + [site.getusersitepackages()]:
+            for d in glob.glob(os.path.join(sp, 'nvidia', '*', 'bin')):
+                try: os.add_dll_directory(d)
+                except Exception: pass
+                os.environ['PATH'] = d + os.pathsep + os.environ.get('PATH', '')
+    except Exception: pass
+
 def has_cuda():
+    cuda_dlls()
     try:
         import ctranslate2
         return ctranslate2.get_cuda_device_count() > 0

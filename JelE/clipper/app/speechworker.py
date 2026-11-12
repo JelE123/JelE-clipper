@@ -13,6 +13,20 @@ def say(**m):
     OUT.write(json.dumps(m) + '\n'); OUT.flush()
 
 
+def cuda_dlls():
+    """graphics card support installed by the Full setup (nvidia pip packages): tell Windows where its files are"""
+    if os.name != 'nt': return
+    try:
+        import site, glob
+        for sp in site.getsitepackages() + [site.getusersitepackages()]:
+            for d in glob.glob(os.path.join(sp, 'nvidia', '*', 'bin')):
+                try: os.add_dll_directory(d)
+                except Exception: pass
+                os.environ['PATH'] = d + os.pathsep + os.environ.get('PATH', '')
+    except Exception:
+        pass
+
+
 def low_priority():
     try:
         if os.name == 'nt':
@@ -121,6 +135,7 @@ def transcribe(req):
 
 def main():
     low_priority()
+    cuda_dlls()
     mb = 0
     for a in sys.argv[1:]:
         if a.startswith('--memlimit='):

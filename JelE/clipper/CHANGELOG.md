@@ -2,6 +2,20 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.20 · 12 November 2026
+
+### A real setup (plan F1.4)
+- New: JelE_Clipper_Setup.exe. It brings its own Python, so a new user does not have to install anything else
+- Before installing you pick Light or Full, with an explanation of what each one holds:
+  - Light (about 0.5 GB): for laptops and PCs without an NVIDIA graphics card. The speech model downloads the first time you need it
+  - Full (about 4 GB): for gaming PCs with an NVIDIA graphics card. Also installs graphics card support for the speech model and downloads the speech models right away
+- The setup looks for an NVIDIA graphics card itself and picks the version that fits as the default
+- It makes the "JelE Clipper" shortcuts and can start the Clipper right away
+- The uninstaller closes the Clipper first and asks before it removes your shorts and settings (default: keep them)
+- Every new setup is built and test-installed on a clean Windows machine before it is added to a release
+- The speech model now finds the graphics card support from the Full setup by itself
+- start.bat, veilig.bat, herstel.bat and the OBS script work with both the setup and the old install
+
 ## 6.19 · 12 November 2026
 
 ### No more black window (plan F1.3)

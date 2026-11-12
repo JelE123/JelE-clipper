@@ -486,6 +486,7 @@ def make_shortcuts(force=False):
     """a "JelE Clipper" shortcut on your desktop and in the start menu. it opens the Clipper in its own window, without the black window"""
     if os.name != 'nt': return False
     if SET.get('shortcuts_made') and not force: return False
+    if os.path.exists(os.path.join(HERE, 'python', 'pythonw.exe')): return False   # installed with the setup: it made the shortcuts
     pyw = os.path.join(HERE, '.venv', 'Scripts', 'pythonw.exe')
     if not os.path.exists(pyw): return False
     q = lambda x: x.replace("'", "''")   # PowerShell quoting

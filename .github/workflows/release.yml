@@ -12,6 +12,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      created: ${{ steps.v.outputs.exists == '0' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,12 +43,65 @@ jobs:
           s = open('JelE/clipper/CHANGELOG.md', encoding='utf-8').read()
           top = re.split(r'(?m)^## ', s)[1]
           body = top.split('\n', 1)[1].strip()
-          body += "\n\n**Install:** download JelE_update.zip, extract it over C:\\ and start the Clipper. On 6.0 or newer you can also update with one click through Settings > Updates."
+          body += "\n\n**Install:** download JelE_update.zip, extract it over C:\\ and start the Clipper. On 6.0 or newer you can also update with one click through Settings > Updates.\n\n**New install:** download JelE_Clipper_Setup.exe (it can take a few minutes after the release before it is there). Windows may warn that the app is unknown: click More info > Run anyway."
           open('notes.md', 'w', encoding='utf-8').write(body)
           PY
 
       - name: Create release
         if: steps.v.outputs.exists == '0'
         run: gh release create "v${{ steps.v.outputs.version }}" JelE_update.zip --target "$GITHUB_SHA" --title "JelE Clipper ${{ steps.v.outputs.version }}" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  setup:
+    # builds JelE_Clipper_Setup.exe on a clean Windows machine, installs it there as a test, and adds it to the release
+    needs: release
+    if: needs.release.outputs.created == '1'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gather the files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory build | Out-Null
+          Copy-Item -Recurse JelE/clipper build/clipper
+          Remove-Item -Recurse -Force build/clipper/tests -ErrorAction SilentlyContinue
+          $py = '3.12.10'
+          Invoke-WebRequest "https://www.python.org/ftp/python/$py/python-$py-embed-amd64.zip" -OutFile py.zip
+          Expand-Archive py.zip build/clipper/python
+          # its own Python: find packages (site) and the Clipper's own files (..)
+          Set-Content build/clipper/python/python312._pth "python312.zip`r`n.`r`n..`r`nimport site" -NoNewline
+          Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile build/get-pip.py
+
+      - name: Build the setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc "/DMyVersion=${{ needs.release.outputs.version }}" "/DSrc=$PWD\build" JelE/clipper/installer/jele_setup.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Test it on this clean Windows machine
+        shell: pwsh
+        run: |
+          $setup = 'JelE/clipper/installer/Output/JelE_Clipper_Setup.exe'
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR=C:\JelETest','/LOG=setup_test.log' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content setup_test.log -Tail 40; exit 1 }
+          Get-Content C:\JelETest\clipper\data\setup.log -Tail 15
+          $c = Start-Process C:\JelETest\clipper\python\python.exe -ArgumentList 'clipper.py','--no-browser' -WorkingDirectory C:\JelETest\clipper -PassThru -RedirectStandardOutput run.log -RedirectStandardError run_err.log
+          $ok = $false
+          foreach ($i in 1..60) { Start-Sleep 2; try { Invoke-WebRequest http://localhost:8765/api/status -UseBasicParsing | Out-Null; $ok = $true; break } catch {} }
+          if ($ok) { foreach ($u in '/', '/api/check', '/api/selftest') { Invoke-WebRequest "http://localhost:8765$u" -UseBasicParsing | Out-Null } }
+          Get-Content run.log -Tail 20; Get-Content run_err.log -Tail 20
+          Stop-Process -Id $c.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Host 'The installed Clipper does not start'; exit 1 }
+          $u = Start-Process C:\JelETest\unins000.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES' -Wait -PassThru
+          Write-Host "uninstall code $($u.ExitCode)"
+
+      - name: Add it to the release
+        shell: pwsh
+        run: gh release upload "v${{ needs.release.outputs.version }}" JelE/clipper/installer/Output/JelE_Clipper_Setup.exe --clobber
         env:
           GH_TOKEN: ${{ github.token }}
