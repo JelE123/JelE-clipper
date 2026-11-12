@@ -20,6 +20,8 @@ html,body{height:100%}
 body{background:var(--bg);color:var(--tx);font:400 13.5px/1.5 var(--font);-webkit-font-smoothing:antialiased;display:flex;overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 input,select{background:#0a0f18;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:9px 11px;font:400 13.5px var(--font);outline:none;transition:border-color .15s}
+/* text always in the middle: selects and text fields get their height, never vertical padding */
+select,input:not([type]),input[type=text],input[type=search],input[type=number],input[type=password],input[type=url]{height:38px;padding-top:0!important;padding-bottom:0!important;line-height:normal;box-sizing:border-box}
 input:focus,select:focus{border-color:var(--or)}
 .disp{font-family:var(--font);font-weight:700;font-style:normal;letter-spacing:-.02em}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -83,7 +85,7 @@ h3{font-size:15px;font-weight:700;margin-bottom:3px}
 
 /* home */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.stat{padding:18px 20px}.stat b{display:block;font-size:40px;line-height:1;margin-bottom:6px}.stat span{color:var(--mut);font-size:13.5px}
+.stat{padding:18px 20px}.stat b{display:block;font-size:40px;line-height:1.15;margin-bottom:6px}.stat span{color:var(--mut);font-size:13.5px}
 .stat.hl b{color:var(--or)}
 .live{margin-top:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;background:linear-gradient(100deg,rgba(255,146,0,.10),transparent 60%),var(--card)}
 .live .ic{width:44px;height:44px;border-radius:12px;background:var(--orS);color:var(--or);display:grid;place-items:center;flex:none}
@@ -251,7 +253,7 @@ h3{font-size:15px;font-weight:700;margin-bottom:3px}
 .wedit{background:#0a0f18;border:1px solid var(--or);border-radius:6px;color:var(--tx);padding:1px 5px;font:600 13.5px var(--font);outline:none}
 .trans span.unc{background:rgba(255,146,0,.14);color:var(--or);border:1px dashed rgba(255,146,0,.5)}
 .trans span.ed{color:#86efac}
-.pbtn2{width:auto;border-radius:99px;padding:0 14px;gap:6px;display:inline-flex;font-weight:700;font-size:12px;height:34px;background:var(--card2);border:1px solid var(--line);color:var(--tx)}
+.pbtn2{width:auto;border-radius:99px;padding:0 14px;gap:6px;display:inline-flex;align-items:center;justify-content:center;line-height:1;font-weight:700;font-size:12px;height:34px;background:var(--card2);border:1px solid var(--line);color:var(--tx)}
 .lbl{gap:12px;white-space:nowrap}.lbl>span{white-space:normal;text-align:right}
 .sl{display:flex;align-items:center;gap:10px;margin-top:10px}.sl label{font-size:12px;font-weight:650;color:var(--mut);min-width:96px}.sl input[type=range]{flex:1;accent-color:#ff9200;padding:0;border:0;background:none}.sl output{font:700 12px var(--font);min-width:38px;text-align:right;color:var(--tx)}
 .mini-tog{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13.5px;font-weight:650}
@@ -273,7 +275,7 @@ body.dock .modal .box2>h3:first-child{top:-16px;margin-top:-16px;padding-top:16p
 .hooks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.hooks button{font:italic 800 13px 'Barlow Condensed',sans-serif;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 9px;color:#c4cede}.hooks button:hover{border-color:var(--or);color:var(--tx)}
 .prow{display:flex;gap:6px;align-items:center}.prow select{flex:1;padding:6px 8px;font-size:12px}
 .undo{display:inline-flex;gap:4px}
-.week{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:12px;align-items:center;padding:16px 18px;margin-top:18px}
+.week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:center;padding:16px 18px;margin-top:18px}.week .tipr{grid-column:1/-1;display:flex;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:12px}.week .tipr .tip{border:0;padding:0;flex:1}.week .tipr .btn{flex:none}
 .week .k b{display:block;font-size:28px;line-height:1}.week .k span{color:var(--mut);font-size:12px}.week .k.hl b{color:var(--or)}
 .week .tip{grid-column:1/-1;color:var(--mut);font-size:12px;border-top:1px solid var(--line);padding-top:10px}
 .vwr{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--mut);margin-top:8px}.vw{width:96px;padding:5px 7px;font-size:12px}
@@ -472,6 +474,15 @@ aside{background:linear-gradient(180deg,#0c111b,#0a0e17);padding:var(--s4) var(-
 .btn.ghost{box-shadow:none;background:none}.btn.ghost:hover{background:var(--card2);border-color:var(--line2)}
 .top .acts .btn.ghost,.bn .btn.ghost,.modal h3 .btn.ghost,.wfoot .btn.ghost,.tour .btn.ghost{border-color:transparent}
 .shc .ft{flex-wrap:wrap;gap:6px}.shc .ft .btn.pri{flex:1 1 100%;justify-content:center}.shc .ft .btn:not(.pri){flex:1}.shc .ft .btn:not(.pri){min-width:30px;padding:0;justify-content:center}.shc .ft .btn.danger{margin-left:0!important}
+/* 6.40 shorts cards: same height, buttons at the bottom on one line */
+.shc{display:flex;flex-direction:column}.shc .bd{display:flex;flex-direction:column;gap:8px;flex:1}.shc .bd > *{margin:0!important}
+.shc .bd .dim{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shc .lmeta .stsel{height:28px;font-size:12px;padding-left:8px;padding-right:24px;background-position:right 7px center;flex:1;min-width:0}
+.shc .pon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.shc .ponl{grid-column:1/-1}.shc .pon button{height:26px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shc .vwr .vw{height:28px}
+.shc .ft{margin-top:auto!important;display:flex;flex-wrap:wrap;gap:5px}.shc .ft .btn.pri{flex:1 1 100%;height:34px}.shc .ft .btn:not(.pri){flex:1 1 0;min-width:0;height:30px;padding:0}
+.shc .lmeta .stsel{min-width:112px}#capB:empty{display:none}.insp .seg.wrap{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px}.insp .seg.wrap button{justify-content:center;padding:0 4px;white-space:nowrap}.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ed.v2 .srcbox{container-type:inline-size}@container (max-width:600px){.ed.v2 .ctrl .trimrow{flex:1 1 100%;margin:0!important;display:flex}.ed.v2 .ctrl .trimrow .btn{flex:1;justify-content:center}}body.dock .shc .pon button{font-size:11px;padding:0 2px}.top>div:first-child{min-width:0}.top h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shc .pon button:disabled{grid-column:1/-1}.storybar i.tiny{color:transparent;padding:0}
+@media(max-width:1350px){.ed.v2 .edtop:has(.pv.land){grid-template-columns:1fr}}body.dock .ed.v2 .edtop:has(.pv.land){grid-template-columns:1fr}body.dock h3{white-space:normal}
 .btn.danger:hover{background:var(--badS);border-color:rgba(239,68,68,.4)}
 .btn svg.i{width:16px;height:16px}
 
@@ -551,10 +562,10 @@ input[type=range]{height:auto}input[type=checkbox]{height:auto}
 .setbar .mut{font-size:13.5px}
 #set:not(.adv) .card.adv{display:none}
 .card.adv h3::after{content:"Advanced";margin-left:auto;font:700 12px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);background:var(--card2);border:1px solid var(--line);padding:2px 7px;border-radius:99px}
-.keyrow{display:grid;grid-template-columns:minmax(150px,190px) 1fr auto;gap:var(--s3);align-items:center;padding:var(--s3) 0;border-top:1px solid var(--line)}
+.keyrow{display:grid;grid-template-columns:minmax(150px,190px) 1fr 132px;gap:var(--s3);align-items:center;padding:var(--s3) 0;border-top:1px solid var(--line)}
 .keyrow:first-of-type{border-top:0}
 .keyrow label{font-weight:650;font-size:13.5px}.keyrow label small{display:block;color:var(--dim);font-weight:500;font-size:12px}
-.keyrow .st2{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;color:var(--dim);white-space:nowrap}
+.keyrow .st2{font-size:12px;font-weight:700;display:inline-flex;align-items:flex-start;gap:6px;color:var(--dim);white-space:normal;line-height:1.35}.keyrow .st2 i{flex:none;margin-top:5px}
 .keyrow .st2.on{color:#4ade80}.keyrow .st2.no{color:#f87171}
 .keyrow .st2 i{width:7px;height:7px;border-radius:50%;background:currentColor}
 .vlist{display:flex;flex-direction:column;gap:6px;margin-top:var(--s3)}
@@ -668,7 +679,7 @@ body.dock .itabs{top:56px}body.dock .itabs .seg button{font-size:12px}
 .tg{font-style:normal;font-size:12px;font-weight:650;padding:2px 8px;border-radius:99px;background:var(--card2);border:1px solid var(--line);color:var(--mut)}.tg.add{cursor:pointer;background:none;border-style:dashed}
 .selbox{position:absolute;right:12px;top:12px;z-index:4}.selbox input{width:20px;height:20px;accent-color:var(--or)}.shc .bd{position:relative}
 .nmz{width:100%;justify-content:center;margin-top:6px;font-size:12px;color:var(--dim)}
-.said .saidrow{display:flex;gap:8px}.said .saidrow input{flex:1}.said mark{background:var(--orS);color:var(--or);border-radius:6px;padding:0 2px}
+.said{padding:16px 18px;margin-top:14px}.said h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:14px}.said .saidrow{display:flex;gap:8px}.said .saidrow .btn{height:38px}.said .saidrow input{flex:1}.said mark{background:var(--orS);color:var(--or);border-radius:6px;padding:0 2px}
 .wchart{display:flex;gap:8px;align-items:flex-end;height:150px;margin-top:10px}.wc{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}.wc .bars{flex:1;width:100%;display:flex;gap:3px;align-items:flex-end}.wc .bars i{flex:1;background:var(--or);border-radius:6px 4px 0 0;min-height:2px}.wc .bars i.v{background:var(--info)}.wc small{font-size:12px;color:var(--dim)}
 .lgd{display:inline-block;width:9px;height:9px;border-radius:6px;margin:0 4px 0 10px}.lgd.or{background:var(--or)}.lgd.bl{background:var(--info)}
 .wrow{display:grid;grid-template-columns:120px 1fr 64px 28px;gap:8px;align-items:center;font-size:12px;margin:5px 0}.wrow span{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wrow b{text-align:right}.wrow small{color:var(--dim)}.wrow .hbar i{background:var(--info)}.wrow.top .hbar i{background:var(--or)}.wrow.top span{color:var(--tx);font-weight:650}
@@ -777,7 +788,7 @@ body.dock .setwrap{grid-template-columns:1fr}body.dock .setnav{position:static}b
 .ed.v2 .resbox{width:clamp(250px,22vw,340px)}
 .ed.v2 .edtop{align-items:stretch}.ed.v2 .srcbox .vwrap{display:block}.ed.v2 .srcbox video{display:block;width:100%;max-height:min(50vh,720px);object-fit:contain;background:#000;border-radius:10px}#safeSel{padding-top:0;padding-bottom:0;line-height:28px}
 .ed.v2 .resbox .pv{position:static;margin:0;padding:0;background:none;border:0;box-shadow:none;width:100%}
-.ed.v2 .resbox .phone{max-width:none;width:auto;height:min(52vh,560px);aspect-ratio:9/19.2}.ed.v2 .resbox{width:auto}.ed.v2 .resbox .pvnote{display:none}
+.ed.v2 .resbox .phone{max-width:none;width:auto;height:min(52vh,560px);aspect-ratio:9/19.2}.ed.v2 .resbox{width:auto}.ed.v2 .resbox .pvnote{display:none}.ed.v2 .edtop:has(.pv.land){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ed.v2 .pv.land .screen{margin:auto 0}.ed.v2 .resbox:has(.pv.land) .pv{display:flex;flex-direction:column;flex:1;justify-content:center}
 .ed.v2 .edlab{display:flex;align-items:baseline;gap:8px}.ed.v2 .edlab b{font-size:13.5px;font-weight:600}.ed.v2 .edlab span{color:var(--dim);font-size:12px}
 .ed.v2 .edlab.big b{font-size:15px}
 .ed.v2 .edctrl{padding-top:var(--s2);border-top:1px solid var(--line);margin-top:auto}.ed.v2 .edctrl .ctrl{margin:0;flex-wrap:wrap;gap:8px}.ed.v2 .srcbox{align-self:stretch}.ed.v2 .insp .expbar{margin-top:var(--s3)}
@@ -885,7 +896,7 @@ body.dock .ed.v2{grid-template-columns:1fr}body.dock .ed.v2 .edtop{grid-template
       <div class="card stat"><b class="disp" id="kO">0</b><span>shorts made</span></div>
     </div>
     <div class="card live nodock"><div class="ic"><svg class="i" style="width:22px;height:22px"><use href="#i-bolt"/></svg></div>
-      <div><h3>Something crazy happened during your stream?</h3><p>Press <span class="kb">Ctrl</span> <span class="kb">Alt</span> <span class="kb">K</span>, press <b>Clip!</b> in your OBS panel, or let chat type <b>!clip</b> . After the stream that moment is at the top.</p></div></div>
+      <div><h3>Something crazy happened during your stream?</h3><p>Press <span class="kb">Ctrl</span> <span class="kb">Alt</span> <span class="kb">K</span>, press <b>Clip!</b> in your OBS panel, or let chat type <b>!clip</b>. After the stream that moment is at the top.</p></div></div>
     <div class="card nodock said"><h3><svg class="i"><use href="#i-text"/></svg>Search everything you ever said</h3><div class="saidrow"><input id="saidQ" placeholder='e.g. "jett diff" or "no way"'><button class="btn pri" id="saidGo">Search</button></div><div id="saidR"></div></div>
     <div class="sec"><h2 class="disp">Your streams</h2><span class="mut">every recording in OBS becomes a session here</span></div>
     <div id="slist"><div class="skgrid"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div>
@@ -1161,7 +1172,7 @@ function renderTodo(){ const el=$('todoBox'); if(!el||!ST||!Array.isArray(SHORTS
   if(ready) T.push(['','film',ready===1?'1 short ready to post':ready+' shorts ready to post','Post text and cover are ready.','View','post']);
   if(ST.update) T.push(['ok','bolt','A new version is ready','See what changed and update with one click.','View','upd']);
   const ic_=n=>`<svg class="i"><use href="#i-${n}"/></svg>`;
-  const html=T.length?`<div class="todo"><h3>To do</h3>${T.map(([k,i,t,d,b,a])=>`<div class="tr ${k}"><div class="tic">${ic_(i)}</div><div class="tt"><b>${esc(t)}</b><span>${esc(d)}</span></div><button class="btn sm ${k===''?'pri':''}" data-todo="${a}">${esc(b)}</button></div>`).join('')}</div>`
+  const html=T.length?`<div class="todo"><h3>To do</h3>${T.map(([k,i,t,d,b,a],n)=>`<div class="tr ${k}"><div class="tic">${ic_(i)}</div><div class="tt"><b>${esc(t)}</b><span>${esc(d)}</span></div><button class="btn sm ${n===0?'pri':''}" data-todo="${a}">${esc(b)}</button></div>`).join('')}</div>`
     :(SHORTS.length?`<div class="todo"><div class="tr ok"><div class="tic">${ic_('check')}</div><div class="tt"><b>All done</b><span>Nothing needs you now. Stream, and I make the clips.</span></div></div></div>`:'');
   const hb=$('heroBox'); if(hb) hb.style.display=SHORTS.length>3?'none':'';   // the explanation is for new users
   if(el._h===html) return; el._h=html; el.innerHTML=html;
@@ -1199,9 +1210,10 @@ const ctitle=c=>((c.querySelector('h3')||{}).textContent||'').trim().replace(/\?
   const box=wrap.querySelector('#setCards'); const ORD=Object.keys(SET_GROUPS), oi=c=>{ const i=ORD.indexOf(ctitle(c)); return i<0?99:i; };
   SET_NAV.forEach(([k])=>cards.filter(c=>(SET_GROUPS[ctitle(c)]||'app')===k).sort((a,b)=>oi(a)-oi(b)).forEach(c=>box.appendChild(c)));
   cards.filter(c=>!box.contains(c)).forEach(c=>box.appendChild(c));
+  const svb=sec.querySelector('.savebar'); if(svb) wrap.querySelector('.setmain').appendChild(svb);
   sets.remove(); const sb=sec.querySelector('.setbar'); if(sb) sb.style.display='none'; const n0=$('setNone'); if(n0) n0.remove();
   $('setWiz2').onclick=()=>$('setWiz')&&$('setWiz').click(); $('setTour2').onclick=()=>$('setTour')&&$('setTour').click();
-  wrap.querySelectorAll('#setNav [data-g]').forEach(b=>b.onclick=()=>{ if(b.dataset.g==='sys') return tab('sys'); SETG=b.dataset.g; $('setFind').value=''; setFilter(); wrap.querySelector('.setmain').scrollIntoView({block:'start'}); });
+  wrap.querySelectorAll('#setNav [data-g]').forEach(b=>b.onclick=()=>{ if(b.dataset.g==='sys') return tab('sys'); SETG=b.dataset.g; $('setFind').value=''; setFilter(); const mn=$('main')||document.scrollingElement; mn.scrollTo({top:0}); });
   $('advTog').onclick=()=>{ const adv=!$('set').classList.contains('adv'); setMode(adv); api('/api/seen',{adv}); SETS.adv=adv; setFilter(); };
   $('setFind').oninput=setFilter; })();
 function setFilter(){ const q=(($('setFind')||{}).value||'').trim().toLowerCase(), sec=$('set'); if(!sec||!$('setCards')) return;
@@ -1292,7 +1304,7 @@ function paintCaps(){ const cb=$('capB'); if(!cb||!ED) return; const A=ED.wa, L=
   cb.querySelectorAll('i').forEach(el=>{ el.onclick=()=>{ $('vid').currentTime=+el.dataset.ca; paintTL(); };
     el.ondblclick=()=>{ const sp=document.querySelector(`#trans span[data-i="${el.dataset.ci}"]`); if(sp){ sp.scrollIntoView({block:'center'}); editWord(sp); } }; }); }
 function paintStory(){ try{ paintCaps(); }catch(e){} const sb=$('storyB'); if(!sb||!ED) return; const P=storyParts(), A=ED.wa, L=ED.wl;
-  sb.querySelectorAll('i').forEach(el=>{ const r=P[el.dataset.sb]; if(!r||r[1]-r[0]<0.15){ el.style.display='none'; return; } el.style.display=''; el.style.left=((r[0]-A)/L*100)+'%'; el.style.width=((r[1]-r[0])/L*100)+'%'; });
+  const sw=sb.clientWidth||1; sb.querySelectorAll('i').forEach(el=>{ const r=P[el.dataset.sb]; if(!r||r[1]-r[0]<0.15){ el.style.display='none'; return; } el.style.display=''; el.style.left=((r[0]-A)/L*100)+'%'; el.style.width=((r[1]-r[0])/L*100)+'%'; el.title=el.textContent; el.classList.toggle('tiny',(r[1]-r[0])/L*sw<el.textContent.length*6.5+16); });
   if($('cutLen')) $('cutLen').textContent=fmtD(ED.b-ED.a)+' long';
   const n=ED.unsure?[...ED.unsure].filter(i=>!ED.ok.has(i)&&!ED.off.has(i)).length:0; if($('unsN')) $('unsN').textContent=n?`${n} word${n===1?' is':'s are'} not sure yet.`:''; if($('unsGo')){ $('unsGo').style.display=n?'':'none'; $('unsGo').textContent=`Check unsure words (${n} left)`; } }
 
@@ -1527,7 +1539,7 @@ function edit(m,opt={}){ const dur=SESS.duration||m.end+60;
         <div class="stephd"><small>STEP 2 OF 4</small><h3>Text</h3><p>The title at the top and your captions. <span id="unsN"></span></p></div>
         <button class="btn sm" id="unsGo" style="align-self:flex-start;display:none">Check unsure words</button>
         <div class="card panel"><div class="lbl">Captions<label class="sw"><input type="checkbox" id="capOn" ${ED.caps?'checked':''}><i></i></label></div><div class="tiles" id="styT"></div>
-          <div class="lbl" style="margin-top:14px">Animation</div><div class="seg wide wrap" id="oAnim"><button data-an="pop">Pop</button><button data-an="bounce">Bounce</button><button data-an="type">Typewriter</button><button data-an="word">Per word</button><button data-an="none">None</button></div>
+          <div class="lbl" style="margin-top:14px">Animation</div><div class="seg wide wrap" id="oAnim"><button data-an="pop">Pop</button><button data-an="bounce">Bounce</button><button data-an="type" title="Typewriter">Type</button><button data-an="word">Per word</button><button data-an="none">None</button></div>
           <div class="sl" style="margin-top:12px"><label>Size</label><input type="range" id="oCapS" min="70" max="150" step="5"><output id="oCapSv"></output></div>
           <div class="sl"><label>Height</label><input type="range" id="oCapY" min="12" max="92" step="1"><output id="oCapYv"></output></div>
           <div class="sl"><label>Timing</label><input type="range" id="oShift" min="-10" max="10" step="1"><output id="oShiftv"></output></div>
@@ -1877,8 +1889,7 @@ function hoverVids(root){ $$('.shv video',root).forEach(v=>{ v.addEventListener(
 async function renderWeek(){ const el=$('weekBox'); if(!el) return; let w; try{ w=await api('/api/week'); }catch(e){ return; }
   if(!w.streams&&!w.shorts){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="card week"><div class="k"><b class="disp">${w.streams}</b><span>streams this week</span></div><div class="k"><b class="disp">${w.moments}</b><span>moments</span></div><div class="k hl"><b class="disp">${w.shorts}</b><span>shorts made</span></div><div class="k"><b class="disp">${w.posted||0}</b><span>posted</span></div><div class="k"><b class="disp">${w.views?w.views.toLocaleString('en-GB'):w.kept}</b><span>${w.views?'views':'kept'}</span></div>
-    <button class="btn pri" id="weekMont" ${w.moments<2?'disabled':''}>${ic('film')}Weekly montage</button>
-    <div class="tip">${w.best_kind?`What you keep most: <b style="color:var(--tx)">${esc(w.best_kind)}</b>. `:''}${w.best?`Best short: <b style="color:var(--tx)">${esc(w.best.title||w.best.file)}</b> with ${w.best.views.toLocaleString('en-GB')} views.`:'Fill in your views under Shorts, then I learn what really scores.'}</div></div>`;
+    <div class="tipr"><div class="tip">${w.best_kind?`What you keep most: <b style="color:var(--tx)">${esc(w.best_kind)}</b>. `:''}${w.best?`Best short: <b style="color:var(--tx)">${esc(w.best.title||w.best.file)}</b> with ${w.best.views.toLocaleString('en-GB')} views.`:'Fill in your views under Shorts, then I learn what really scores.'}</div><button class="btn sm" id="weekMont" ${w.moments<2?'disabled':''}>${ic('film')}Weekly montage</button></div></div>`;
   $('weekMont').onclick=async()=>{ const r=await api('/api/montage',{n:6}); toast(r.ok?`Weekly montage with ${r.n} moments is in the queue`:r.why); setTimeout(poll,300); }; }
 function renderInbox(){ const el=$('inbox'); if(!el) return; if(PAGE==='home'&&!renderInbox.w){ renderInbox.w=1; renderWeek(); setTimeout(()=>renderInbox.w=0,15000); } const list=SHORTS.filter(s=>s.auto&&s.status==='nieuw');
   const pill=$('autoPill'); if(pill){ pill.classList.toggle('off',!SETS.auto_shorts); pill.querySelector('span').textContent=SETS.auto_shorts?`Automatic on: the best ${SETS.auto_shorts_n||3} after every stream`:'Automatic is off. Click to turn it on'; pill.onclick=()=>tab('set'); }
@@ -2472,7 +2483,7 @@ let LQ='', LT='', LS='new', SELMODE=false; const LSEL=new Set();
 const STATN={nieuw:'To review',goed:'Ready to post',concept:'Draft',gepland:'Scheduled',gepost:'Posted'};
 const PLATN={tiktok:'TikTok',shorts:'YouTube',reels:'Instagram'};
 function postRow(s){ const pon=s.posted_on||{}, plats=(SETS.platforms&&SETS.platforms.length?SETS.platforms:Object.keys(PLATN));
-  return `<div class="pon" title="Click where you posted it. Only then it counts as posted">${s.status==='gepost'?'<span class="ponl ok">Posted on</span>':'<span class="ponl">Posted on</span>'}${plats.map(p=>`<button class="${pon[p]?'on':''}" data-pon="${esc(s.file)}" data-pl="${p}">${pon[p]?'✓ ':''}${PLATN[p]||p}</button>`).join('')}${pon.any&&!plats.some(p=>pon[p])?'<button class="on" disabled>✓ somewhere</button>':''}</div>`; }
+  return `<div class="pon" title="Click where you posted it. Only then it counts as posted">${s.status==='gepost'?'<span class="ponl ok">Posted on</span>':'<span class="ponl">Posted on</span>'}${plats.map(p=>`<button class="${pon[p]?'on':''}" data-pon="${esc(s.file)}" data-pl="${p}">${pon[p]?'✓ ':''}${({reels:'Insta'})[p]||PLATN[p]||p}</button>`).join('')}${pon.any&&!plats.some(p=>pon[p])?'<button class="on" disabled>✓ somewhere</button>':''}</div>`; }
 function shortFilter(){ let L=SHORTS.filter(s=>!s.deleted_at);
   if(LF==='fav') L=L.filter(s=>s.fav); else if(LF==='arch') L=L.filter(s=>s.archived); else L=L.filter(s=>!s.archived);
   if(['nieuw','goed','gepland','gepost'].includes(LF)) L=L.filter(s=>(s.status||'goed')===LF);

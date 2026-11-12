@@ -2,6 +2,18 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.40 · 12 November 2026
+
+### Everything neat and in line, in the whole app
+- Text in drop-down lists and search fields is now always in the middle. It used to be cut off at the bottom ("All tags", "Newest first", "No safe zones")
+- Editor: a landscape short now shows your source and the result side by side, the source no longer disappears. The play buttons stay neat on a narrow screen, the "Clip" button text is in the middle, and story parts that are too small no longer show cut-off text
+- Editor: the 5 caption animations sit on one line ("Typewriter" is now "Type")
+- Shorts: every card is the same height, with the buttons at the bottom on one line. "Posted on" has 3 equal buttons, the status list is no longer squashed
+- Today: the 5 numbers are evenly spread, Weekly montage sits next to the tip. In the to-do list only the first task has an orange button
+- Moments: the "Search everything you ever said" box has its own spacing again and no longer sticks to the box above
+- Settings: a menu click shows the group from the top, the Save button stays in the column of your settings, and the status next to a key ("empty") no longer makes the field narrower
+- Long page titles and subtitles get "..." instead of pushing the buttons away
+
 ## 6.39 · 12 November 2026
 
 ### Captions no longer repeat the same sentence
