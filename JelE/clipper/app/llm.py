@@ -101,11 +101,14 @@ def llm_chat(messages, max_tokens=200, temp=0.7, port=None):
 def llm_titles(text, reasons, game='', lang='en', n=3, port=None):
     """3 short hooks for the top of the short, from what was said and why it is a moment"""
     lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
-    msg = [{'role': 'system', 'content': f'You write hooks for gaming shorts on TikTok. Each hook is at most 6 words, in {lang_name}, in capitals, no hashtags, no emojis, no quotes. '
-                                          'Only claim what really happened. Answer with one hook per line, nothing else.'},
-           {'role': 'user', 'content': f'Game: {game or "unknown"}\nWhy it is a moment: {", ".join(reasons or [])}\nWhat the streamer said: "{(text or "")[:500]}"\nWrite {n} different hooks.'}]
+    rules = f'You write hooks for gaming clips on TikTok. Rules: at most 6 words, in {lang_name}, in capitals, no hashtags, no emojis, no quotes, no labels. Only claim what really happened. Reply with exactly {n} lines, one hook per line, nothing else.'
+    ex_u = 'Valorant clip. The streamer says: "he is one hp, no way, I got him with the knife". Why it is a moment: you said "no way", chat went off.'
+    ex_a = 'KNIFED HIM AT ONE HP\nNO WAY THAT WORKED\nTHE KNIFE NEVER MISSES' if lang != 'nl' else 'GEMESD OP EEN HP\nDIT KAN GEWOON NIET\nHET MES MIST NOOIT'
+    msg = [{'role': 'system', 'content': rules}, {'role': 'user', 'content': ex_u}, {'role': 'assistant', 'content': ex_a},
+           {'role': 'user', 'content': f'{game or "Gaming"} clip. The streamer says: "{(text or "")[:400]}". Why it is a moment: {", ".join(reasons or []) or "a big reaction"}.'}]
     out = []; raw = llm_chat(msg, 160, 0.8, port); LLM['last'] = raw[:400]
     for ln in re.split(r'[\n;|]+', raw):
+        if re.match(r'^\s*[A-Za-z ]{2,14}:\s', ln) and not re.match(r'^\s*hook', ln, re.I): continue   # "Game: ...", "Why: ..." are not hooks
         t = re.sub(r'^\s*(hook\s*)?[\-\d.)*#:"\u2022]+\s*', '', ln, flags=re.I).strip().strip('"\'').upper()
         t = re.sub(r"[^\w' !?]", '', t).strip()
         w = t.split()
