@@ -4,6 +4,7 @@ HYPE = re.compile(r'\b(lul|kekw|omegalul|lmao+|lmfao|lol+|w+|clip|clipit|clip it
 # things you say when something clip-worthy happens
 SAY_HYPE = GameRe(r"\b(no+ way|oh my god|oh my gosh|omg|let'?s go+|lets go+|what the|wha+t|bro+|yo+|holy|insane|crazy|ace|clutch|one tap|onetap|no+|yes+|wow|sheesh|are you kidding|are you serious|how did|did you see|i can'?t believe|nah+|wait|oh no|get out|sick|beautiful|perfect|unreal|disgusting|nasty|cracked)\b", 'hype')
 SAY_STRONG = GameRe(r"\b(no+ way|oh my god|oh my gosh|let'?s go+|lets go+|what the|holy|insane|crazy|ace|clutch|one tap|are you kidding|are you serious|i can'?t believe|unreal|disgusting|cracked|sheesh)\b", 'strong')
+SETUP = re.compile(r"\b(watch this|wait for it|look at this|let me cook|kijk dit|let op|wacht maar|check this)\b", re.I)
 SAY_LAUGH = re.compile(r'\b(ha(ha)+|he(he)+|lmao|lol)\b', re.I)
 # you say the moment should be a clip, in English or Dutch: the strongest reason there is
 CLIP_SAY = re.compile(r"(someone |somebody |iemand |yo |oh |ok |okay |bro )?(clip (that|it|this|dat|die|het|deze|em|'m)|clipt? dat|that'?s a clip|thats a clip|dat is een clip|dit moet een clip|dat moet (een clip|geclipt)|dit moet geclipt|clip clip|clippen)\b")
@@ -212,12 +213,12 @@ def sentence_cut(words, peak, L, dur):
     for g, size in gaps:
         if peak + 2 <= g <= peak + 12 and size >= 0.6: end = g + 0.8; break
     if end is None: end = peak + 6
-    # start: the earliest pause that still fits in L, but at least 12 s before the end
-    start = None
-    for g, size in gaps:
-        s0 = g + min(size, 0.6) - 0.25
-        if end - L <= s0 <= end - 12 and s0 <= peak - 3: start = s0; break
-    if start is None: start = end - min(L, max(16, (end - peak) + 14))
+    # start: a pause about 10 s before the peak (enough build-up to get it, not so much that people swipe away).
+    # a story ("watch this", "wait for it") may start earlier, up to the longest length you set
+    want = 10.0 if not any(SETUP.search(w[2]) for w in words if peak - 20 <= w[0] <= peak - 3) else 16.0
+    lo = max(end - L, peak - want - 6)
+    cand = [(abs((g + min(size, 0.6) - 0.25) - (peak - want)), g + min(size, 0.6) - 0.25) for g, size in gaps if lo <= g + min(size, 0.6) - 0.25 <= peak - 4]
+    start = min(cand)[1] if cand else max(end - L, peak - want)
     return max(0, start), min(dur, end)
 
 def analyse(sid):
@@ -444,6 +445,18 @@ def analyse(sid):
                 i_ = int(en / step); n_ = 0
                 while i_ < len(env) and env[i_] > _envmed + 9 and n_ < 8: i_ += 1; n_ += 1
                 if n_: en = min(dur, i_ * step + 0.6); c['reasons'].append('the reaction is kept whole') if n_ >= 3 else None
+            if env and not c.get('said'):   # no dead air at the start or the end: begin when something happens, stop when it is over
+                if '_envmed' not in locals(): _envmed = float(np.median(env))
+                act = lambda t_: (0 <= int(t_ / step) < len(env) and env[int(t_ / step)] > _envmed + 4) or any(abs(w[0] - t_) < 0.6 for w in words)
+                t_ = st
+                while t_ < peak - 7.5 and not act(t_) and not act(t_ + 0.5): t_ += 0.5   # keep at least 7 s of build-up (the game can be the build-up)
+                if t_ - st >= 3: st = t_ - 0.4
+                t_ = en
+                while t_ > peak + 2.5 and not act(t_) and not act(t_ - 0.5): t_ -= 0.5
+                if en - t_ >= 1.5: en = t_ + 0.6
+            lt_ = SET.get('learn_timing') or {}   # what you told me before: "starts too early", "the reaction is cut off"
+            if not c.get('said'): st = max(0, min(peak - 3, st - float(lt_.get('lead') or 0)))
+            en = min(dur, max(peak + 1.5, en + float(lt_.get('tail') or 0)))
             c['start'], c['end'] = round(st, 1), round(en, 1)
             c['words'] = [w for w in words if st - 1 <= w[0] <= en + 1]
             try:

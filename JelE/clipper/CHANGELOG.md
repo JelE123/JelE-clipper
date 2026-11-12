@@ -2,6 +2,22 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.46 · 12 November 2026
+
+### The editor understands you much better
+- Type what you want in normal English or Dutch, also several things at once: "make it 5 seconds shorter and no music", "start at the kill", "it drags at the end", "captions bigger and higher", "cut out where I say sorry", "game only", "make it 20 seconds", "no teaser", "title: ONE TAP"
+- About 45 kinds of changes: start and end, length, zoom (also "zoom here"), music on, off, quieter or louder, caption size, height, style and animation, layout, teaser, replay, stickers, killfeed, sound effects, swearing bleeps, loop, cutting out a word, undo, preview and export
+- You always see what was done, or why not ("I did not find sorry in this short"). Quick buttons with examples sit under the field
+
+### Clips with a better rhythm
+- The build-up is about 10 seconds before the big moment (longer when you say "watch this" or "wait for it"), instead of always as long as possible
+- No dead air at the start or the end: the clip starts when something happens and stops when the reaction is over (the game itself stays as build-up)
+
+### Tell me what was wrong, I learn from it
+- When you remove a short or a moment, you can tick what was wrong: boring, wrong moment, starts too early or too late, reaction cut off, goes on too long, bad title, captions wrong
+- New clips start and end better with every "too early" or "cut off", and boring kinds of moments rank lower
+- System > Analysis report: a small zip with what I found in your last 6 streams and your feedback (no videos, no passwords or keys). Send it to get the AI tuned to your streams
+
 ## 6.45 · 12 November 2026
 
 ### Picture understanding installs itself

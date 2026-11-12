@@ -288,3 +288,56 @@ def trash_loop():
                 SET['report_sent'] = time.time(); save_settings(SET)
         except Exception: traceback.print_exc()
         time.sleep(1800)
+
+# ---------------------------------------------------------------- what was wrong with a clip: you tell, I learn (and you can send it to be tuned)
+FEEDBACK_F = os.path.join(DATA, 'feedback.jsonl')
+FB_REASONS = {'boring': 'boring, nothing happens', 'early': 'starts too early', 'late': 'starts too late', 'cut': 'ends too soon, the reaction is cut off',
+              'long': 'goes on too long at the end', 'wrong': 'wrong moment', 'title': 'bad title', 'captions': 'captions wrong', 'good': 'good clip'}
+def _lib_items():
+    L = lib_load()
+    return [dict(v, file=v.get('file') or k) for k, v in L.items()] if isinstance(L, dict) else list(L)
+def feedback_add(b):
+    """{sid, mid or file, reasons: [keys], note} -> remembered, and the timing learns from it"""
+    rs = [r for r in (b.get('reasons') or []) if r in FB_REASONS]
+    e = {'at': time.time(), 'sid': b.get('sid'), 'mid': b.get('mid'), 'file': b.get('file'), 'reasons': rs, 'note': (b.get('note') or '')[:300], 'version': VERSION}
+    m = None
+    try:
+        s = load_sess(b['sid']) if b.get('sid') else None
+        if s and b.get('mid'): m = next((x for x in s.get('moments', []) if x.get('id') == b['mid']), None)
+        if not m and b.get('file'):
+            sh = next((x for x in _lib_items() if x.get('file') == b['file']), None)
+            if sh: e['sid'] = sh.get('sid'); e['mid'] = sh.get('mid'); s = load_sess(sh['sid']) if sh.get('sid') else None; m = next((x for x in (s or {}).get('moments', []) if x.get('id') == sh.get('mid')), None)
+        if m: e['moment'] = {k: m.get(k) for k in ('t', 'start', 'end', 'score', 'reasons', 'title', 'vision', 'game')}
+    except Exception: pass
+    with open(FEEDBACK_F, 'a', encoding='utf-8') as fh: fh.write(json.dumps(e) + '\n')
+    # learn: the start and end of new clips move a little with every "too early" / "too soon"
+    lr = dict(SET.get('learn_timing') or {'lead': 0.0, 'tail': 0.0})
+    if 'early' in rs: lr['lead'] = round(max(-6.0, lr['lead'] - 1.0), 1)
+    if 'late' in rs: lr['lead'] = round(min(6.0, lr['lead'] + 1.0), 1)
+    if 'cut' in rs: lr['tail'] = round(min(6.0, lr['tail'] + 1.0), 1)
+    if 'long' in rs: lr['tail'] = round(max(-4.0, lr['tail'] - 1.0), 1)
+    SET['learn_timing'] = lr; save_settings(SET)
+    if m and any(r in rs for r in ('boring', 'wrong')): taste_note(m.get('reasons') or [], False)
+    if m and 'good' in rs: taste_note(m.get('reasons') or [], True)
+    return {'ok': True, 'learn': lr}
+
+def analysis_report():
+    """a zip with what the clipper found and what you thought of it: no videos, no passwords or keys. for tuning the AI on your streams"""
+    import zipfile
+    os.makedirs(REPORT_DIR, exist_ok=True); out = os.path.join(REPORT_DIR, f'JelE_analysis_report_{time.strftime("%Y%m%d_%H%M")}.zip')
+    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+        if os.path.exists(FEEDBACK_F): z.write(FEEDBACK_F, 'feedback.jsonl')
+        safe = {k: v for k, v in SET.items() if not re.search(r'key|secret|token|password|pass|ntfy|phone_key|jwt', k, re.I)}
+        z.writestr('settings.json', json.dumps(safe, indent=1, default=str))
+        for s_ in sorted(list_sess(), key=lambda x: -(x.get('start') or 0))[:6]:
+            s = load_sess(s_['id'])
+            keep = {k: s.get(k) for k in ('id', 'title', 'duration', 'game', 'mic', 'sounds', 'game_events', 'talk', 'status', 'rec_tracks')}
+            keep['moments'] = [{k: m.get(k) for k in ('id', 't', 'start', 'end', 'score', 'reasons', 'title', 'hooks', 'text', 'vision', 'manual')} for m in s.get('moments', [])]
+            keep['markers'] = s.get('markers', [])
+            z.writestr(f"sessions/{s['id']}.json", json.dumps(keep, indent=1, default=str))
+        shorts = [{k: x.get(k) for k in ('file', 'title', 'sid', 'mid', 'status', 'views', 'auto', 'reasons', 'dur', 'q', 'learned', 'posted_on')} for x in _lib_items()]
+        z.writestr('shorts.json', json.dumps(shorts, indent=1, default=str))
+        lg = os.path.join(DATA, 'clipper.log')
+        if os.path.exists(lg):
+            z.writestr('clipper_log_tail.txt', ''.join(open(lg, encoding='utf-8', errors='replace').readlines()[-1500:]))
+    return out

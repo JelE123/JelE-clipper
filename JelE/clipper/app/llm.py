@@ -118,53 +118,139 @@ def llm_titles(text, reasons, game='', lang='en', n=3, port=None):
         if t not in out and not t.startswith(('HERE ARE', 'SURE')): out.append(t)
     return out[:n]
 
-# ---------------------------------------------------------------- "make it shorter": a sentence -> an editor action
-CMD_ACTIONS = ('shorter', 'longer', 'start_later', 'start_earlier', 'end_earlier', 'end_later', 'no_zoom', 'zoom', 'no_music', 'no_captions', 'captions',
-               'style', 'title', 'no_effects', 'cut_silence', 'loop')
-def _num(t, d):
-    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(s|sec|seconds?|seconde[n]?|sec\.)?', t)
-    return float(m.group(1).replace(',', '.')) if m else d
-def cmd_rules(text):
-    """simple sentences in English and Dutch, without the model"""
-    t = (text or '').lower().strip()
-    if not t: return None
-    n = _num(t, 0)
-    R = [(r'\b(shorter|korter|cut it down|inkorten)\b', 'shorter', n or 5), (r'\b(longer|langer)\b', 'longer', n or 5),
-         (r'\b(start|begin)\w*\b.*\b(later|after)\b|later (starten|beginnen)', 'start_later', n or 2), (r'\b(start|begin)\w*\b.*\b(earlier|eerder|sooner)\b|eerder (starten|beginnen)', 'start_earlier', n or 2),
-         (r'\b(end|stop|eindig)\w*\b.*\b(earlier|eerder|sooner)\b|eerder (stoppen|eindigen)', 'end_earlier', n or 2), (r'\b(end|stop|eindig)\w*\b.*\b(later)\b|later (stoppen|eindigen)', 'end_later', n or 2),
-         (r'\b(no|geen|without|zonder|remove|weg|take|haal)\b.*\bzoom', 'no_zoom', 0), (r'\bzoom\b.*\b(weg|uit|off)\b', 'no_zoom', 0), (r'\b(add|meer|more|wel)\b.*\bzoom|\bzoom (in|erin)\b', 'zoom', 0),
-         (r'\b(no|geen|without|zonder)\b.*\b(music|muziek)|\b(music|muziek)\b.*\b(weg|uit|off)\b', 'no_music', 0),
-         (r'\b(no|geen|without|zonder)\b.*\b(captions|ondertitels?|subtitles)|\b(captions|ondertitels?)\b.*\b(weg|uit|off)\b', 'no_captions', 0),
-         (r'\b(captions|ondertitels?)\b.*\b(on|aan)\b', 'captions', 0),
-         (r'\b(no|geen|without|zonder|remove)\b.*\b(effects?|effecten)\b|\b(effects?|effecten)\b.*\b(weg|uit|off)\b', 'no_effects', 0),
-         (r'\b(silence|stilte|stiltes|boring|saai)\b', 'cut_silence', 0), (r'\bloop\b', 'loop', 0)]
-    for rx, act, v in R:
-        if re.search(rx, t): return {'action': act, 'value': v, 'by': 'rules'}
-    m = re.search(r'\b(title|titel|hook)\b\s*[:=]?\s*["\']?(.+?)["\']?$', text or '', re.I)
-    if m and len(m.group(2).split()) >= 1: return {'action': 'title', 'value': m.group(2).strip().upper()[:40], 'by': 'rules'}
-    m = re.search(r'\b(purple|paars|classic|klassiek|clean|jele)\b', t)
-    if m: return {'action': 'style', 'value': {'paars': 'purple', 'klassiek': 'classic'}.get(m.group(1), m.group(1)), 'by': 'rules'}
+# ---------------------------------------------------------------- "make it shorter": a sentence -> editor actions
+# rules first (English and Dutch, many ways to say it, several commands in one sentence), the local model only for the rest.
+TIME_ACTS = ('shorter', 'longer', 'start_later', 'start_earlier', 'end_earlier', 'end_later', 'length')
+CMD_ACTIONS = TIME_ACTS + ('start_at_peak', 'end_after_peak', 'zoom_off', 'zoom_on', 'zoom_here', 'music_off', 'music_on', 'music_quieter', 'music_louder',
+               'captions_off', 'captions_on', 'captions_bigger', 'captions_smaller', 'captions_up', 'captions_down', 'style', 'anim', 'layout',
+               'teaser_off', 'teaser_on', 'replay_off', 'replay_on', 'effects_off', 'stickers_off', 'killfeed_off', 'sfx_off', 'sfx_on',
+               'title', 'cut_silence', 'keep_silence', 'loop_on', 'loop_off', 'bleep_on', 'bleep_off', 'cut_word', 'undo', 'export', 'preview')
+_W = lambda *x: r'\b(?:' + '|'.join(x) + r')\b'
+NEG = _W('no', 'geen', 'without', 'zonder', 'remove', 'delete', 'weg', 'uit', 'off', 'take', 'haal', 'stop', 'disable', 'verwijder', 'drop', 'kill', 'lose', 'get rid of', 'skip', "don't", 'dont', 'niet')
+POS = _W('add', 'on', 'aan', 'enable', 'zet', 'met', 'with', 'wel', 'more', 'meer', 'put', 'give', 'want', 'wil', 'use', 'gebruik', 'turn on')
+def _secs(t, default):
+    """'4 seconds', '4s', 'twee seconden', 'a bit' (2), 'a lot' (6), 'half' -> seconds"""
+    words = {'one': 1, 'een': 1, 'één': 1, 'two': 2, 'twee': 2, 'three': 3, 'drie': 3, 'four': 4, 'vier': 4, 'five': 5, 'vijf': 5, 'six': 6, 'zes': 6,
+             'seven': 7, 'zeven': 7, 'eight': 8, 'acht': 8, 'nine': 9, 'negen': 9, 'ten': 10, 'tien': 10, 'fifteen': 15, 'vijftien': 15, 'twenty': 20, 'twintig': 20}
+    m = re.search(r'(\d+(?:[.,]\d+)?)', t)
+    if m: return float(m.group(1).replace(',', '.'))
+    for k, v in words.items():
+        if re.search(r'\b' + k + r'\b\s*(s|sec|second|seconde|seconds|seconden)', t): return float(v)
+    if re.search(_W('a bit', 'beetje', 'little', 'slightly', 'tikkie', 'iets', 'bit'), t): return 1.5
+    if re.search(_W('a lot', 'veel', 'much', 'way', 'flink', 'stuk', 'lot'), t): return 6.0
+    return float(default)
+
+def _one(t, raw):
+    """one command -> an action or None"""
+    neg = bool(re.search(NEG, t)); pos = bool(re.search(POS, t))
+    has = lambda *x: bool(re.search(_W(*x), t))
+    # undo / export / preview
+    if re.fullmatch(r'\s*(undo|ongedaan( maken)?|terug|go back|ctrl\s*\+?\s*z)\s*', t): return {'action': 'undo', 'value': 0}
+    if has('export', 'exporteer', 'render', 'maak hem', 'make it now', 'make the short', 'save it', 'opslaan') and not has('shorter', 'longer', 'korter', 'langer'): return {'action': 'export', 'value': 0}
+    if has('preview', 'voorbeeld', 'show me', 'laat zien', 'watch it'): return {'action': 'preview', 'value': 0}
+    # title
+    m = re.search(r'\b(?:title|titel|hook|tekst bovenin|text at the top|text on top)\b\s*(?:to|naar|:|=|is|wordt|should be|moet)?\s*["“\']?(.+?)["”\']?\s*$', raw, re.I)
+    if m and len(m.group(1).strip()) > 1 and not re.fullmatch(r'(off|uit|weg|away)', m.group(1).strip(), re.I): return {'action': 'title', 'value': m.group(1).strip().upper()[:40]}
+    # cut out a word or sentence: "cut out where I say pizza", "haal het stuk weg waar ik sorry zeg"
+    m = re.search(r'(?:where|waar|when|wanneer|the part|het stuk|stuk)\b.*?\b(?:i say|i said|ik zeg|ik zei|zeg|says|said)\s+["“\']?([\w\' ]{2,40}?)["”\']?\s*(?:zeg|says|said)?\s*$', t)
+    if m and (neg or has('cut', 'knip')): return {'action': 'cut_word', 'value': m.group(1).strip()}
+    m = re.search(r'\b(?:waar|wanneer|als)\s+ik\s+["\u201c\']?([\w\' ]{2,40}?)["\u201d\']?\s+(?:zeg|zei|roep|riep)\b', t)
+    if m and (neg or has('knip', 'cut')): return {'action': 'cut_word', 'value': m.group(1).strip()}
+    if re.search(r'\b(drags?|sleept|duurt te lang|too slow|te traag|boring at the end|saai aan het eind)\b', t):
+        return {'action': 'end_earlier' if has('end', 'eind', 'einde', 'at the end', 'aan het eind') else 'start_later' if has('start', 'begin', 'begint', 'opening') else 'shorter', 'value': _secs(t, 3)}
+    # time: where it starts and ends
+    if has('start', 'begin', 'starts', 'begint', 'opening', 'begins'):
+        if has('kill', 'peak', 'action', 'actie', 'hoogtepunt', 'moment', 'shot', 'schreeuw', 'scream', 'shout', 'climax', 'payoff'): return {'action': 'start_at_peak', 'value': 0}
+        if has('later', 'after', 'na', 'subsequently', 'further', 'verder'): return {'action': 'start_later', 'value': _secs(t, 2)}
+        if has('earlier', 'eerder', 'sooner', 'before', 'vroeger', 'eerst'): return {'action': 'start_earlier', 'value': _secs(t, 2)}
+    if has('end', 'ending', 'eind', 'einde', 'eindig', 'eindigt', 'stop', 'stops', 'stopt', 'finish', 'ends'):
+        if has('reaction', 'reactie', 'after the kill', 'na de kill'): return {'action': 'end_after_peak', 'value': 0}
+        if has('later', 'after', 'verder', 'langer'): return {'action': 'end_later', 'value': _secs(t, 2)}
+        if has('earlier', 'eerder', 'sooner', 'before', 'vroeger'): return {'action': 'end_earlier', 'value': _secs(t, 2)}
+    m = re.search(r'(?:make it|maak (?:hem|het|de short)|length|lengte|duur|precies|exactly)\D{0,12}(\d+)\s*(?:s|sec|seconds?|seconden?)\b', t)
+    if m and not has('shorter', 'longer', 'korter', 'langer'): return {'action': 'length', 'value': float(m.group(1))}
+    if has('shorter', 'korter', 'inkorten', 'trim', 'tighter', 'strakker', 'snappier', 'too long', 'te lang', 'cut it down', 'compacter', 'kort'): return {'action': 'shorter', 'value': _secs(t, 3)}
+    if has('longer', 'langer', 'too short', 'te kort', 'extend', 'verleng'): return {'action': 'longer', 'value': _secs(t, 3)}
+    # boring bits
+    if has('silence', 'silences', 'stilte', 'stiltes', 'boring', 'saai', 'saaie', 'dead air', 'pauzes', 'pauses', 'gaps'):
+        return {'action': 'keep_silence' if (has('keep', 'houd', 'laat', 'leave') and not has('cut', 'knip', 'weg')) else 'cut_silence', 'value': 0}
+    # zoom
+    if has('zoom', 'zooms', 'inzoomen', 'zoomen', 'punch in', 'punch-in'):
+        if has('here', 'hier', 'now', 'nu', 'this moment', 'dit moment'): return {'action': 'zoom_here', 'value': 0}
+        return {'action': 'zoom_off' if neg and not has('more', 'meer', 'add') else 'zoom_on', 'value': 0}
+    # music
+    if has('music', 'muziek', 'song', 'liedje', 'beat', 'nummer'):
+        if has('quieter', 'zachter', 'softer', 'lower', 'lager', 'minder hard', 'too loud', 'te hard'): return {'action': 'music_quieter', 'value': 0}
+        if has('louder', 'harder', 'higher', 'luider', 'too quiet', 'te zacht'): return {'action': 'music_louder', 'value': 0}
+        return {'action': 'music_off' if neg else 'music_on', 'value': 0}
+    # captions
+    if has('caption', 'captions', 'ondertitel', 'ondertitels', 'subtitles', 'subs', 'tekst', 'text', 'words', 'woorden'):
+        for k, v in (('purple', 'purple'), ('paars', 'purple'), ('classic', 'classic'), ('klassiek', 'classic'), ('clean', 'clean'), ('simpel', 'clean'), ('jele', 'jele'), ('orange', 'jele'), ('oranje', 'jele')):
+            if has(k): return {'action': 'style', 'value': v}
+        for k, v in (('typewriter', 'type'), ('type', 'type'), ('bounce', 'bounce'), ('pop', 'pop'), ('per word', 'word'), ('one word', 'word'), ('per woord', 'word'), ('no animation', 'none'), ('geen animatie', 'none')):
+            if has(k): return {'action': 'anim', 'value': v}
+        if has('bigger', 'groter', 'larger', 'big', 'groot', 'too small', 'te klein'): return {'action': 'captions_bigger', 'value': 0}
+        if has('smaller', 'kleiner', 'small', 'klein', 'too big', 'te groot'): return {'action': 'captions_smaller', 'value': 0}
+        if has('higher', 'hoger', 'up', 'omhoog', 'top', 'boven'): return {'action': 'captions_up', 'value': 0}
+        if has('lower', 'lager', 'down', 'omlaag', 'bottom', 'onder'): return {'action': 'captions_down', 'value': 0}
+        return {'action': 'captions_off' if neg else 'captions_on', 'value': 0}
+    # effects
+    if has('teaser', 'opening glimpse', 'intro'): return {'action': 'teaser_off' if neg else 'teaser_on', 'value': 0}
+    if has('replay', 'slow motion', 'slowmo', 'slow-mo', 'herhaling', 'vertraagd'): return {'action': 'replay_off' if neg else 'replay_on', 'value': 0}
+    if has('sticker', 'stickers'): return {'action': 'stickers_off', 'value': 0} if neg else None
+    if has('killfeed', 'kill feed'): return {'action': 'killfeed_off', 'value': 0} if neg else None
+    if has('sound effects', 'sfx', 'geluidseffecten', 'boom', 'whoosh'): return {'action': 'sfx_off' if neg else 'sfx_on', 'value': 0}
+    if has('effects', 'effecten', 'effect'): return {'action': 'effects_off', 'value': 0} if neg else None
+    if has('bleep', 'piep', 'swear', 'swearing', 'vloeken', 'scheldwoorden', 'censor', 'censuur'): return {'action': 'bleep_off' if (neg and not has('bleep', 'piep', 'censor')) else 'bleep_on', 'value': 0}
+    if has('loop', 'looping'): return {'action': 'loop_off' if neg else 'loop_on', 'value': 0}
+    # layout
+    if has('landscape', 'liggend', 'horizontal', 'youtube', '16:9', '16 9'): return {'action': 'layout', 'value': 'landscape'}
+    if has('game only', 'alleen game', 'only game', 'only the game', 'zonder cam', 'without cam', 'no cam', 'geen cam'): return {'action': 'layout', 'value': 'gameonly'}
+    if has('whole frame', 'hele beeld', 'full frame', 'like on stream', 'zoals op stream', 'blur'): return {'action': 'layout', 'value': 'frame'}
+    if has('cam', 'webcam', 'facecam', 'camera') and (pos or has('top', 'boven', 'split')): return {'action': 'layout', 'value': 'split'}
     return None
 
+def cmd_rules(text):
+    """a sentence -> a list of actions, or None. several commands in one sentence are split on and / en / , / ; / then"""
+    raw = (text or '').strip()
+    if not raw: return None
+    if re.match(r'^\s*(title|titel|hook)\b', raw, re.I):
+        r = _one(raw.lower(), raw); return [r] if r else None
+    parts = [p for p in re.split(r'\s*(?:,|;|\.\s|\band then\b|\bthen\b|\ben dan\b|\bdaarna\b|\band\b|\ben\b|\balso\b|\book\b|\bplus\b)\s*', raw, flags=re.I) if p and p.strip()]
+    acts = []
+    for p in parts:
+        r = _one(p.lower(), p)
+        if r and r not in acts: acts.append(r)
+    if not acts:
+        r = _one(raw.lower(), raw)
+        if r: acts = [r]
+    return acts or None
+
 def cmd_parse(text):
-    """a sentence -> {'action', 'value'} from the fixed list, or None. rules first, then the model"""
+    """a sentence -> {'actions': [...], 'by': rules|model} or None"""
     r = cmd_rules(text)
-    if r: return r
+    if r: return {'actions': r, 'by': 'rules'}
     if not llm_ready(): return None
-    msg = [{'role': 'system', 'content': 'You turn a request about a video short into one action. Actions: ' + ', '.join(CMD_ACTIONS) +
-            '. Answer only with JSON like {"action":"shorter","value":5}. value is seconds for time actions, a style name for style (jele, purple, classic, clean), the text for title, else 0.'},
+    msg = [{'role': 'system', 'content': 'You turn a request about editing a gaming short into actions. Allowed actions: ' + ', '.join(CMD_ACTIONS) +
+            '. Answer only with a JSON list like [{"action":"shorter","value":3}]. value: seconds for ' + ', '.join(TIME_ACTS) +
+            '; jele, purple, classic or clean for style; pop, bounce, type, word or none for anim; split, frame, gameonly or landscape for layout; the text for title or cut_word; else 0.'},
+           {'role': 'user', 'content': 'it drags on at the end and the music is too loud'}, {'role': 'assistant', 'content': '[{"action":"end_earlier","value":3},{"action":"music_quieter","value":0}]'},
            {'role': 'user', 'content': text}]
-    a = llm_chat(msg, 60, 0.1)
-    m = re.search(r'\{.*\}', a, re.S)
+    a = llm_chat(msg, 120, 0.1)
+    m = re.search(r'\[.*\]|\{.*\}', a, re.S)
     if not m: return None
     try: d = json.loads(m.group(0))
     except Exception: return None
-    if d.get('action') not in CMD_ACTIONS: return None
-    v = d.get('value', 0)
-    if d['action'] in ('shorter', 'longer', 'start_later', 'start_earlier', 'end_earlier', 'end_later'):
-        try: v = max(0.5, min(20.0, float(v or 3)))
-        except Exception: v = 3.0
-    return {'action': d['action'], 'value': v, 'by': 'model'}
+    d = d if isinstance(d, list) else [d]
+    out = []
+    for x in d:
+        if not isinstance(x, dict) or x.get('action') not in CMD_ACTIONS: continue
+        v = x.get('value', 0)
+        if x['action'] in TIME_ACTS:
+            try: v = max(0.5, min(60.0, float(v or 3)))
+            except Exception: v = 3.0
+        out.append({'action': x['action'], 'value': v})
+    return {'actions': out, 'by': 'model'} if out else None
 
 import atexit as _ae
 _ae.register(llm_stop)

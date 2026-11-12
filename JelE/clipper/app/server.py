@@ -346,9 +346,9 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/engine-install': threading.Thread(target=wcpp_install, daemon=True).start(); return self.j({'ok': True})
         if p == '/api/llm-install': threading.Thread(target=llm_install, daemon=True).start(); return self.j({'ok': True})
         if p == '/api/vision-install': threading.Thread(target=vision_install, daemon=True).start(); return self.j({'ok': True})
-        if p == '/api/command':   # plan F4.7: "make it shorter" -> an editor action
+        if p == '/api/command':   # plan F4.7: "make it shorter and no music" -> editor actions
             r = cmd_parse(b.get('text', ''))
-            return self.j({'ok': bool(r), **(r or {}), 'why': '' if r else ('I did not understand that. Try "make it 5 seconds shorter" or "no zoom".' + ('' if llm_ready() else ' With the local AI model (Settings) I understand more.'))})
+            return self.j({'ok': bool(r), **(r or {}), 'why': '' if r else ('I did not understand that. Try for example "5 seconds shorter", "start at the kill", "no music", "captions bigger" or "cut out where I say sorry".' + ('' if llm_ready() else ' With the local AI model (Settings > Captions) I understand more.'))})
         if p == '/api/llm-titles':
             if not llm_ready(): return self.j({'ok': False, 'why': 'The local AI model is not installed (Settings > System).'})
             t = llm_titles(b.get('text', ''), b.get('reasons') or [], (GP.get(b.get('game')) or {}).get('name', '') if GP else '', SET.get('language') or 'en')
@@ -381,6 +381,13 @@ class H(BaseHTTPRequestHandler):
             if e and e.get('auto') and e.get('status') == 'nieuw': taste_note(e.get('reasons'), False, e.get('dur'))   # thrown away from the inbox
             return self.j({'ok': True})
         if p == '/api/trash-restore': restore_short(os.path.basename(b.get('file', ''))); return self.j({'ok': True})
+        if p == '/api/feedback': return self.j(feedback_add(b))
+        if p == '/api/analysis-report':
+            f_ = analysis_report()
+            try:
+                if os.name == 'nt': subprocess.Popen(['explorer', '/select,', f_])
+            except Exception: pass
+            return self.j({'ok': True, 'file': os.path.basename(f_), 'path': f_})
         if p == '/api/block-kind':   # "not like this again"
             e = lib_load().get(os.path.basename(b.get('file', ''))) or {}; ks = sorted(reason_keys(e.get('reasons')))
             if ks:
