@@ -723,6 +723,7 @@ body.dock .setgroups .seg{flex:1 1 100%}body.dock .setgroups .seg button{flex:1 
 #set.srch .card.adv{display:block}
 .wzauto{margin-top:18px;padding:14px 16px;border:1px solid var(--orL);border-radius:12px;background:var(--orS)}.wzauto h4{margin-top:0}
 .wzhr{border:0;border-top:1px solid var(--line);margin:18px 0}
+#toast.act{pointer-events:auto;display:flex;align-items:center}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
@@ -1054,7 +1055,7 @@ const $=id=>document.getElementById(id), $$=(s,r=document)=>[...r.querySelectorA
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ic=n=>`<svg class="i"><use href="#i-${n}"/></svg>`;
 const EMPTY=(icon,title,text,btn)=>`<div class="eic"><svg class="i"><use href="#i-${icon}"/></svg></div><b>${title}</b>${text||''}${btn?`<div class="ebtn">${btn}</div>`:''}`;
-const toast=s=>{ const t=$('toast'); t.textContent=s; t.classList.remove('ok','bad'); if(/mislukt|lukt niet|lukte niet|fout|niet verbonden|geen opname|stopt|weigert|failed|did not work|error|not connected|not recording|refus/i.test(s)) t.classList.add('bad'); else if(/klaar|gelukt|opgeslagen|bewaard|gehouden|gemaakt|gestart|teruggezet|gekopieerd|verstuurd|ready|done|saved|kept|made|started|restored|copied|sent|added/i.test(s)) t.classList.add('ok'); t.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show'),2600); };
+const toast=s=>{ const t=$('toast'); t.textContent=s; t.classList.remove('ok','bad','act'); if(/mislukt|lukt niet|lukte niet|fout|niet verbonden|geen opname|stopt|weigert|failed|did not work|error|not connected|not recording|refus/i.test(s)) t.classList.add('bad'); else if(/klaar|gelukt|opgeslagen|bewaard|gehouden|gemaakt|gestart|teruggezet|gekopieerd|verstuurd|ready|done|saved|kept|made|started|restored|copied|sent|added/i.test(s)) t.classList.add('ok'); t.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show'),2600); };
 const api=(p,b)=>fetch(p,b?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{}).then(r=>r.json());
 const fmt=t=>{ t=Math.max(0,Math.round(t)); const h=Math.floor(t/3600),m=Math.floor(t/60)%60,s=t%60; return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0'); };
 const fmtD=t=>{ const s=Math.max(0,t); return Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0'); };
@@ -2091,7 +2092,9 @@ function buildTrans(){ const el=$('trans'); if(!el) return; const ws=ED.words||[
   el.innerHTML=vis.map(([w,i])=>{ const tx=ED.edit[i]??w[2], unc=tx==='…', uns=!unc&&ED.unsure.has(Math.round(w[0]*100))&&ED.edit[i]==null&&!ED.ok.has(i);
     const cls=[w[1]<ED.a||w[0]>ED.b?'out':'', ED.off.has(i)?'off':'', unc?'unc':'', ED.edit[i]!=null?'ed':'', inCut((w[0]+w[1])/2)?'cut':'', uns?'uns':'', sel&&i>=sel[0]&&i<=sel[1]?'sel':''].filter(Boolean).join(' ');
     return `<span data-i="${i}" data-a="${w[0]}" data-b="${w[1]}" class="${cls}" title="${unc?'Not understood. Double-click to type what you said':uns?'Unsure word: is this right? Double-click to edit':'Double-click to edit'}">${esc(tx)}</span>`; }).join(' ');
-  $$('span',el).forEach(s=>{ s.onclick=e=>{ const i=+s.dataset.i; if(e.shiftKey&&ED.selA!=null){ ED.sel=[ED.selA,i]; buildTrans(); trSel(); return; } ED.selA=i; ED.sel=null; trSel(); $('vid').currentTime=+s.dataset.a; buildTrans(); }; s.ondblclick=e=>{ e.preventDefault(); editWord(s); }; }); }
+  $$('span',el).forEach(s=>{ s.onclick=e=>{ const i=+s.dataset.i; if(e.shiftKey&&ED.selA!=null){ ED.sel=[ED.selA,i]; buildTrans(); trSel(); return; }
+    const lc=ED._lc; ED._lc={i,t:Date.now()}; if(lc&&lc.i===i&&Date.now()-lc.t<450){ ED._lc=null; e.preventDefault(); return editWord(s); }   // a double click: the list was just redrawn, so catch it here
+    ED.selA=i; ED.sel=null; trSel(); $('vid').currentTime=+s.dataset.a; buildTrans(); }; s.ondblclick=e=>{ e.preventDefault(); editWord(s); }; }); }
 function trSel(){ const b=$('trSel'); if(!b) return; if(!ED.sel){ b.classList.remove('on'); return; } const [x,y]=[Math.min(...ED.sel),Math.max(...ED.sel)], n=y-x+1;
   $('trSelN').textContent=`${n} word${n===1?'':'s'} selected`; b.classList.add('on'); }
 function trSelAct(k){ const [x,y]=[Math.min(...ED.sel),Math.max(...ED.sel)], ws=ED.words;
@@ -2100,9 +2103,16 @@ function trSelAct(k){ const [x,y]=[Math.min(...ED.sel),Math.max(...ED.sel)], ws=
   if(k==='off'){ for(let i=x;i<=y;i++) ED.off.add(i); toast('Hidden from the captions'); }
   if(k==='vl'){ const line=ws.slice(x,y+1).map((w,i)=>ED.edit[x+i]??w[2]).join(' '); api('/api/voicelines',{add:line}); for(let i=x;i<=y;i++) ED.off.add(i); toast('Put on the voiceline list; never shows up in your captions again'); }
   ED.sel=null; trSel(); buildTrans(); }
+// a toast with one button (stays a bit longer)
+function toastAct(text,label,fn){ const t=$('toast'); t.classList.remove('ok','bad'); t.innerHTML=`<span>${esc(text)}</span><button class="btn sm pri" id="toastB" style="margin-left:10px">${esc(label)}</button>`; t.classList.add('show','act');
+  $('toastB').onclick=async()=>{ t.classList.remove('show','act'); await fn(); }; clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove('show','act'),7000); }
 function editWord(s){ const i=+s.dataset.i, cur=ED.edit[i]??ED.words[i][2], inp=document.createElement('input'); let fin=false;
   inp.className='wedit'; inp.value=cur==='…'?'':cur; inp.placeholder='what did you say?'; inp.style.width=Math.max(90,cur.length*10+24)+'px'; s.replaceWith(inp); inp.focus(); inp.select();
-  const done=(save,next)=>{ if(fin) return; fin=true; if(save){ const v=inp.value.trim(); ED.ok.add(i); if(!v){ ED.off.add(i); } else { ED.off.delete(i); if(v!==ED.words[i][2]) ED.edit[i]=v; else delete ED.edit[i]; } } buildTrans(); if(next) setTimeout(nextUnsure,30); };
+  const done=(save,next)=>{ if(fin) return; fin=true; if(save){ const v=inp.value.trim(); ED.ok.add(i); if(!v){ ED.off.add(i); } else { ED.off.delete(i); if(v!==ED.words[i][2]) ED.edit[i]=v; else delete ED.edit[i]; }
+      const o=(ED.words[i][2]||'').replace(/[.,!?]+$/,''), v2=v.replace(/[.,!?]+$/,'');
+      if(v2&&o&&o!=='…'&&!/\s/.test(o)&&o.toLowerCase()!==v2.toLowerCase()&&!(SETS.fixes||[]).some(f=>String(f[0]).toLowerCase()===o.toLowerCase()))   // F3.4: learn the fix for next time
+        toastAct(`"${o}" became "${v2}". Always fix this in new captions?`,'Always',async()=>{ const r=await api('/api/settings',{fixes:[...(SETS.fixes||[]),[o,v2]]}); SETS=r.settings; toast('Saved: "'+o+'" always becomes "'+v2+'"'); }); }
+    buildTrans(); if(next) setTimeout(nextUnsure,30); };
   inp.onkeydown=e=>{ e.stopPropagation(); if(e.key==='Enter') done(true); if(e.key==='Tab'){ e.preventDefault(); done(true,true); } if(e.key==='Escape') done(false); }; inp.onblur=()=>done(true); }
 function nextUnsure(){ const t=$('vid').currentTime, ws=ED.words||[]; let best=-1;
   for(let i=0;i<ws.length;i++){ const w=ws[i]; if(w[1]<ED.a||w[0]>ED.b) continue; if(!ED.unsure.has(Math.round(w[0]*100))||ED.ok.has(i)||ED.edit[i]!=null) continue; if(w[0]>t+.05){ best=i; break; } if(best<0) best=i; }

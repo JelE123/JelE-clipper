@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.27 · 12 November 2026
+
+### Fixing captions is easier (plan F3.4, first part)
+- Fixed: double-clicking a word in the editor to change it often did nothing (the first click redrew the list). It now always opens the word
+- When you change a word, the Clipper asks "Always fix this in new captions?". One click and that word is fixed in every new short from then on (you find these in Settings > Captions: words)
+
 ## 6.26 · 12 November 2026
 
 ### Make shorts again (plan F3.6, first part)
