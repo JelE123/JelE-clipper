@@ -2,6 +2,30 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.55 · 12 November 2026
+
+**Picking moments**
+- **Your own score model.** Every moment you keep, make, remove or give feedback on teaches a small model on your pc what YOU find good. After 12 choices it starts to count, and it gets better with every stream. A reason you give counts double. Clips your viewers made on Twitch count as good too.
+- **Why?** button on every moment: the timeline of what the AI saw, heard and read (chat on screen, your scream, the kill, what you said).
+- **Round results from the screen.** The score at the top of Valorant tells the app if you won or lost the round. Low health (30 HP or less) when you win a round counts as clutch-like. Spike planted / defused banners count too.
+- **Context card** for strangers, like "1v3, last one alive" or "he typed this in team chat", at the start of the short. Pick "Hard to follow" as feedback and you get more of them.
+- **Best 5 with variety**: not five times the same kind of moment.
+- **Side by side**: with the local AI on, it compares the best moments two at a time (both ways round) and fixes the order.
+- **Honest**: when nothing is good enough, you get no moments and the app tells you why, instead of a bad clip.
+- Lobby, agent select and queue are thrown out (unless chat or a marker).
+- Fast talking is measured against how YOU talk in this stream. A chat wave (3+ people typing the same thing) counts as hype.
+- Your voice: a shocked burst after quiet, or staying loud and heated, now count as reactions (apart from the words).
+
+**Stories**
+- **Revenge**: the player who killed you (from the death screen) or who was toxic in chat shows up in your killfeed later: one story.
+- **Toxic in three pieces**: the message, your reaction, and what you did later.
+- **The whole match in 60 seconds**: your best moments in order, with the score between them.
+- Dutch promises: "deze pak ik", "let maar op", "ik ga hem clutchen".
+- The AI checks weak links ("is this really one story?").
+- **Edit a story**: change the times, the order, the card between pieces (LATER..., 5 MINUTES LATER, MEANWHILE..., FAMOUS LAST WORDS..., your own text) and add pieces.
+- **Make story**: tick 2 or more moments and glue them into one short.
+- The app looks up to 60 seconds back for the cause (a chat message long before you read it).
+
 ## 6.54 · 12 November 2026
 
 - **Unsure words get filled in for you.** After a search, every word the speech model was not sure about inside your moments is heard again, with a better model and the sentence around it as a hint. It then picks what fits best: what it heard the second time, words you corrected before, game names (Viper, not piper) and names on the screen (chat, killfeed). With the local AI on, the AI picks too.

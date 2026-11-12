@@ -92,7 +92,11 @@ def sound_scan(x, base_db=None, step=0.5, voice=True):
         a0, a1 = b * per, (b + 1) * per
         w0, w1 = max(0, a0 - per), min(len(db), a1 + per)       # look 1.5 s wide for the rhythm
         seg_db = db[w0:w1]; ld = loud[w0:w1]
-        r = {'laugh': 0.0, 'scream': 0.0, 'cheer': 0.0, 'shots': int(on[a0:a1].sum()), 'music': 0.0}
+        r = {'laugh': 0.0, 'scream': 0.0, 'cheer': 0.0, 'shots': int(on[a0:a1].sum()), 'music': 0.0, 'shock': 0.0, 'hot': 0.0}
+        if voice and a0 >= 2 * per:   # emotion in your voice, apart from the words: a shocked burst after quiet, or staying loud (raging)
+            now_, before_ = float(np.mean(db[a0:a1])), float(np.mean(db[a0 - 2 * per:a0]))
+            if now_ > talk_db + 4 and before_ < talk_db - 3 and (vo[a0:a1] > 0.3).mean() > 0.4: r['shock'] = round(float(min(1.0, (now_ - before_) / 18)), 2)
+            r['hot'] = round(float(((db[a0:a1] > talk_db + 4) & (vo[a0:a1] > 0.3)).mean()), 2)
         if voice and ld.mean() > 0.3:
             r['laugh'] = _laugh_score(ld, vo[w0:w1], f0[w0:w1])
         hi = db[a0:a1] > max(base_db + 14, talk_db + 7)
@@ -122,7 +126,7 @@ def sound_events(path, dur, step=0.5, on_prog=None):
         ms = int(mic[1].split(':')[-1]) if len(mic) > 1 else -1
         other = next((i for i in range(n) if i != ms), 0); allmap = ['-map', f'0:a:{other}']
     T = int(dur / step) + 1
-    res = [{'laugh': 0.0, 'scream': 0.0, 'cheer': 0.0, 'shots': 0, 'music': 0.0} for _ in range(T)]
+    res = [{'laugh': 0.0, 'scream': 0.0, 'cheer': 0.0, 'shots': 0, 'music': 0.0, 'shock': 0.0, 'hot': 0.0} for _ in range(T)]
     CH = 60.0; t = 0.0; base_v = None; base_g = None
     while t < dur:
         d = min(CH + 1.5, dur - t)
@@ -131,7 +135,7 @@ def sound_events(path, dur, step=0.5, on_prog=None):
             if base_v is None: base_v = float(np.percentile(20 * np.log10(np.abs(xv[::40]) + 1e-5), 75)) - 6
             for k, r in enumerate(sound_scan(xv, None, step, voice=True)):
                 i = int(t / step) + k
-                if i < T: res[i]['laugh'] = r['laugh']; res[i]['scream'] = r['scream']; res[i]['music'] = r['music']
+                if i < T: res[i]['laugh'] = r['laugh']; res[i]['scream'] = r['scream']; res[i]['music'] = r['music']; res[i]['shock'] = r.get('shock', 0); res[i]['hot'] = r.get('hot', 0)
         if True:   # the game sound for bangs and cheering (all audio when there is no separate mic track)
             xg = _sound_read(path, allmap, t, d) if mic else xv
             if len(xg) > SOUND_SR:
@@ -151,8 +155,12 @@ def sound_moments(res, step=0.5):
     k = int(2 / step)
     lg2 = np.convolve(lg > 0.45, np.ones(k), mode='same')          # laughing for at least a second
     sh3 = np.convolve(sh, np.ones(int(3 / step)), mode='same')      # 3 or more bangs within 3 seconds = a fight
+    sk = np.array([r.get('shock', 0) for r in res]); hot = np.array([r.get('hot', 0) for r in res])
+    hot3 = np.convolve(hot, np.ones(int(3 / step)) / int(3 / step), mode='same') if T >= int(3 / step) else hot
     for i in range(T):
         if lg2[i] >= 2: sc[i] += 1.5; why[i] = 'you laughed'
+        if sk[i] > 0.5 and lg[i] < 0.3: sc[i] += 0.8 * sk[i]; why[i] = why[i] or 'you were shocked'
+        if hot3[i] > 0.7 and lg2[i] < 1: sc[i] += 0.6; why[i] = why[i] or 'you raged'
         if scr[i] > 0.5: sc[i] += 1.5 * scr[i]; why[i] = why[i] or 'you screamed'
         if ch[i] > 0.5: sc[i] += 1.0; why[i] = why[i] or 'cheering'
         if sh3[i] >= 3: sc[i] += min(1.2, 0.25 * sh3[i]); why[i] = why[i] or f'a fight ({int(sh3[i])} shots)'

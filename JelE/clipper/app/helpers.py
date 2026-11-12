@@ -113,6 +113,9 @@ def fx_suggest(sid, start, end, job=None):
             fx['focus'] = [{'t': round(fo['t'] - start + 0.2, 2), 'dur': float(fo.get('dur') or 3.0), 'box': fo['box'], 'region': fo.get('region'), 'text': fo.get('text', '')}]
         if br.get('about'): fx['about'] = br['about']; fx['type'] = br.get('type')
         if br.get('layout'): fx['layout'] = br['layout']
+        ctx_ = (br.get('context') or '').strip()
+        if ctx_ and int(SET.get('ctx_cards') or 1) >= 1:   # a context card for strangers: "1v3, last round", "he typed this in team chat"
+            fx.setdefault('stickers', []).append({'t': 0.15, 'dur': 2.8, 'text': ctx_[:28], 'x': 0.5, 'y': 0.1, 'kind': 'chapter'})
     fx['peak'] = round(peak, 2) if peak is not None else None; fx['peak_why'] = why_peak
     # the teaser shows what you react to (the cause: the kill, the angle, the message), not you reacting.
     # a replay only for a real play (a kill from the match data, or the story says clutch / skill), never for talking or a chat message

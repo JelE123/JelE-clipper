@@ -343,6 +343,8 @@ def moment_timeline(c, words, why, step, scan=None, snd=None, a=None, b=None, te
             if r.get('shots') and t - last.get('shot', -99) >= 2: items.append({'t': t, 'k': 'game sound', 'v': f"{r['shots']} gunshot{'s' if r['shots'] > 1 else ''}"}); last['shot'] = t
             if r.get('laugh', 0) > 0.45 and t - last.get('laugh', -99) >= 3: items.append({'t': t, 'k': 'you', 'v': 'laughing'}); last['laugh'] = t
             if r.get('scream', 0) > 0.5 and t - last.get('scream', -99) >= 3: items.append({'t': t, 'k': 'you', 'v': 'screaming'}); last['scream'] = t
+            if r.get('shock', 0) > 0.5 and t - last.get('shock', -99) >= 4: items.append({'t': t, 'k': 'you', 'v': 'shocked (sudden loud after quiet)'}); last['shock'] = t
+            if r.get('hot', 0) > 0.8 and t - last.get('hot', -99) >= 5: items.append({'t': t, 'k': 'you', 'v': 'loud and heated'}); last['hot'] = t
     for x in scan or []:
         if not (a <= x['t'] <= b): continue
         if x['state'] != 'playing' and t_ok(last, 'scr_' + x['state'], x['t'], 6): items.append({'t': x['t'], 'k': 'screen', 'v': {'dead': 'you are dead', 'spectate': 'spectating', 'menu': 'a menu', 'buy': 'buy phase', 'end': 'END SCREEN: the match is over, scoreboard'}.get(x['state'], x['state'])})
@@ -414,13 +416,13 @@ def llm_brief(c, lines, a, game='', lang='en', port=None):
             ', "start": seconds, "cause": seconds, "payoff": seconds, "end": seconds, "zoom": [seconds, max 2, on the payoff or a big reaction], '
             '"replay": true only for an insane play (clutch, multi kill, crazy shot) worth seeing twice, else false, "focus": "chat" when the story is a chat message, "killfeed" when it is a kill or death in the killfeed, else "none", '
             '"layout": "split" when the face/reaction matters, "gameonly" when the play matters, "music": "hype"/"funny"/"tension"/"chill"/"none", '
-            '"title": "hook, max 6 words, capitals, in ' + lang_name + '", "score": 1-10}. A good short is 12 to 35 seconds. Never start in the middle of a sentence. ' + 'Score 1 to 3 for: mumbling or talking to yourself, quiet chatting, an end screen or scoreboard after a match, menus, lobby, queue, waiting, buy phase small talk. Score 7 or more only when a stranger on TikTok would laugh, be amazed or feel the hype. Be strict: most parts of a stream are a 2 to 5.')
+            '"title": "hook, max 6 words, capitals, in ' + lang_name + '", "context": "max 8 words a stranger needs to get it (like \'he typed this in team chat\' or \'1v3, last round\'), empty when it is clear", "score": 1-10}. A good short is 12 to 35 seconds. Never start in the middle of a sentence. ' + 'Score 1 to 3 for: mumbling or talking to yourself, quiet chatting, an end screen or scoreboard after a match, menus, lobby, queue, waiting, buy phase small talk. Score 7 or more only when a stranger on TikTok would laugh, be amazed or feel the hype. Be strict: most parts of a stream are a 2 to 5.')
     ex_u = ('Game: Valorant. Timeline:\n   0s you say: "okay I will hold B alone"\n   6s game sound: 2 gunshots\n   9s you say: "wait wait they are all coming"\n  12s game sound: 4 gunshots\n'
             '  13s game: kill\n  14s game: kill\n  15s you: screaming\n  16s you say: "NO WAY I got all three"\n  17s chat: 22 messages in 10s\n  20s you say: "chat did you see that"\n  27s you say: "okay buy phase what do we get"')
-    ex_a = '{"about": "holds B alone and wins a 1v3", "type": "clutch", "start": 8.5, "cause": 12, "payoff": 15, "end": 21.5, "zoom": [14, 16], "replay": true, "focus": "none", "layout": "split", "music": "hype", "title": "HELD B ALONE VS THREE", "score": 9}'
+    ex_a = '{"about": "holds B alone and wins a 1v3", "type": "clutch", "start": 8.5, "cause": 12, "payoff": 15, "end": 21.5, "zoom": [14, 16], "replay": true, "focus": "none", "layout": "split", "music": "hype", "title": "HELD B ALONE VS THREE", "context": "1v3 on B, last one alive", "score": 9}'
     msg = [{'role': 'system', 'content': sysm}, {'role': 'user', 'content': ex_u}, {'role': 'assistant', 'content': ex_a},
            {'role': 'user', 'content': f'Game: {game or "unknown"}. Timeline:\n' + '\n'.join(lines[:70])}]
-    ans = llm_chat(msg, 400, 0.2, port); LLM['last_brief'] = ans[:600]
+    ans = llm_chat(msg, 450, 0.2, port); LLM['last_brief'] = ans[:600]
     m = re.search(r'\{.*\}', ans, re.S) or re.search(r'\{.*', ans, re.S)
     if not m: return {}
     js = m.group(0)
@@ -447,7 +449,7 @@ def llm_brief(c, lines, a, game='', lang='en', port=None):
             'cause': round(cause, 2) if cause is not None else None, 'focus_kind': d.get('focus') if d.get('focus') in ('chat', 'killfeed') else None,
             'layout': d.get('layout') if d.get('layout') in ('split', 'gameonly', 'frame') else None,
             'music': d.get('music') if d.get('music') in ('hype', 'funny', 'tension', 'chill', 'none') else None,
-            'title': str(d.get('title') or '')[:40].upper(), 'score': d.get('score'), 'by': 'ai'}
+            'title': str(d.get('title') or '')[:40].upper(), 'score': d.get('score'), 'by': 'ai', 'context': str(d.get('context') or '').strip()[:60]}
 
 MOOD_WORDS = {'hype': r'hype|epic|trap|phonk|energy|drop|bass', 'funny': r'funny|fun|silly|meme|goofy|comedy', 'tension': r'tension|suspense|dark|intense|tense',
               'chill': r'chill|lofi|lo-fi|calm|relax|soft', 'none': r'^$'}
@@ -483,7 +485,8 @@ def brief_merge(ai, rules, items):
     return b
 
 # ---------------------------------------------------------------- stories: moments that belong together (a setup now, the payoff minutes later)
-PROMISE = re.compile(r"\b(i'?m gonna|i am going to|i will|i'll|watch me|watch this|let me|i bet|ik ga|let op|kijk maar|you'?ll see|this round i)\b.{0,40}\b(ace|clutch|win|kill|one ?tap|carry|drop|destroy|1v\d|get him|get them|beat|revenge|wraak)", re.I)
+PROMISE = re.compile(r"(\b(i'?m gonna|i am going to|i will|i'll|watch me|watch this|let me|i bet|ik ga|let op|kijk maar|kijk dit|you'?ll see|this round i)\b.{0,40}\b(ace|clutch|clutchen|win|winnen|kill|killen|pakken|one ?tap|carry|drop|destroy|1v\d|get him|get them|beat|revenge|wraak)"
+                     r"|\b(deze pak ik|die pak ik|ik pak (hem|ze|deze|die)|let maar op|wedden dat|dit wordt een ace|ik ga deze (clutchen|winnen|pakken))\b)", re.I)
 RESULT = re.compile(r"\b(i told you|told you|i did it|i said it|zei het toch|did it|called it|as promised|revenge|payback|wraak|got him back|remember him|that guy again)\b", re.I)
 STORY_STOP = set('''the a an and or but to of in on at for is are was were be been it its this that i you he she we they me my your his her our their with as so just like what
 oh god yeah okay ok no yes bro dude man guys chat wait why how who when where there here then than now really very got get go going gonna want know think did do does not dont can cant

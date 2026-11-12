@@ -10,7 +10,7 @@ SCREEN_WORDS = {
     'valorant': {'menu': ['AGENTSELECT', 'LOCKIN', 'COLLECTION', 'CAREER', 'BATTLEPASS', 'PLAY', 'QUEUE', 'MATCHFOUND', 'ACCEPT'],
                  'dead': ['KILLEDBY', 'YOUWEREKILLED'], 'spectate': ['SPECTATING'], 'buy': ['BUYPHASE', 'SHOP'],
                  'round_win': ['ROUNDWIN', 'CLUTCH', 'FLAWLESS', 'THRIFTY', 'ACE', 'TEAMACE'], 'round_loss': ['ROUNDLOSS', 'ROUNDLOST'],
-                 'win': ['VICTORY'], 'loss': ['DEFEAT'],
+                 'win': ['VICTORY'], 'loss': ['DEFEAT'], 'plant': ['SPIKEPLANTED'], 'defuse': ['SPIKEDEFUSED', 'DEFUSED'],
                  'end': ['PLAYAGAIN', 'RETURNTOLOBBY', 'MATCHHISTORY', 'COMBATSCORE', 'RANKRATING', 'MATCHMVP', 'TEAMMVP', 'SCOREBOARD', 'ACS', 'ECONRATING', 'FIRSTBLOODS', 'PERFORMANCE', 'TIMELINE', 'SUMMARY']},
     'cs2': {'menu': ['PLAY', 'INVENTORY', 'MATCHMAKING', 'ACCEPT', 'YOURMATCHISREADY'],
             'dead': ['KILLEDBY', 'YOUWEREKILLED'], 'spectate': ['SPECTATING'], 'buy': ['BUYMENU', 'BUYTIME'],
@@ -55,16 +55,17 @@ def screen_state(img, game='other'):
     # colour: dead and spectating screens are often grey; menus are often still and flat
     hsv_s = (img.max(2).astype(np.int16) - img.min(2).astype(np.int16)).mean() / 255.0
     gray = float(max(0.0, min(1.0, 1 - hsv_s / 0.25)))
-    texts = []
+    texts = []; res = []
     if vision_ok():
         try:
             res, _ = VISION['ocr'](img)
             texts = [(_norm(x[1]), float(x[2])) for x in (res or []) if x and len(x) > 2 and float(x[2]) > 0.6]
-        except Exception: texts = []
+        except Exception: texts = []; res = []
+    hud = hud_numbers(res or [], img.shape[1], img.shape[0]) if game == 'valorant' else {}
     words = [t for t, _ in texts]
     joined = ''.join(words)
     def has(k): return any(x and (x in words or (len(x) > 4 and x in joined)) for x in W.get(k, []))   # short words (ACE, MVP) only as a whole word
-    ev = [k for k in ('round_win', 'round_loss', 'win', 'loss') if has(k)]
+    ev = [k for k in ('round_win', 'round_loss', 'win', 'loss', 'plant', 'defuse') if has(k)]
     st = 'playing'
     endn = sum(1 for x in W.get('end', []) if x in words or (len(x) > 4 and x in joined))
     if endn >= 2 or (endn >= 1 and ev and any(e in ev for e in ('win', 'loss'))): st = 'end'   # the end screen after a match: scoreboard, play again
@@ -72,7 +73,23 @@ def screen_state(img, game='other'):
     elif has('dead'): st = 'dead'
     elif has('buy'): st = 'buy'
     elif sum(1 for x in W['menu'] if x in words) >= 2 or (has('menu') and gray > 0.6 and len(words) > 8): st = 'menu'
-    return {'state': st, 'events': ev, 'gray': round(gray, 2), 'n_text': len(words)}
+    return {'state': st, 'events': ev, 'gray': round(gray, 2), 'n_text': len(words), **hud}
+
+def hud_numbers(res, W, H):
+    """Valorant's HUD: the round score at the top (your team left of the timer, the enemy right) and your health at the bottom"""
+    out = {}; top = []; low = []
+    for x in res:
+        try:
+            box, txt, conf = x[0], str(x[1]).strip(), float(x[2])
+            if conf < 0.5 or not re.fullmatch(r'\d{1,3}', txt): continue
+            cx = sum(p[0] for p in box) / 4 / W; cy = sum(p[1] for p in box) / 4 / H
+            if cy < 0.09 and 0.3 < cx < 0.7 and len(txt) <= 2: top.append((cx, int(txt)))
+            elif cy > 0.88 and 0.3 < cx < 0.5 and int(txt) <= 150: low.append((cx, int(txt)))
+        except Exception: continue
+    l_ = [v for v in top if v[0] < 0.5]; r_ = [v for v in top if v[0] > 0.5]
+    if l_ and r_: out['score'] = [max(l_)[1], min(r_)[1]]   # the numbers closest to the timer
+    if low: out['hp'] = min(low)[1]
+    return out
 
 def vision_scan(path, a, b, game='other', every=2.0):
     """what happens on screen between a and b: a list of (t, state)"""
@@ -98,12 +115,21 @@ def vision_judge(scan, st, en, peak):
     for x in inside:
         for e in x['events']:
             if e not in evs: evs.append(e)
+    # the score at the top changes after a round: your number goes up = you won it
+    sc_ = [(x['t'], tuple(x['score'])) for x in scan if x.get('score') and st - 2 <= x['t'] <= en + 6]
+    for (t1, a), (t2, b) in zip(sc_, sc_[1:]):
+        if b[0] == a[0] + 1 and b[1] == a[1] and 'round_win' not in evs: evs.append('round_win')
+        if b[1] == a[1] + 1 and b[0] == a[0] and 'round_loss' not in evs: evs.append('round_loss')
+    score_now = list(sc_[-1][1]) if sc_ else None
+    hp_ = [x['hp'] for x in inside if x.get('hp') is not None and abs(x['t'] - peak) <= 4]
     reasons = []
-    names = {'round_win': 'you won the round', 'round_loss': 'you lost the round', 'win': 'you won the match', 'loss': 'you lost the match'}
-    for e in evs: reasons.append(names[e])
+    names = {'round_win': 'you won the round', 'round_loss': 'you lost the round', 'win': 'you won the match', 'loss': 'you lost the match', 'plant': 'the spike got planted', 'defuse': 'the spike got defused'}
+    for e in evs: reasons.append(names[e] + (f' ({score_now[0]}-{score_now[1]})' if score_now and e in ('round_win', 'round_loss') else ''))
+    if hp_ and min(hp_) <= 30: reasons.append(f'with only {min(hp_)} HP left')
     if dead is not None and dead <= peak + 3: reasons.append('you died (a fail can be gold)')
     if endsc > 0.4: reasons.append('end screen after the match')
-    return {'menu': round(menu, 2), 'end': round(endsc, 2), 'buy': round(buy, 2), 'dead_at': dead, 'spectate_from': spec, 'events': evs, 'reasons': reasons}
+    return {'menu': round(menu, 2), 'end': round(endsc, 2), 'buy': round(buy, 2), 'dead_at': dead, 'spectate_from': spec, 'events': evs, 'reasons': reasons,
+            'score': score_now, 'hp': min(hp_) if hp_ else None}
 
 # ---------------------------------------------------------------- plan F4.3: the cam follows your face
 def face_track(path, start, dur, rect, every=0.5):

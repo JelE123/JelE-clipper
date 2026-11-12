@@ -355,17 +355,23 @@ def analyse(sid):
             i = int(a / step)
             if 0 <= i < T: cnt[i] += 1
         rate = np.convolve(cnt, np.ones(int(6 / step)), mode='same') / 6.0
+        thr_ = max(3.2, float(np.percentile(rate[rate > 0], 92))) if (rate > 0).any() else 3.2   # fast for YOU in this stream, not a fixed number
         for i in range(T):
-            if rate[i] > 3.2: score[i] += (rate[i] - 3.2) * 0.4; why[i]['talk'] = 1   # talking fast alone is weak: it needs a reason close by (see below)
+            if rate[i] > thr_: score[i] += (rate[i] - thr_) * 0.4; why[i]['talk'] = 1   # talking fast alone is weak: it needs a reason close by (see below)
     # 2. chat going off (shifted back: chat reacts a few seconds after the moment)
     chat = load_chat(sid); delay = float(SET.get('chat_delay', 6))
     if chat:
-        cnt = np.zeros(T, dtype=np.float32); hype = np.zeros(T, dtype=np.float32); users = [set() for _ in range(T)]
+        cnt = np.zeros(T, dtype=np.float32); hype = np.zeros(T, dtype=np.float32); users = [set() for _ in range(T)]; same = {}
         for t, u, msg in chat:
             i = int((t - delay) / step)
             if 0 <= i < T:
                 cnt[i] += 1; users[i].add(u)
                 if HYPE.search(msg): hype[i] += 1
+                k_ = re.sub(r'\W+', '', (msg or '').lower())[:20]
+                if k_: same.setdefault((int(i * step // 10), k_), set()).add(u)
+        for (b10, k_), us_ in same.items():   # a chat wave: 3+ people typing the same thing (the same emote, "W", "LMAO") in 10 seconds
+            if len(us_) >= 3:
+                i = min(T - 1, int(b10 * 10 / step)); hype[i] += 0.5 * len(us_)
         k = int(10 / step)
         uniq = np.array([len(x) for x in users], dtype=np.float32)
         c10 = np.convolve(cnt, np.ones(k), mode='same'); h10 = np.convolve(hype, np.ones(k), mode='same'); u10 = np.convolve(uniq, np.ones(k), mode='same')
@@ -531,8 +537,11 @@ def analyse(sid):
                 vs_ = vision_scan(path, max(0, st - 1), min(dur, en + 4), gid); c['_scan'] = vs_
                 j = vision_judge(vs_, st, en + 4, c['t'])
                 if not j: continue
-                c['vision'] = {k: j.get(k) for k in ('menu', 'end', 'buy', 'dead_at', 'spectate_from', 'events')}
-                if j['menu'] > 0.6: c['score'] = round(c['score'] * 0.25, 1); c['reasons'].append('mostly a menu on screen')
+                c['vision'] = {k: j.get(k) for k in ('menu', 'end', 'buy', 'dead_at', 'spectate_from', 'events', 'score', 'hp')}
+                if (j.get('hp') or 999) <= 30 and 'round_win' in j['events']: c['score'] = round(c['score'] * 1.3 + 1, 1)   # won the round on almost no health
+                if j['menu'] > 0.6:
+                    c['score'] = round(c['score'] * 0.25, 1); c['reasons'].append('mostly a menu on screen')
+                    if not any('chat' in r_ or 'friend' in r_ for r_ in c['reasons']) and not c.get('marker'): c['drop'] = True   # lobby, agent select, queue: out (unless chat or a marker)
                 elif j.get('end', 0) > 0.4: c['score'] = round(c['score'] * 0.15, 1); c['drop_soft'] = True   # the end screen: talking while the scoreboard shows is almost never a moment
                 elif j['buy'] > 0.7: c['score'] = round(c['score'] * 0.6, 1)
                 if j.get('spectate_from') and j['spectate_from'] > c['t'] + 2 and j['spectate_from'] + 1.5 < en and not c.get('said'):
@@ -564,7 +573,7 @@ def analyse(sid):
                 prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
                 texts_ = []
                 if n < int(SET.get('screen_text_n') or 15) and vision_ok():   # the text on screen around it: chat messages, killfeed
-                    try: texts_ = screen_texts(path, max(0, c['t'] - 45), min(dur, c['t'] + 12))
+                    try: texts_ = screen_texts(path, max(0, c['t'] - 60), min(dur, c['t'] + 12))
                     except Exception: traceback.print_exc()
                     nm_ = []   # names on the screen (chat, killfeed): the doubt check uses them to spell names right
                     for g_ in texts_ or []:
@@ -574,7 +583,9 @@ def analyse(sid):
                             if m_: nm_.append(m_.group(1).split('#')[0])
                         elif g_.get('region') == 'killfeed': nm_ += [x for x in re.findall(r'[A-Za-z][\w.-]{2,15}', tx_) if x.upper() != x or len(x) > 4]
                     if nm_: c['screen_names'] = list(dict.fromkeys(nm_))[:20]
-                lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd, max(0, c['t'] - 45), c['t'] + 15, texts_)
+                    kb_ = killer_name(texts_)
+                    if kb_: c['killed_by'] = kb_   # the death screen says who killed you: used for revenge stories
+                lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd, max(0, c['t'] - 60), c['t'] + 15, texts_)
                 rb_ = brief_rules(c, items, a0, c['t'])
                 b_ = brief_merge(llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}, rb_, items)
                 if not b_: continue
@@ -586,9 +597,14 @@ def analyse(sid):
                     if en - st > 60: st = en - 60
                 c['start'], c['end'] = round(float(st), 1), round(float(en), 1); c['t'] = float(b_['payoff'])
                 def _fl(v): return float(v) if hasattr(v, 'item') else ([_fl(x) for x in v] if isinstance(v, list) else v)
-                c['brief'] = {k: _fl(b_.get(k)) for k in ('about', 'type', 'cause', 'payoff', 'zoom', 'replay', 'focus', 'layout', 'music', 'by')
+                c['brief'] = {k: _fl(b_.get(k)) for k in ('about', 'type', 'cause', 'payoff', 'zoom', 'replay', 'focus', 'layout', 'music', 'by', 'context')
                               if b_.get(k) is not None and b_.get(k) is not False and not (isinstance(b_.get(k), (str, list)) and len(b_.get(k)) == 0)}
                 if b_.get('about'): c['reasons'].insert(0, b_['about'][0].lower() + b_['about'][1:])
+                c['evidence'] = evidence_lines(items, c['start'], c['end'])
+                fo_ = (c['brief'].get('focus') or {}) if isinstance(c['brief'].get('focus'), dict) else {}
+                if fo_.get('region') == 'chat':   # who wrote the message you reacted to
+                    m_ = re.match(r"\s*(?:\([^)]*\)\s*|\[[^\]]*\]\s*)?([\w#.-]{3,20})\s*:", fo_.get('text') or '')
+                    if m_: c['chat_name'] = m_.group(1).split('#')[0]   # what the AI saw, heard and read: shown as "Why?" on the card
                 t_ = tidy_title(b_.get('title') or '')
                 if t_ and title_fits(t_, c): c['title'] = t_; c['hooks'] = [t_] + [h for h in (c.get('hooks') or []) if h != t_][:2]
                 if b_.get('by') == 'ai':
@@ -630,17 +646,38 @@ def analyse(sid):
     try: story_bonus(ALL, cands, s)
     except Exception: traceback.print_exc()
     for c in cands:
-        tm_ = taste_mult(c['reasons'], (c.get('end') or 0) - (c.get('start') or 0) or None)
-        c['score'] = round(c['score'] * tm_, 1)
-        if tm_ >= 1.2: c['reasons'].append('you often keep clips like this')
+        c['feat'] = moment_keys(c); p2_ = taste2_prob(c['feat'])   # your personal score model (after 12 choices)
+        if p2_ is not None:
+            c['score'] = round(c['score'] * (0.5 + p2_) * (0.3 if blocked_kind(c['reasons']) else 1), 1); c['taste'] = round(p2_, 2)
+            if p2_ >= 0.7: c['reasons'].append('you often keep clips like this')
+            elif p2_ <= 0.25: c['reasons'].append('you often throw clips like this away')
+        else:
+            tm_ = taste_mult(c['reasons'], (c.get('end') or 0) - (c.get('start') or 0) or None)
+            c['score'] = round(c['score'] * tm_, 1)
+            if tm_ >= 1.2: c['reasons'].append('you often keep clips like this')
+        if not (c.get('brief') or {}).get('context'):
+            rc_ = rule_context(c)
+            if rc_: c.setdefault('brief', {})['context'] = rc_
         if not c.get('title'): c['title'] = fallback_title(c, load_sess(sid))
         if not c.get('hooks'): c['hooks'] = hook_options([], [], c, load_sess(sid))   # learn from what you kept before
     for c in cands:   # only words, nothing happened: out, unless the AI says it is really good
         if c.get('no_evidence') and not ((c.get('ai') or {}).get('score', 0) >= 7): c['drop'] = True
-    # what the AI threw out stays out (when it threw out everything, the best one stays, so you can see why)
+    # side by side: the AI compares the best ones two at a time and fixes the order
+    if SET.get('llm_judge', True) and SET.get('ai_compare', True):
+        try:
+            if llm_ready():
+                sw_ = compare_top([c for c in cands if not c.get('drop')], llm_start())
+                if sw_: log(f'The AI compared the best moments side by side and changed the order {sw_} time(s)')
+        except Exception: traceback.print_exc()
+    # what the AI threw out stays out. nothing good enough? then no moments, and the app says so (no forced bad clips)
     kept_ = [c for c in cands if not c.get('drop')]
     if len(kept_) < len(cands): log(f'The AI threw out {len(cands) - len(kept_)} moments that are not good enough')
-    cands = kept_ or sorted(cands, key=lambda c: -c['score'])[:1]
+    no_good = None
+    if cands and not kept_:
+        b_ = max(cands, key=lambda c: c['score'])
+        no_good = {'n': len(cands), 'best': b_.get('title') or '', 'why': ((b_.get('ai') or {}).get('why') or '; '.join(b_.get('reasons', [])[:2]))[:140]}
+        log(f'Nothing in this stream was good enough for a short ({len(cands)} candidates checked)')
+    cands = kept_
     # no near-copies: when two clips mostly overlap, keep the best one (and its reasons)
     best = []
     for c in sorted(cands, key=lambda c: -c['score']):
@@ -683,21 +720,75 @@ def analyse(sid):
             for l_ in llm_link(sorted(moments, key=lambda m: m['t']), llm_start()):
                 if not any(x.get('a') == l_['a'] and x['b'] == l_['b'] for x in links): links.append(l_)
         byid = {m['id']: m for m in moments}
+        # revenge: the player who killed you, or who was toxic in chat, shows up in your killfeed later
+        try:
+            for A_ in sorted(moments, key=lambda m: m['t']):
+                nm_ = A_.get('killed_by') or A_.get('chat_name')
+                if not nm_: continue
+                for B_ in [m for m in moments if 15 <= m['start'] - A_['end'] <= 2400][:6]:
+                    names_ = B_.get('screen_names')
+                    if names_ is None and vision_ok():
+                        names_ = [w_ for g_ in screen_texts(path, B_['start'], B_['end']) if g_.get('region') == 'killfeed' for w_ in re.findall(r'[A-Za-z][\w.-]{2,15}', g_.get('text') or '')]
+                        B_['screen_names'] = names_
+                    if any(same_name(nm_, x) for x in names_ or []):
+                        tox_ = bool(A_.get('chat_name'))
+                        links.append({'a': A_['id'], 'b': B_['id'], 'by': 'rules', 'label': 'REVENGE' if not tox_ else 'GUESS WHO...',
+                                      'why': (f'{nm_} was toxic in chat, and later you got him' if tox_ else f'{nm_} killed you, and later you got him back')}); break
+        except Exception: traceback.print_exc()
+        # the AI checks the weak links (only shared words): do these two really tell one story?
+        if llm_ready() and SET.get('llm_judge', True):
+            try:
+                port_ = llm_start(); keep_ = []
+                for l_ in links:
+                    if l_.get('by', 'rules') == 'rules' and l_.get('a') and (l_['why'].startswith('the same thing') or 'shows up again' in l_['why']):
+                        if not llm_story_ok(byid.get(l_['a']), byid.get(l_['b']), l_['why'], port_): continue
+                    keep_.append(l_)
+                links = keep_
+            except Exception: traceback.print_exc()
         def part_of(m):
             br_ = m.get('brief') or {}; pk_ = br_.get('cause') or m['t']
             return max(m['start'], pk_ - 14), min(m['end'], max(pk_, m['t']) + 8)
+        def a_parts(A_):
+            """the first moment: one piece, or two when you react to a chat message a while after it appeared (message, then your reaction)"""
+            br_ = A_.get('brief') or {}; cz_ = br_.get('cause'); py_ = br_.get('payoff') or A_['t']
+            fo_ = br_.get('focus') if isinstance(br_.get('focus'), dict) else {}
+            if cz_ is not None and fo_.get('region') == 'chat' and py_ - cz_ > 9:
+                return [(max(A_['start'], cz_ - 2), cz_ + 3.5, ''), (py_ - 3.5, min(A_['end'], py_ + 4), 'THEN...')]
+            a1, a2 = part_of(A_); return [(a1, a2, '')]
         for l_ in links[:6]:
             B_ = byid.get(l_['b']); A_ = byid.get(l_['a']) if l_.get('a') else None
             if not B_: continue
-            a1, a2 = part_of(A_) if A_ else l_['a_t']; b1, b2 = part_of(B_)
-            gap_ = b1 - a2; gl = f'{int(gap_ // 60)} MINUTES LATER' if gap_ >= 120 else 'LATER...' if gap_ >= 30 else 'THEN...'
+            pa_ = a_parts(A_) if A_ else [(l_['a_t'][0], l_['a_t'][1], '')]; b1, b2 = part_of(B_)
+            gap_ = b1 - pa_[-1][1]; gl = f'{int(gap_ // 60)} MINUTES LATER' if gap_ >= 120 else 'LATER...' if gap_ >= 30 else 'THEN...'
             if l_.get('label') and l_['label'] not in ('LATER...', 'THEN...'): gl = l_['label']
             stories.append({'id': uuid.uuid4().hex[:8], 'why': l_['why'], 'by': l_.get('by', 'rules'), 'title': (B_.get('title') or '')[:40], 'hook': l_.get('label') or '',
-                            'parts': [{'sid': sid, 'a': round(a1, 1), 'b': round(a2, 1), 'label': ''}, {'sid': sid, 'a': round(b1, 1), 'b': round(b2, 1), 'label': gl}],
+                            'parts': [{'sid': sid, 'a': round(x[0], 1), 'b': round(x[1], 1), 'label': x[2]} for x in pa_] + [{'sid': sid, 'a': round(b1, 1), 'b': round(b2, 1), 'label': gl}],
                             'mids': [A_['id'] if A_ else None, B_['id']]})
+        # the whole match in under a minute: the best moments in order, with the score between them
+        if len(moments) >= 3 and SET.get('match_story', True):
+            mt_ = sorted(sorted(moments, key=lambda m: -m['score'])[:4], key=lambda m: m['t']); parts_ = []; tot_ = 0
+            for k_, m in enumerate(mt_):
+                br_ = m.get('brief') or {}; pk_ = br_.get('payoff') or m['t']; cz_ = br_.get('cause')
+                a_ = max(m['start'], (cz_ - 3) if cz_ is not None else pk_ - 7); b_ = min(m['end'], pk_ + 4)
+                if tot_ + (b_ - a_) > 58: break
+                sc_ = (m.get('vision') or {}).get('score')
+                lab_ = '' if k_ == 0 else (f'ROUND {sc_[0]}-{sc_[1]}' if sc_ else 'THEN...')
+                parts_.append({'sid': sid, 'a': round(a_, 1), 'b': round(b_, 1), 'label': lab_}); tot_ += b_ - a_
+            if len(parts_) >= 3:
+                stories.append({'id': uuid.uuid4().hex[:8], 'why': f'the whole stream in {int(tot_)} seconds: your {len(parts_)} best moments in order', 'by': 'rules', 'kind': 'match',
+                                'title': 'THE WHOLE MATCH IN 60 SECONDS', 'hook': 'THE WHOLE MATCH IN 60 SECONDS', 'parts': parts_, 'mids': [m['id'] for m in mt_[:len(parts_)]]})
         if stories: log(f'Found {len(stories)} stories: moments that belong together')
     except Exception: traceback.print_exc()
-    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['stories'] = stories; s['duration'] = dur; s['status'] = 'klaar'; save_sess(s)   # keep clips you picked yourself
+    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['stories'] = [x for x in s.get('stories', []) if x.get('edited')] + stories;   # stories you made yourself stay
+    s['no_good'] = no_good
+    try:
+        s['best5'] = best_with_variety(moments); s['baseline'] = stream_baseline(sid, ALL, dur)
+        tl_ = set(s.get('tclip_learned') or [])
+        for m in moments:   # a viewer clipped it: the personal model learns that this kind of moment is good
+            if 'tclip' in (m.get('feat') or []) and int(m['t']) not in tl_: taste2_note(m['feat'], True); tl_.add(int(m['t']))
+        s['tclip_learned'] = sorted(tl_)
+    except Exception: traceback.print_exc()
+    s['duration'] = dur; s['status'] = 'klaar'; save_sess(s)   # keep clips you picked yourself
     log(f'Done: {len(moments)} moments found in {s["title"]}')
     made = [(float(x.get('start') or 0), float(x.get('end') or 0)) for x in s.get('shorts', [])]
     def has_short(m):   # searching again must not make the same shorts twice

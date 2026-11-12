@@ -441,12 +441,12 @@ def _render(job):
             sw_ = [tuple(w) for w in (ws or [])]; Q_WORDS[os.path.basename(dst)] = sw_
             if sw_ and job.get('captions', True): srt_write(os.path.basename(dst), sw_)
         except Exception: pass
-        if not job.get('auto') and mo and not job.get('variant') and not job.get('replace'): taste_note(mo.get('reasons'), True)
+        if not job.get('auto') and mo and not job.get('variant') and not job.get('replace'): taste_note(mo.get('reasons'), True, keys=mo.get('feat'))
         if job.get('replace') and job['replace'] != os.path.basename(dst):   # re-edited from the inbox: the new one replaces the old one
             old = os.path.join(OUT, os.path.basename(job['replace']))
             if os.path.exists(old): os.remove(old)
             lib = lib_load(); oe = lib.pop(os.path.basename(job['replace']), None)
-            if oe and oe.get('status') == 'nieuw': taste_note(oe.get('reasons'), True)
+            if oe and oe.get('status') == 'nieuw': taste_note(oe.get('reasons'), True, keys=feat_of(oe))
             lib_save(lib)   # you made this one yourself: you like this kind
         log('Short ready:', dst); return dst
     finally:

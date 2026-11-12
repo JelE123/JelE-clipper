@@ -56,9 +56,11 @@ def reason_keys(reasons):
 def taste_load():
     try: return json.load(open(TASTE_F, encoding='utf-8'))
     except Exception: return {}
-def taste_note(reasons, good, length=None):
+def taste_note(reasons, good, length=None, keys=None):
     """remember what kind of moments you keep and which you throw away"""
     try: taste_example(reasons, good, length)
+    except Exception: pass
+    try: taste2_note(keys or sorted(reason_keys(reasons)), good)   # the personal score model
     except Exception: pass
     t = taste_load()
     for k in reason_keys(reasons):
@@ -292,7 +294,7 @@ def trash_loop():
 # ---------------------------------------------------------------- what was wrong with a clip: you tell, I learn (and you can send it to be tuned)
 FEEDBACK_F = os.path.join(DATA, 'feedback.jsonl')
 FB_REASONS = {'boring': 'boring, nothing happens', 'early': 'starts too early', 'late': 'starts too late', 'cut': 'ends too soon, the reaction is cut off',
-              'long': 'goes on too long at the end', 'wrong': 'wrong moment', 'title': 'bad title', 'captions': 'captions wrong', 'good': 'good clip'}
+              'long': 'goes on too long at the end', 'wrong': 'wrong moment', 'title': 'bad title', 'captions': 'captions wrong', 'confusing': 'hard to follow without context', 'good': 'good clip'}
 def _lib_items():
     L = lib_load()
     return [dict(v, file=v.get('file') or k) for k, v in L.items()] if isinstance(L, dict) else list(L)
@@ -307,7 +309,7 @@ def feedback_add(b):
         if not m and b.get('file'):
             sh = next((x for x in _lib_items() if x.get('file') == b['file']), None)
             if sh: e['sid'] = sh.get('sid'); e['mid'] = sh.get('mid'); s = load_sess(sh['sid']) if sh.get('sid') else None; m = next((x for x in (s or {}).get('moments', []) if x.get('id') == sh.get('mid')), None)
-        if m: e['moment'] = {k: m.get(k) for k in ('t', 'start', 'end', 'score', 'reasons', 'title', 'vision', 'game')}
+        if m: e['moment'] = {k: m.get(k) for k in ('t', 'start', 'end', 'score', 'reasons', 'title', 'vision', 'game', 'feat', 'brief', 'ai')}
     except Exception: pass
     with open(FEEDBACK_F, 'a', encoding='utf-8') as fh: fh.write(json.dumps(e) + '\n')
     # learn: the start and end of new clips move a little with every "too early" / "too soon"
@@ -317,8 +319,11 @@ def feedback_add(b):
     if 'cut' in rs: lr['tail'] = round(min(6.0, lr['tail'] + 1.0), 1)
     if 'long' in rs: lr['tail'] = round(max(-4.0, lr['tail'] - 1.0), 1)
     SET['learn_timing'] = lr; save_settings(SET)
-    if m and any(r in rs for r in ('boring', 'wrong')): taste_note(m.get('reasons') or [], False)
-    if m and 'good' in rs: taste_note(m.get('reasons') or [], True)
+    if m and any(r in rs for r in ('boring', 'wrong')):
+        for _ in range(2): taste_note(m.get('reasons') or [], False, keys=m.get('feat'))   # a reason you gave counts double
+    if m and 'good' in rs:
+        for _ in range(2): taste_note(m.get('reasons') or [], True, keys=m.get('feat'))
+    if 'confusing' in rs: SET['ctx_cards'] = min(3, int(SET.get('ctx_cards') or 1) + 1); save_settings(SET)   # more context cards from now on
     return {'ok': True, 'learn': lr}
 
 def analysis_report():

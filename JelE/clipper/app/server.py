@@ -379,7 +379,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/delete-short':
             fn = os.path.basename(b.get('file', '')); e = lib_load().get(fn)
             trash_short(fn)   # 6.3: to the trash for 7 days
-            if e and e.get('auto') and e.get('status') == 'nieuw': taste_note(e.get('reasons'), False, e.get('dur'))   # thrown away from the inbox
+            if e and e.get('auto') and e.get('status') == 'nieuw': taste_note(e.get('reasons'), False, e.get('dur'), keys=feat_of(e))   # thrown away from the inbox
             return self.j({'ok': True})
         if p == '/api/trash-restore': restore_short(os.path.basename(b.get('file', ''))); return self.j({'ok': True})
         if p == '/api/feedback': return self.j(feedback_add(b))
@@ -401,7 +401,7 @@ class H(BaseHTTPRequestHandler):
             e = lib_load().get(os.path.basename(b.get('file', ''))) or {}; ks = sorted(reason_keys(e.get('reasons')))
             if ks:
                 SET['blocked_kinds'] = [x for x in (SET.get('blocked_kinds') or []) if x != ks] + [ks]; save_settings(SET)
-                for _ in range(3): taste_note(e.get('reasons'), False, e.get('dur'))
+                for _ in range(3): taste_note(e.get('reasons'), False, e.get('dur'), keys=feat_of(e))
             return self.j({'ok': True, 'kind': ks})
         if p == '/api/short-meta':   # tags, status (concept, goed, gepland, gepost), link, favourite, archive
             lib = lib_load(); fs = b.get('files') or [b.get('file')]
@@ -433,7 +433,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/short-ok':   # kept from the inbox
             fn = os.path.basename(b.get('file', '')); lib = lib_load(); e = lib.get(fn)
             if e:
-                if e.get('status') == 'nieuw': taste_note(e.get('reasons'), True)
+                if e.get('status') == 'nieuw': taste_note(e.get('reasons'), True, keys=feat_of(e))
                 e['status'] = 'goed'; lib_save(lib)
             return self.j({'ok': True})
         if p == '/api/cancel':   # stop the short being made, or take one out of the queue
@@ -446,11 +446,25 @@ class H(BaseHTTPRequestHandler):
                 i = int(b.get('i', -1))
                 if 0 <= i < len(vis): JOBS.remove(vis[i])
             return self.j({'ok': True})
+        if p == '/api/story-save':   # a story you edited or made yourself
+            s_ = load_sess(b['sid']); st_ = dict(b.get('story') or {})
+            parts_ = []
+            for p_ in st_.get('parts') or []:
+                try:
+                    a_, b2_ = float(p_['a']), float(p_['b'])
+                    if b2_ > a_: parts_.append({'sid': b['sid'], 'a': round(max(0, a_), 2), 'b': round(b2_, 2), 'label': str(p_.get('label') or '')[:28].upper()})
+                except Exception: continue
+            if len(parts_) < 1: return self.j({'ok': False, 'why': 'A story needs at least one piece'})
+            parts_[0]['label'] = ''
+            st_ = {'id': st_.get('id') or uuid.uuid4().hex[:8], 'why': str(st_.get('why') or 'your own story')[:120], 'by': st_.get('by') or 'you', 'title': str(st_.get('title') or '')[:40],
+                   'hook': str(st_.get('hook') or '')[:40], 'parts': parts_, 'mids': st_.get('mids') or [], 'edited': True}
+            L_ = [x for x in s_.get('stories', []) if x.get('id') != st_['id']]; L_.insert(0, st_); s_['stories'] = L_; save_sess(s_)
+            return self.j({'ok': True, 'id': st_['id']})
         if p == '/api/story-short':   # two moments that belong together, in one short
             s_ = load_sess(b['sid']); st_ = next((x for x in s_.get('stories', []) if x['id'] == b.get('id')), None)
             if not st_: return self.j({'ok': False, 'why': 'This story is gone. Search again.'})
             pre = next((x for x in SET.get('presets', []) if x.get('name') == SET.get('auto_preset')), {})
-            hook = (b.get('hook') or st_.get('title') or 'WAIT FOR THE END').upper()
+            hook = (b.get('hook') or st_.get('hook') or st_.get('title') or 'WAIT FOR THE END').upper()
             JOBS.put(('render', {'sid': b['sid'], 'start': 0, 'end': sum(p_['b'] - p_['a'] for p_ in st_['parts']), 'parts': st_['parts'], 'chapters': True, 'kind': 'story',
                                  'title': hook.lower().replace(' ', '_')[:40], 'hook': hook, 'captions': SET['captions'], 'jumpcut': False,
                                  **{k: v for k, v in pre.items() if k in ('layout', 'style', 'cap_scale', 'progress', 'sfx')}}))

@@ -15,12 +15,12 @@ SESS = os.path.join(DATA, 'sessies')
 OUT = os.path.join(HERE, 'shorts')
 for d in (DATA, SESS, OUT): os.makedirs(d, exist_ok=True)
 PORT = 8765
-VERSION = '6.54'
+VERSION = '6.55'
 
 # the app lives in clipper/app/, split by topic. every part runs in this one namespace (same as one big file),
 # so a part can use everything from the parts before it. the order matters.
 PARTS = ('core', 'helpers', 'sessions', 'game', 'moments', 'sounds', 'vision', 'speech', 'captions', 'render',
-         'library', 'setup', 'jobs', 'extras', 'llm', 'doubt', 'upkeep', 'server')
+         'library', 'setup', 'jobs', 'extras', 'llm', 'doubt', 'brain', 'upkeep', 'server')
 def _load_parts():
     for p in PARTS:
         f = os.path.join(HERE, 'app', p + '.py')
