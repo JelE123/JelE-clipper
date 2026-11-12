@@ -2,6 +2,13 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.35 · 12 November 2026
+
+### Shorts board (plan F4.5, first part)
+- New: in Shorts you can switch between Grid and Board. The board has 4 columns: To review, Ready to post, Scheduled and Posted
+- Drag a short to another column to change where it is (posted, scheduled, back to review)
+- Every card has edit, post text, schedule and watch at hand. The app remembers whether you like the grid or the board
+
 ## 6.34 · 12 November 2026
 
 ### Your mic on track 6 (or any track)
