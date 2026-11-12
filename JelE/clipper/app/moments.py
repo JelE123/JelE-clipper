@@ -412,6 +412,11 @@ def analyse(sid):
                 if en - st > L + 15: st = max(0, en - L - 15)
             if c.get('said'):   # "clip that": the moment is what happened before, and it ends right after you say it
                 en = min(dur, c['said'][1] + 0.6); st = said_start(words, en - L, en)
+            elif env:   # a reaction without words (a scream, laughing, cheering) belongs to the moment: do not cut it off (plan F2.6)
+                if '_envmed' not in locals(): _envmed = float(np.median(env))
+                i_ = int(en / step); n_ = 0
+                while i_ < len(env) and env[i_] > _envmed + 9 and n_ < 8: i_ += 1; n_ += 1
+                if n_: en = min(dur, i_ * step + 0.6); c['reasons'].append('the reaction is kept whole') if n_ >= 3 else None
             c['start'], c['end'] = round(st, 1), round(en, 1)
             c['words'] = [w for w in words if st - 1 <= w[0] <= en + 1]
             c['text'] = ' '.join(w[2] for w in c['words'])[:400]

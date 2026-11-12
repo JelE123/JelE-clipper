@@ -2,6 +2,11 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.36 · 12 November 2026
+
+### The reaction stays in (plan F2.6, first part)
+- A moment no longer stops in the middle of a reaction without words: when you scream, laugh or cheer right after the play, the moment runs until it is over (up to 4 seconds longer)
+
 ## 6.35 · 12 November 2026
 
 ### Shorts board (plan F4.5, first part)
