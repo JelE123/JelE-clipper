@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.43 · 12 November 2026
+
+### Local AI
+- The AI engine is now online for "Install local AI" (tested with the real model before it was published)
+- Better AI titles: the model gets an example first, and answers like "Game: ..." are never used as a title
+
 ## 6.42 · 12 November 2026
 
 ### I see what happens on screen (plan F2.4)
