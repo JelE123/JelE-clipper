@@ -58,7 +58,7 @@ jobs:
     needs: release
     if: needs.release.outputs.created == '1' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -133,6 +133,12 @@ jobs:
           $ok = $false
           foreach ($i in 1..60) { Start-Sleep 2; try { Invoke-WebRequest http://localhost:8765/api/status -UseBasicParsing | Out-Null; $ok = $true; break } catch {} }
           if ($ok) { foreach ($u in '/', '/api/check', '/api/selftest') { Invoke-WebRequest "http://localhost:8765$u" -UseBasicParsing | Out-Null } }
+          if ($ok) {
+            # speed test (plan F1.8): the speech model first, so the download does not count
+            & C:\JelETest\clipper\python\python.exe -c "from faster_whisper.utils import download_model; download_model('small.en')"
+            & C:\JelETest\clipper\python\python.exe JelE/clipper/tests/bench.py bench.md
+            if ($LASTEXITCODE -ne 0) { Write-Host 'The speed test could not make a short'; $ok = $false }
+          }
           Get-Content run.log -Tail 20; Get-Content run_err.log -Tail 20
           Stop-Process -Id $c.Id -Force -ErrorAction SilentlyContinue
           if (-not $ok) { Write-Host 'The installed Clipper does not start'; exit 1 }
@@ -141,6 +147,13 @@ jobs:
 
       - name: Add it to the release
         shell: pwsh
-        run: gh release upload "v${{ needs.release.outputs.version }}" JelE/clipper/installer/Output/JelE_Clipper_Setup.exe --clobber
+        run: |
+          gh release upload "v${{ needs.release.outputs.version }}" JelE/clipper/installer/Output/JelE_Clipper_Setup.exe --clobber
+          if (Test-Path bench.md) {
+            $body = gh release view "v${{ needs.release.outputs.version }}" --json body -q .body
+            $i = $body.IndexOf('### Speed test'); if ($i -ge 0) { $body = $body.Substring(0, $i).TrimEnd() }
+            ($body + "`n`n" + (Get-Content bench.md -Raw)) | Set-Content notes2.md -Encoding utf8
+            gh release edit "v${{ needs.release.outputs.version }}" --notes-file notes2.md
+          }
         env:
           GH_TOKEN: ${{ github.token }}

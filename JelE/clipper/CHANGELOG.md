@@ -2,6 +2,14 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.23 · 12 November 2026
+
+### Speed test (plan F1.8)
+- Every new version is now speed-tested on a clean Windows pc: opening the app, how fast it answers, finding the moments per minute of video and rendering a short with captions. The result is in the release notes on GitHub
+
+### Fixed
+- Work that waits (because you stream, your disk is full or your pc is busy) now stays visible in the queue while it waits, instead of looking like nothing is happening
+
 ## 6.22 · 12 November 2026
 
 ### New look and clearer menu (plan F1.5, F1.6 and F1.7)

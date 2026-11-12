@@ -398,10 +398,12 @@ def worker():
     while True:
         kind, arg = JOBS.get()
         r_ = pause_reason(kind, arg); said = None
+        if r_: JOBS.waiting[threading.get_ident()] = dict(JOBS.meta(kind, arg), waiting=r_)   # still shown in the queue while it waits
         while r_:
             STATE['paused'] = r_
             if r_ != said: log({'live': 'Heavy work waits until your stream or recording stops', 'disk': 'Less than 2 GB free on the disk: the work waits until there is room', 'busy': 'The pc is very busy, the work waits a moment'}[r_]); said = r_
             time.sleep(2); r_ = pause_reason(kind, arg)
+        JOBS.waiting.pop(threading.get_ident(), None)
         STATE['paused'] = False
         STATE['cancel'] = False; STATE['why'] = None
         job = {'kind': kind, 'arg': arg if kind in ('analyse', 'remux', 'proxy') else {k: arg.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'hook')}, 'since': time.time(), 'stage': 'Starting', 'pct': 0, 'est': tempo_est(kind, arg)}

@@ -37,7 +37,7 @@ class JobQueue(queue.Queue):
     """a normal queue that also keeps a readable list of what is waiting, and saves itself so it survives a restart"""
     TITLES = {'remux': 'Converting the recording to MP4', 'proxy': 'Making a working copy'}
     def __init__(self):
-        super().__init__(); self.pending = []; self.items = []; self.running = {}; self.glock = threading.Lock(); self.slock = threading.Lock()
+        super().__init__(); self.pending = []; self.waiting = {}; self.items = []; self.running = {}; self.glock = threading.Lock(); self.slock = threading.Lock()
     def meta(self, kind, arg):
         if kind == 'render': return {'kind': kind, 'title': ('Preview: ' if arg.get('preview') else '') + (arg.get('hook') or arg.get('title') or ''), 'layout': arg.get('layout'), 'len': round(float(arg['end']) - float(arg['start'])), 'preview': bool(arg.get('preview'))}
         if kind == 'download': return {'kind': kind, 'title': arg.get('url', '')[:60]}
