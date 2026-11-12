@@ -103,6 +103,19 @@ jobs:
           foreach ($n in '2_choice', '3_folder', '4_ready') { $w.SendKeys('{ENTER}'); Start-Sleep 3; Shot $n }
           Get-Process | Where-Object { $_.ProcessName -like 'JelE_Clipper_Setup*' } | Stop-Process -Force
 
+      - name: Put the screenshots on a branch (only when started by hand)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          Copy-Item -Recurse shots $env:RUNNER_TEMP\shots
+          git checkout --orphan shots-tmp; git rm -rf -q .
+          Copy-Item $env:RUNNER_TEMP\shots\*.png .
+          git add *.png; git commit -q -m "setup screenshots"
+          git push origin "HEAD:refs/heads/ci-shots-${{ github.run_id }}"
+          git checkout -q -f ${{ github.sha }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: setup-screenshots
