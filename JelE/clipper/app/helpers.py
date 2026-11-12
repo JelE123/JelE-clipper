@@ -99,10 +99,20 @@ def fx_suggest(sid, start, end, job=None):
                     fx['stickers'].append({'t': round(w[0] - start, 2), 'dur': 1.6, 'text': lab[:24], 'x': 0.5, 'y': 0.3, 'kind': 'stamp'}); break
     # one story: the opening shows the second before the payoff (not the payoff itself), the replay shows that same payoff again.
     # only when there is a real payoff, and only when the clip does not open with it anyway
+    # the story of this moment (worked out after the stream): the payoff, where to zoom, a replay or not, the music
+    mm = next((x for x in s.get('moments', []) if x.get('id') == job.get('mid')), None) if job.get('mid') else None
+    br = (mm or {}).get('brief') or {}
+    if br.get('payoff') is not None and start <= br['payoff'] <= end:
+        peak, why_peak = br['payoff'] - start, 'story'
+        bz = [round(z - start, 2) for z in (br.get('zoom') or []) if start < z < end]
+        if bz: fx['zooms'] = bz
+        if br.get('music'): fx['music_mood'] = br['music']; fx['music_file'] = music_for_mood(br['music'])
+        if br.get('about'): fx['about'] = br['about']; fx['type'] = br.get('type')
+        if br.get('layout'): fx['layout'] = br['layout']
     fx['peak'] = round(peak, 2) if peak is not None else None; fx['peak_why'] = why_peak
-    if peak is not None and why_peak in ('event', 'shout', 'marker') and dur > 10:
+    if peak is not None and why_peak in ('event', 'shout', 'marker', 'story') and dur > 10:
         if SET.get('fx_teaser', True) and peak > 5: fx['teaser'] = {'t': round(max(0, peak - 1.1), 2), 'len': 0.9, 'text': ''}
-        if SET.get('fx_replay', True) and peak < dur - 0.4: fx['replay'] = {'a': round(max(0, peak - 1.8), 2), 'b': round(min(dur, peak + 0.7), 2), 'speed': 0.5}
+        if SET.get('fx_replay', True) and peak < dur - 0.4 and (why_peak != 'story' or br.get('replay')): fx['replay'] = {'a': round(max(0, peak - 1.8), 2), 'b': round(min(dur, peak + 0.7), 2), 'speed': 0.5}
     return fx
 
 def clip_peak(s, ws, start, end):

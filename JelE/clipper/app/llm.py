@@ -310,3 +310,115 @@ def _cmd_model(text):
 
 import atexit as _ae
 _ae.register(llm_stop)
+
+# ---------------------------------------------------------------- what is this moment about? (the story, and what belongs to it)
+MOMENT_TYPES = ('clutch', 'funny', 'fail', 'rage', 'hype', 'story', 'wholesome', 'skill', 'reaction')
+def moment_timeline(c, words, why, step, scan=None, snd=None, a=None, b=None):
+    """everything that happens around a moment, second by second, as short lines a person (or the AI) can read.
+    -> (lines, items): lines like '12s you: "wait he is one hp"', items as dicts for the rules"""
+    a = max(0.0, c['t'] - 30) if a is None else a; b = (c['t'] + 15) if b is None else b
+    items = []
+    # what you said, as sentences
+    cur = []
+    for w in [w for w in words if a <= w[0] <= b and w[2] != UNCLEAR]:
+        if cur and (w[0] - cur[-1][1] > 0.7 or re.search(r'[.!?]$', cur[-1][2])): items.append({'t': cur[0][0], 'e': cur[-1][1], 'k': 'say', 'v': ' '.join(x[2] for x in cur)}); cur = []
+        cur.append(w)
+    if cur: items.append({'t': cur[0][0], 'e': cur[-1][1], 'k': 'say', 'v': ' '.join(x[2] for x in cur)})
+    # signals per step: chat, game events, sounds, markers
+    last = {}
+    for i in range(max(0, int(a / step)), min(len(why), int(b / step) + 1)):
+        w_ = why[i] or {}; t = i * step
+        for k, lab in (('chat', 'chat'), ('sound', 'sound'), ('game', 'game'), ('marker', 'marker'), ('tclip', 'chat clip'), ('audio', 'loud')):
+            if k in w_ and t - last.get(k, -99) >= 2.5:
+                v = w_[k]
+                if k == 'chat': v = f'{v} messages in 10s'
+                elif k == 'game': v = (v.get('label') or v.get('kind') or 'event') if isinstance(v, dict) else str(v)
+                elif k == 'marker': v = 'you pressed Clip'
+                elif k == 'tclip': v = 'someone clipped this on Twitch'
+                elif k == 'audio': v = 'it suddenly got loud'
+                items.append({'t': t, 'k': lab, 'v': str(v)}); last[k] = t
+    if snd:
+        for i in range(max(0, int(a / step)), min(len(snd), int(b / step) + 1)):
+            r = snd[i]; t = i * step
+            if r.get('shots') and t - last.get('shot', -99) >= 2: items.append({'t': t, 'k': 'game sound', 'v': f"{r['shots']} gunshot{'s' if r['shots'] > 1 else ''}"}); last['shot'] = t
+            if r.get('laugh', 0) > 0.45 and t - last.get('laugh', -99) >= 3: items.append({'t': t, 'k': 'you', 'v': 'laughing'}); last['laugh'] = t
+            if r.get('scream', 0) > 0.5 and t - last.get('scream', -99) >= 3: items.append({'t': t, 'k': 'you', 'v': 'screaming'}); last['scream'] = t
+    for x in scan or []:
+        if not (a <= x['t'] <= b): continue
+        if x['state'] != 'playing' and t_ok(last, 'scr_' + x['state'], x['t'], 6): items.append({'t': x['t'], 'k': 'screen', 'v': {'dead': 'you are dead', 'spectate': 'spectating', 'menu': 'a menu', 'buy': 'buy phase'}.get(x['state'], x['state'])})
+        for e in x.get('events') or []:
+            if t_ok(last, 'ev_' + e, x['t'], 8): items.append({'t': x['t'], 'k': 'screen', 'v': {'round_win': 'round won', 'round_loss': 'round lost', 'win': 'match won', 'loss': 'match lost'}.get(e, e)})
+    items.sort(key=lambda x: x['t'])
+    lines = [f"{x['t'] - a:4.0f}s {'you say' if x['k'] == 'say' else x['k']}: " + (f'"{x["v"]}"' if x['k'] == 'say' else x['v']) for x in items]
+    return lines, items, a
+
+def t_ok(last, k, t, gap):
+    if t - last.get(k, -99) >= gap: last[k] = t; return True
+    return False
+
+def brief_rules(c, items, a, peak):
+    """the story without the AI: payoff = the strongest thing near the peak, start = the sentence that sets it up, end = when the reaction is over"""
+    says = [x for x in items if x['k'] == 'say']
+    big = [x for x in items if x['k'] in ('game', 'game sound', 'you', 'marker', 'screen') or (x['k'] == 'say' and SAY_STRONG.search(x['v']))]
+    pay = min(big, key=lambda x: abs(x['t'] - peak))['t'] if big else peak
+    # the start: the first sentence (within 20 s before the payoff) after a pause of 1.5 s, so the clip starts with a full thought
+    start = max(a, pay - 10)
+    pre = [x for x in says if pay - 20 <= x['t'] <= pay - 3]
+    for i, x in enumerate(pre):
+        prev_end = pre[i - 1]['e'] if i else -99
+        if x['t'] - prev_end >= 1.5 or SETUP.search(x['v']): start = x['t'] - 0.4; break
+    # the end: the last sentence or laugh that belongs to the reaction (gaps under 2.5 s), at most 8 s after the payoff
+    end = pay + 2.5
+    for x in [x for x in items if x['t'] > pay and x['k'] in ('say', 'you', 'chat')]:
+        if x['t'] - end > 2.5 or x['t'] > pay + 8: break
+        end = (x.get('e') or x['t'] + 1.0) + 0.6
+    kinds = ' '.join(x['v'].lower() for x in items if abs(x['t'] - pay) < 6)
+    typ = 'funny' if 'laugh' in kinds else 'fail' if ('dead' in kinds or 'round lost' in kinds) else 'clutch' if ('round won' in kinds or 'ace' in kinds or 'clutch' in kinds) else 'hype'
+    return {'start': round(start, 1), 'payoff': round(pay, 1), 'end': round(min(end, pay + 8), 1), 'type': typ, 'about': '', 'zoom': [round(pay, 2)],
+            'replay': typ == 'clutch', 'layout': 'split' if typ == 'funny' else None, 'music': {'funny': 'funny', 'clutch': 'hype', 'fail': 'funny'}.get(typ), 'by': 'rules'}
+
+def llm_brief(c, lines, a, game='', lang='en', port=None):
+    """the AI reads the timeline and says what the moment is about and how to edit it"""
+    if not lines: return {}
+    lang_name = {'nl': 'Dutch', 'en': 'English'}.get(lang, 'English')
+    sysm = ('You are the editor of gaming shorts. You get a timeline of a stream, second by second: what the streamer says, game sounds, what is on screen, chat. '
+            'Find the ONE story in it: the setup (where it starts making sense), the payoff (the kill, the joke, the fail, the big reaction) and where the reaction is over. '
+            'Then decide the edit. Answer only with JSON: {"about": "what happens, max 12 words", "type": one of ' + '/'.join(MOMENT_TYPES) +
+            ', "start": seconds, "payoff": seconds, "end": seconds, "zoom": [seconds, max 2, on the payoff or a big reaction], "replay": true/false (only for a play worth seeing twice), '
+            '"layout": "split" when the face/reaction matters, "gameonly" when the play matters, "music": "hype"/"funny"/"tension"/"chill"/"none", '
+            '"title": "hook, max 6 words, capitals, in ' + lang_name + '", "score": 1-10}. A good short is 12 to 35 seconds. Never start in the middle of a sentence.')
+    ex_u = ('Game: Valorant. Timeline:\n   0s you say: "okay I will hold B alone"\n   6s game sound: 2 gunshots\n   9s you say: "wait wait they are all coming"\n  12s game sound: 4 gunshots\n'
+            '  13s game: kill\n  14s game: kill\n  15s you: screaming\n  16s you say: "NO WAY I got all three"\n  17s chat: 22 messages in 10s\n  20s you say: "chat did you see that"\n  27s you say: "okay buy phase what do we get"')
+    ex_a = '{"about": "holds B alone and wins a 1v3", "type": "clutch", "start": 8.5, "payoff": 14, "end": 21.5, "zoom": [14, 16], "replay": true, "layout": "split", "music": "hype", "title": "HELD B ALONE VS THREE", "score": 9}'
+    msg = [{'role': 'system', 'content': sysm}, {'role': 'user', 'content': ex_u}, {'role': 'assistant', 'content': ex_a},
+           {'role': 'user', 'content': f'Game: {game or "unknown"}. Timeline:\n' + '\n'.join(lines[:70])}]
+    ans = llm_chat(msg, 220, 0.2, port)
+    m = re.search(r'\{.*\}', ans, re.S)
+    if not m: return {}
+    try: d = json.loads(m.group(0))
+    except Exception: return {}
+    try:
+        st, pay, en = float(d['start']) + a, float(d['payoff']) + a, float(d['end']) + a
+    except Exception: return {}
+    if not (st < pay < en) or en - st < 6 or en - st > 60: return {}
+    zs = []
+    for z in d.get('zoom') or []:
+        try:
+            z = float(z) + a
+            if st < z < en: zs.append(round(z, 2))
+        except Exception: pass
+    return {'about': str(d.get('about') or '')[:90], 'type': d.get('type') if d.get('type') in MOMENT_TYPES else 'hype',
+            'start': round(st, 1), 'payoff': round(pay, 1), 'end': round(en, 1), 'zoom': zs[:2], 'replay': bool(d.get('replay')),
+            'layout': d.get('layout') if d.get('layout') in ('split', 'gameonly', 'frame') else None,
+            'music': d.get('music') if d.get('music') in ('hype', 'funny', 'tension', 'chill', 'none') else None,
+            'title': str(d.get('title') or '')[:40].upper(), 'score': d.get('score'), 'by': 'ai'}
+
+MOOD_WORDS = {'hype': r'hype|epic|trap|phonk|energy|drop|bass', 'funny': r'funny|fun|silly|meme|goofy|comedy', 'tension': r'tension|suspense|dark|intense|tense',
+              'chill': r'chill|lofi|lo-fi|calm|relax|soft', 'none': r'^$'}
+def music_for_mood(mood):
+    """a song from your music folder whose name fits the mood (hype, funny, tension, chill), or None"""
+    if not mood or mood == 'none': return None
+    rx = re.compile(MOOD_WORDS.get(mood, mood), re.I)
+    fs = [f for f in music_list() if rx.search(f)]
+    import random as _rnd
+    return _rnd.choice(fs) if fs else None

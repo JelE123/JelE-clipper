@@ -258,6 +258,7 @@ def analyse(sid):
                 if z[i] > 2.0: score[i] += 0.7 * (z[i] - 2.0); why[i]['audio'] = 1
     except Exception: log('Audio analysis failed'); traceback.print_exc()
     # 1a. what you hear without words: laughing, screaming, cheering, a fight (plan F2.5)
+    snd = None
     if SET.get('sounds', True):
         try:
             prog('Listening for laughing, screams and fights', 3)
@@ -483,7 +484,8 @@ def analyse(sid):
                 prog('Looking at the picture', 75 + 23 * (n + 1) / len(cands))
                 st, en = c.get('start', 0), c.get('end', 0)
                 if en - st < 2: continue
-                j = vision_judge(vision_scan(path, max(0, st - 1), min(dur, en + 4), gid), st, en + 4, c['t'])
+                vs_ = vision_scan(path, max(0, st - 1), min(dur, en + 4), gid); c['_scan'] = vs_
+                j = vision_judge(vs_, st, en + 4, c['t'])
                 if not j: continue
                 c['vision'] = {k: j[k] for k in ('menu', 'buy', 'dead_at', 'spectate_from', 'events')}
                 if j['menu'] > 0.6: c['score'] = round(c['score'] * 0.25, 1); c['reasons'].append('mostly a menu on screen')
@@ -495,6 +497,34 @@ def analyse(sid):
                     if r_ not in c['reasons']: c['reasons'].append(r_)
             log('Looked at the picture of ' + str(len(cands)) + ' moments')
         except Exception: log('Looking at the picture did not work'); traceback.print_exc()
+    # what is this moment about? a timeline of everything that happens (what you say, shots, laughing, the screen, chat),
+    # then the story: where it starts making sense, the payoff, where the reaction is over, and the edit that belongs to it
+    if cands and SET.get('brief', True):
+        try:
+            top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 20)]
+            port = llm_start() if llm_ready() and SET.get('llm_judge', True) else 0
+            gname = (GP.get(GAME_TL.v or '') or {}).get('name', GAME_TL.v or '') if GP else (GAME_TL.v or '')
+            for n, c in enumerate(top):
+                if c.get('said'): continue   # "clip that" moments keep the cut around what you asked
+                prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
+                lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd)
+                b_ = llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}
+                if not b_: b_ = brief_rules(c, items, a0, c['t'])
+                if not b_: continue
+                st, en = max(0, b_['start']), min(dur, b_['end'])
+                if en - st < 6: en = min(dur, st + 6)
+                if en - st > L + 10: st = max(st, b_['payoff'] - (L + 10) * 0.7)
+                c['start'], c['end'] = round(st, 1), round(en, 1); c['t'] = b_['payoff']
+                c['brief'] = {k: b_.get(k) for k in ('about', 'type', 'payoff', 'zoom', 'replay', 'layout', 'music', 'by') if b_.get(k) not in (None, '', [])}
+                if b_.get('about'): c['reasons'].insert(0, b_['about'][0].lower() + b_['about'][1:])
+                t_ = tidy_title(b_.get('title') or '')
+                if t_ and title_fits(t_, c): c['title'] = t_; c['hooks'] = [t_] + [h for h in (c.get('hooks') or []) if h != t_][:2]
+                if b_.get('by') == 'ai':
+                    try: sc_ = max(1, min(10, int(b_.get('score') or 5))); c['score'] = round(c['score'] * (0.45 + 0.11 * sc_), 1); c['ai'] = {'score': sc_, 'why': b_.get('about', '')}
+                    except Exception: pass
+            log(f'Worked out the story of {len(top)} moments' + (' with the AI' if port else ''))
+        except Exception: log('Working out the story did not work'); traceback.print_exc()
+    for c in cands: c.pop('_scan', None)
     # the AI judges the best candidates (local model, only after the stream): a mark from 1 to 10, why, and a better title
     if cands and SET.get('llm_judge', True) and llm_ready():
         try:
@@ -503,6 +533,7 @@ def analyse(sid):
             gname = (GP.get(gid) or {}).get('name', gid) if GP else gid
             for n, c in enumerate(top):
                 if not port: break
+                if c.get('ai'): continue   # already judged while working out the story
                 prog('The AI is judging the moments', 90 + 9 * (n + 1) / len(top))
                 j = llm_judge(c, ALL or c.get('words') or [], gname, SET.get('language') or 'en', port)
                 if not j: continue
@@ -544,8 +575,12 @@ def analyse(sid):
             pre = next((p for p in SET.get('presets', []) if p.get('name') == SET.get('auto_preset')), {})
             lrn = learned_look(game_for(sid, m['start']))['auto'] if SET.get('learn_look', True) else {}
             lrn = {k: v for k, v in lrn.items() if k not in pre}   # your own preset wins over what was learned
+            br = m.get('brief') or {}; story = {}
+            if br.get('layout') and 'layout' not in pre and 'layout' not in lrn: story['layout'] = br['layout']   # the story says: the reaction matters (cam) or the play (game)
+            mf = music_for_mood(br.get('music')) if SET.get('auto_music', True) else None
+            if mf: story['music'] = {'file': mf, 'vol': 0.22, 'duck': True}
             JOBS.put(('render', {'sid': sid, 'start': m['start'], 'end': m['end'], 'title': m.get('title', ''), 'hook': m.get('title', ''), 'captions': SET['captions'], 'mid': m['id'], 'auto': True,
-                                 **lrn, **({'learned': sorted(lrn)} if lrn else {}),
+                                 **story, **lrn, **({'learned': sorted(lrn)} if lrn else {}),
                                  **{k: v for k, v in pre.items() if k in ('layout', 'style', 'cap_scale', 'cap_y', 'progress', 'endcard', 'zoom', 'jumpcut', 'sfx', 'cam_h', 'game_x')}}))
         n_auto = len(auto_pick)
         if n_auto: log(f'Making the best {n_auto} shorts automatically, they will show up in your inbox'); STATE['auto_left'] = STATE.get('auto_left', 0) + n_auto

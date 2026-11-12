@@ -17,10 +17,14 @@ t0 = time.time()
 jg = c.llm_judge(good, W('okay okay one more push three of them wait WAIT I got all three ACE no way bro chat ace I am shaking'), 'Valorant', 'en', port)
 jb = c.llm_judge(bad, W('so yeah I was thinking maybe we buy a vandal this round uh I do not know what do you guys think okay sure'), 'Valorant', 'en', port)
 print('JUDGE good', jg, '| bad', jb, '|', round(time.time() - t0, 1), 's')
+tl = ['   0s you say: "this guy has been camping all game"', '   4s you say: "I am going to sneak behind him"', '   9s you say: "shh shh"', '  13s game sound: 1 gunshot',
+      '  13s screen: you are dead', '  14s you: laughing', '  15s you say: "he turned around he was waiting for me"', '  16s chat: 18 messages in 10s', '  19s you say: "unbelievable"', '  30s you say: "okay next round"']
+t0 = time.time(); br = c.llm_brief({'t': 13}, tl, 100.0, 'Valorant', 'en', port)
+print('BRIEF', br, round(time.time() - t0, 1), 's')
 cases = ['could you trim it so it is a bit snappier, like 4 seconds', 'take the zoom out', 'zet de muziek uit', 'make the captions purple', 'begin 2 seconden later']
 for q in cases: print('CMD', repr(q), '->', c.cmd_parse(q))
 odd = c.cmd_parse('the ending feels a bit flat and the song is way too loud')
 print('CMD (model)', odd)
 c.llm_stop()
-ok = len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
+ok = bool(br) and br['start'] <= 113.5 and br['payoff'] >= 112 and br['end'] <= 125 and len(ti) >= 1 and all(c.cmd_parse(q) for q in cases) and jg and jb and jg['score'] > jb['score']
 print('LLM CI', 'GOOD' if ok else 'BAD'); sys.exit(0 if ok else 1)
