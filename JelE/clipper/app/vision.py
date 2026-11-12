@@ -169,3 +169,20 @@ def vision_install():
         VISION.update(tried=False, ocr=None); VIS_INST['step'] = 'Ready'; log('Picture understanding is installed')
     except Exception as e: VIS_INST['error'] = str(e)[:200]; log('Picture understanding could not be installed:', e)
     finally: VIS_INST['busy'] = False
+
+def vision_auto_loop():
+    """after an update: install the picture understanding by itself, once, when the pc is quiet (not with the Light setup,
+    never during your stream). you can still turn it off in Settings"""
+    time.sleep(90)
+    try:
+        ed = json.load(open(os.path.join(DATA, 'install.json'), encoding='utf-8')).get('edition', 'full')
+    except Exception: ed = 'full'
+    if ed == 'light' or SET.get('vision', True) is False or SET.get('vision_auto_done'): return
+    for _ in range(240):   # wait (up to 4 hours) for a quiet moment
+        st = vision_status()
+        if st['ocr'] and st['face']: break
+        if not (CUR.get('id') or STATE.get('live') or STATE.jobs()):
+            log('Installing picture understanding by itself (about 100 MB)'); vision_install()
+            break
+        time.sleep(60)
+    SET['vision_auto_done'] = True; save_settings(SET)

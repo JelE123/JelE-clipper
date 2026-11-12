@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.45 · 12 November 2026
+
+### Picture understanding installs itself
+- After the update, the app installs picture understanding (reading the text on screen, the cam following your face) by itself, once, when your pc is quiet: never during your stream or while shorts are being made
+- Not with the Light setup. You can still install or turn it off yourself in Settings > Captions
+
 ## 6.44 · 12 November 2026
 
 ### Speech model shows the right status

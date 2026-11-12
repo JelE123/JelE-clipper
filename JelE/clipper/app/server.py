@@ -574,7 +574,7 @@ def main():
     JOBS.restore()
     for _ in range(n_workers()): threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=make_shortcuts, daemon=True).start()
-    for fn in (live_listen_loop, guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop):
+    for fn in (live_listen_loop, guard_loop, planner, proxy_loop, update_loop, backup_loop, phone_guard_loop, selftest, confirm_start, live_loop, trash_loop, vision_auto_loop):
         threading.Thread(target=fn, daemon=True).start()
     try:   # also on the IPv6 loopback: on Windows "localhost" tries ::1 first and would wait 2 seconds per request otherwise
         class _Srv6(ThreadingHTTPServer): address_family = socket.AF_INET6
