@@ -142,6 +142,8 @@ class H(BaseHTTPRequestHandler):
             try: return self.j({'cuts': jumpcut_plan(q['sid'][0], float(q['a'][0]), float(q['b'][0]))})
             except Exception as e_: log('Could not plan the cuts:', e_); return self.j({'cuts': []})
         if p == '/api/engine': return self.j(wcpp_status())
+        if p == '/api/llm': return self.j(llm_status())
+        if p == '/api/vision': return self.j(vision_status())
         if p == '/api/learned': return self.j({g: learned_look(g) for g in GP.ORDER} if GP and SET.get('learn_look', True) else {})
         if p == '/api/games': return self.j({'games': GP.public() if GP else [], 'default': SET.get('default_game') or 'valorant'})
         if p == '/api/vod-check': return self.j(vod_check())
@@ -342,6 +344,15 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/shortcuts': return self.j({'ok': make_shortcuts(True)})
         if p == '/api/obs-setup': return self.j(obs_auto_setup())
         if p == '/api/engine-install': threading.Thread(target=wcpp_install, daemon=True).start(); return self.j({'ok': True})
+        if p == '/api/llm-install': threading.Thread(target=llm_install, daemon=True).start(); return self.j({'ok': True})
+        if p == '/api/vision-install': threading.Thread(target=vision_install, daemon=True).start(); return self.j({'ok': True})
+        if p == '/api/command':   # plan F4.7: "make it shorter" -> an editor action
+            r = cmd_parse(b.get('text', ''))
+            return self.j({'ok': bool(r), **(r or {}), 'why': '' if r else ('I did not understand that. Try "make it 5 seconds shorter" or "no zoom".' + ('' if llm_ready() else ' With the local AI model (Settings) I understand more.'))})
+        if p == '/api/llm-titles':
+            if not llm_ready(): return self.j({'ok': False, 'why': 'The local AI model is not installed (Settings > System).'})
+            t = llm_titles(b.get('text', ''), b.get('reasons') or [], (GP.get(b.get('game')) or {}).get('name', '') if GP else '', SET.get('language') or 'en')
+            return self.j({'ok': bool(t), 'titles': t, 'why': '' if t else 'The AI model did not give an answer.'})
         if p == '/api/remake':   # make shorts again with the newest version; your own edits stay, the old short stays too
             lib = lib_load(); n = 0
             for f in b.get('files') or []:

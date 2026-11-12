@@ -213,6 +213,10 @@ def _render(job):
                 if shift_: cws = [(max(0.0, a_ + shift_), max(0.0, b_ + shift_), t_) for a_, b_, t_ in cws]
                 if job.get('bleep'): cws = [(a_, b_, censor(t_) if SWEAR.match(t_) else t_) for a_, b_, t_ in cws]
                 if not prepared and not job.get('parts'): cws = [(a_ + start, b_ + start, t_) for a_, b_, t_ in cws]
+                if job.get('friend_words') and not prepared and not job.get('parts'):   # plan F3.5: what your friends say, in their own colour
+                    fw = [(float(w[0]), float(w[1]), censor(str(w[2])) if job.get('bleep') and SWEAR.match(str(w[2])) else str(w[2]), 'f') for w in job['friend_words'] if w[2] != UNCLEAR and start <= float(w[0]) < end and (replay_at is None or float(w[0]) - start < replay_at)]
+                    mine = [w for w in cws if not any(f_[0] - 0.15 <= w[0] <= f_[1] + 0.15 and w[2].lower() == f_[2].lower() for f_ in fw)]   # the same word heard on both tracks: keep it once, as theirs
+                    cws = sorted(mine + fw, key=lambda w: w[0])
                 prog('Drawing the captions', 32)
                 cap_scale = float(job.get('cap_scale') or SET.get('cap_scale') or 1.0)
                 ec_on = job.get('endcard', SET.get('endcard', True)) and dur > 6 and not job.get('loop')
@@ -262,7 +266,13 @@ def _render(job):
                 else: nh = int(cw / want); cy += (ch - nh) // 2; ch = nh
             top_h -= top_h % 2; bot_h = 1920 - top_h; cw -= cw % 2; ch -= ch % 2
             g_h = sh; g_w = int(sh * 1080 / bot_h); g_w -= g_w % 2; gx = int(max(0, min(sw - g_w, game_x * sw - g_w / 2)))
-            f = (f"[0:v]split=2[a][b];[a]crop={cw}:{ch}:{cx}:{cy},scale=1080:{top_h}:flags=lanczos,setsar=1[cam];"
+            camcrop = f"crop={cw}:{ch}:{cx}:{cy}"
+            if SET.get('face_follow', True) and not prepared and not job.get('parts') and not job.get('preview'):   # plan F4.3: the cam follows your face
+                try:
+                    fc = face_crop(face_track(path, start, dur, (cx, cy, cw, ch)), (cx, cy, cw, ch), dur)
+                    if fc: camcrop = f"crop={fc[0]}:{fc[1]}:x='{fc[2]}':y='{fc[3]}'"; log('Cam follows your face')
+                except Exception: traceback.print_exc()
+            f = (f"[0:v]split=2[a][b];[a]{camcrop},scale=1080:{top_h}:flags=lanczos,setsar=1[cam];"
                  f"[b]crop={g_w}:{g_h}:{gx}:0,scale=1080:{bot_h}:flags=lanczos,unsharp=5:5:0.6{zp(1080, bot_h)},setsar=1[game];[cam][game]vstack=2[stk];" +
                  (f"[stk]drawbox=x=0:y={top_h-4}:w=1080:h=8:color={BHEX()}:t=fill[base]" if job.get('divider', SET.get('divider', True)) else "[stk]null[base]"))
             cap_y = top_h + int(bot_h * 0.55); hook_y = top_h - 200; kf_pos = (1080 - 30, top_h + 40)

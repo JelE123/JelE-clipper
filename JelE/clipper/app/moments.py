@@ -161,6 +161,17 @@ def mic_map(path):
     return ['-map', f'0:a:{mt-1}'] if mt > 0 else []
 
 _WAVMIC = {}
+def friend_words(path, a, b, work):
+    """plan F2.3: what your friends say (their own OBS track, for example Discord), as words with times"""
+    ft = int(SET.get('friends_track') or 0)
+    if ft <= 0: return []
+    st_ = stream_of(path, ft); mic = mic_map(path)
+    if not st_ or (mic and mic[1] == f'0:a:{st_ - 1}'): return []
+    wav = os.path.join(work, 'fr.wav')
+    r = run(['-y', '-ss', f'{max(0, a):.2f}', '-t', f'{b - a:.2f}', '-i', path, '-map', f'0:a:{st_ - 1}', '-vn', '-af', 'highpass=f=70,lowpass=f=7800', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav], capture_output=True)
+    if not os.path.exists(wav): return []
+    try: return [[round(x + a, 2), round(y + a, 2), w] for x, y, w in transcribe(wav, 'captions') if w != UNCLEAR]
+    except Exception: traceback.print_exc(); return []
 _AF_OK = {'ok': True}
 def extract_wav(path, start, dur, out):
     amap = mic_map(path); _WAVMIC[out] = bool(amap)
@@ -435,6 +446,10 @@ def analyse(sid):
                 if n_: en = min(dur, i_ * step + 0.6); c['reasons'].append('the reaction is kept whole') if n_ >= 3 else None
             c['start'], c['end'] = round(st, 1), round(en, 1)
             c['words'] = [w for w in words if st - 1 <= w[0] <= en + 1]
+            try:
+                fw_ = friend_words(path, st - 1, en + 1, work)
+                if fw_: c['friend_words'] = fw_
+            except Exception: traceback.print_exc()
             c['text'] = ' '.join(w[2] for w in c['words'])[:400]
             c['title'] = title_from(near, hw) or fact_title(c) or fallback_title(c, s)
             if not title_fits(c['title'], c): c['title'] = fact_title(c) or fallback_title(c, s)
@@ -447,6 +462,26 @@ def analyse(sid):
             elif c['marker']: st = c['t'] + 7 - L
             else: st = c['t'] - L * 0.72
             c['start'] = round(max(0, st), 1); c['end'] = round(min(dur, max(0, st) + L), 1)
+    # what happens on screen (plan F2.4): no moments in a menu, no long spectating at the end, round and match results as reasons
+    if cands and SET.get('vision', True) and vision_ok():
+        try:
+            gid = GAME_TL.v or 'other'
+            for n, c in enumerate(cands):
+                prog('Looking at the picture', 75 + 23 * (n + 1) / len(cands))
+                st, en = c.get('start', 0), c.get('end', 0)
+                if en - st < 2: continue
+                j = vision_judge(vision_scan(path, max(0, st - 1), min(dur, en + 4), gid), st, en + 4, c['t'])
+                if not j: continue
+                c['vision'] = {k: j[k] for k in ('menu', 'buy', 'dead_at', 'spectate_from', 'events')}
+                if j['menu'] > 0.6: c['score'] = round(c['score'] * 0.25, 1); c['reasons'].append('mostly a menu on screen')
+                elif j['buy'] > 0.7: c['score'] = round(c['score'] * 0.6, 1)
+                if j.get('spectate_from') and j['spectate_from'] > c['t'] + 2 and j['spectate_from'] + 1.5 < en and not c.get('said'):
+                    c['end'] = round(max(st + 6, j['spectate_from'] + 1.5), 1); c['reasons'].append('ends before the spectating')
+                if 'win' in j['events'] or 'round_win' in j['events']: c['score'] = round(c['score'] + 1.5, 1)
+                for r_ in j['reasons']:
+                    if r_ not in c['reasons']: c['reasons'].append(r_)
+            log('Looked at the picture of ' + str(len(cands)) + ' moments')
+        except Exception: log('Looking at the picture did not work'); traceback.print_exc()
     try: story_bonus(ALL, cands, s)
     except Exception: traceback.print_exc()
     for c in cands:

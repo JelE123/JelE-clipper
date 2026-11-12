@@ -2,6 +2,28 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.42 · 12 November 2026
+
+### I see what happens on screen (plan F2.4)
+- I read the text in the picture around every moment: menus, "Killed by", "Spectating", "Buy phase", round and match results (Valorant, CS2, Fortnite and more)
+- A moment that is mostly a menu drops far down the list. A moment no longer ends with a long stretch of spectating. "You won the round" and "you won the match" are reasons, and they count extra
+- Works offline. Comes with the Full setup, or install it in Settings > Captions > Picture understanding (about 100 MB)
+
+### The cam follows your face (plan F4.3)
+- In the Cam + game layout the cam zooms in a bit and moves smoothly with your face, so you are always fully in view. Sit still and it simply stays centred on you
+
+### Your friends in the captions (plan F2.3 and F3.5)
+- Is Discord on its own OBS track? Pick it in Settings > Captions > Friends (Discord). Then I also write down what your friends say around each moment, and it shows in the captions in blue
+- In the editor (step Text) you turn their captions on or off per short
+
+### Check this frame (plan F3.2)
+- Under the result preview: "Check this frame" makes the real export and shows exactly the moment you are at, so you can see the preview matches
+
+### Local AI (plan F4.7, optional)
+- Install a small AI model on your own pc in Settings > Captions > Local AI (about 1 GB, works without internet, never during your stream)
+- It writes extra titles ("More titles (AI)" in step Text)
+- New in the editor: type a change, for example "5 seconds shorter", "start 2 s later", "no zoom", "no music", "captions purple" or "title: ONE TAP". Simple sentences in English and Dutch also work without the AI model. Ctrl+Z undoes it
+
 ## 6.41 · 12 November 2026
 
 ### I hear what happens without words (plan F2.5)

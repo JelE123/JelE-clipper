@@ -95,6 +95,9 @@ DEFAULTS = {
     'smart': True,                      # listen to what is said around each moment to rank it and to cut on sentences
     'chat_delay': 6,                    # chat reacts a few seconds after the moment (stream delay + typing)
     'mic_track': 0,                     # 0 = automatic (finds your mic track), -1 = all audio mixed, 1..6 = that audio track
+    'friends_track': 0,                 # plan F2.3: OBS track with your friends (Discord). 0 = none. their words get their own colour
+    'friends_caps': True,               # show what your friends say in the captions
+    'sounds': True, 'vision': True, 'face_follow': True, 'voice_up': True,
     'loud': True,                       # make the short as loud as other TikToks/Shorts
     'auto_shorts': True,                # make shorts of the best moments by itself after a stream (they land in the inbox)
     'auto_shorts_n': 3,

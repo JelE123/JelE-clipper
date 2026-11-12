@@ -1,0 +1,61 @@
+name: Local AI engine
+
+# Takes the official llama.cpp build for Windows (Vulkan: AMD, Intel and NVIDIA graphics cards, falls back to the processor),
+# keeps llama-server and its files, and puts it on a separate pre-release. The Clipper downloads it itself when you click
+# "Install local AI" (Settings > Captions). Before that it is tested on Linux with the real model. Started by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TAG: engine-llama
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the newest llama.cpp release
+        run: |
+          set -e
+          gh release view --repo ggml-org/llama.cpp --json tagName,assets -q '.tagName' > ver.txt
+          echo "llama.cpp $(cat ver.txt)"
+          gh release view --repo ggml-org/llama.cpp --json assets -q '.assets[].name' > assets.txt
+          cat assets.txt
+          WIN=$(grep -i 'win' assets.txt | grep -i 'vulkan' | grep -i 'x64' | grep -E '\.zip$' | head -1)
+          LNX=$(grep -i 'ubuntu' assets.txt | grep -i 'x64' | grep -vi 'vulkan' | grep -E '\.(zip|tar\.gz)$' | head -1)
+          echo "windows: $WIN"; echo "linux: $LNX"
+          test -n "$WIN" && test -n "$LNX"
+          gh release download --repo ggml-org/llama.cpp "$(cat ver.txt)" -p "$WIN" -p "$LNX"
+          mkdir -p win lnx
+          unzip -q "$WIN" -d win
+          case "$LNX" in *.zip) unzip -q "$LNX" -d lnx ;; *) tar xzf "$LNX" -C lnx ;; esac
+          mkdir pkg
+          find win -type f \( -name 'llama-server.exe' -o -name '*.dll' \) -exec cp {} pkg/ \;
+          find win -iname 'LICENSE*' -exec cp {} pkg/LICENSE-llama.cpp.txt \; -quit || true
+          ls -la pkg
+          test -f pkg/llama-server.exe
+
+      - name: Test with the real model (Linux build, processor)
+        run: |
+          set -e
+          pip install -q numpy pillow websocket-client
+          cd JelE/clipper
+          mkdir -p engine/llama data/models
+          find ../../lnx -type f \( -name 'llama-server' -o -name '*.so*' \) -exec cp {} engine/llama/ \;
+          chmod +x engine/llama/llama-server
+          curl -sSL -o data/models/qwen2.5-1.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          ls -la data/models engine/llama | head -40
+          LD_LIBRARY_PATH=$PWD/engine/llama python tests/llm_ci.py
+
+      - name: Publish
+        run: |
+          set -e
+          cd pkg && zip -q -r ../llama_win64.zip . && cd ..
+          ls -la llama_win64.zip
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --prerelease --latest=false --title "Local AI engine (llama.cpp $(cat ver.txt))" --notes "Used by JelE Clipper for the optional local AI model (titles and editor commands). The app downloads it itself (Settings > Captions > Local AI). This is not an app version."
+          gh release upload "$TAG" llama_win64.zip --clobber

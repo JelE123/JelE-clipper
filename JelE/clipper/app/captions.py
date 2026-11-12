@@ -38,6 +38,7 @@ def caption_groups(words):
         if brk: txt = txt.lstrip('\u00b6').strip()
         w = (w[0], w[1], txt) + tuple(w[3:])
         if brk and cur: groups.append(cur); forced.add(len(groups)); cur = []; cur.append(w); continue
+        if cur and (cur[-1][3] if len(cur[-1]) > 3 else None) != (w[3] if len(w) > 3 else None): groups.append(cur); forced.add(len(groups)); cur = [w]; continue   # another speaker: a new line
         if glue and sum(len(x[2]) + 1 for x in cur) + len(txt) <= 26: glued.add(len(groups)); cur.append(w); continue
         pair = bool(cur) and (re.sub(r"[^\w' ]", '', cur[-1][2].lower()) + ' ' + re.sub(r"[^\w' ]", '', txt.lower())) in pairs
         if pair and sum(len(x[2]) + 1 for x in cur) + len(txt) <= 24 and txt != UNCLEAR: cur.append(w); continue   # never split a name over two lines
@@ -80,6 +81,7 @@ def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):
         ds.text((x + 3, y + 6), t, font=f, anchor='lm', fill=(0, 0, 0, 160), stroke_width=stroke + 3, stroke_fill=(0, 0, 0, 160)); x += w + gap
     img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(6 if style == 'clean' else 5)))
     d = ImageDraw.Draw(img); x = (W - total) / 2
+    friend = len(words[0]) > 3 and words[0][3] == 'f'   # plan F3.5: your friends (Discord) in their own colour
     for i, (t, w) in enumerate(zip(txt, widths)):
         on = i == active; emph = bool(EMPH.match(t))
         if style == 'jele':
@@ -96,13 +98,15 @@ def draw_caption(words, active, scale=1.0, W=1080, H=300, style='jele'):
             col = (255, 230, 0, 255) if on else (255, 255, 255, 255); sc = (0, 0, 0, 255)
         else:
             col = BC() if on else (255, 255, 255, 255); sc = (0, 0, 0, 0)
+        if friend and not on: col = (147, 197, 253, 255)
+        elif friend and on and style in ('jele', 'classic', 'clean'): col = (96, 165, 250, 255)
         d.text((x, y), t, font=f, anchor='lm', fill=col, stroke_width=stroke, stroke_fill=sc); x += w + gap
     return img
 
 def caption_track(words, clip_start, dur, folder, style='jele', W=1080, H=300, scale=1.0, anim='pop'):
     """renders the captions as a series of images with exact durations (ffconcat), one per word change, with a tiny pop on each new line"""
     from PIL import Image
-    ws = [(max(0, a - clip_start), max(0, b - clip_start), t) for a, b, t in drop_fillers(words) if b > clip_start and a < clip_start + dur]
+    ws = [(max(0, w[0] - clip_start), max(0, w[1] - clip_start)) + tuple(w[2:]) for w in drop_fillers(words) if w[1] > clip_start and w[0] < clip_start + dur]
     if not ws: return None
     blank = os.path.join(folder, 'blank.png'); Image.new('RGBA', (W, H), (0, 0, 0, 0)).save(blank)
     groups = caption_groups(ws); items = []; t = 0.0; n = 0

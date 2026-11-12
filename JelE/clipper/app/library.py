@@ -48,6 +48,8 @@ def reason_keys(reasons):
         elif 'gelachen' in r or 'laugh' in r: ks.add('laugh')
         elif 'scream' in r: ks.add('scream')
         elif 'a fight' in r or 'cheering' in r: ks.add('fight')
+        elif 'won the' in r: ks.add('win')
+        elif 'you died' in r: ks.add('fail')
         elif 'twitch-clip' in r or 'twitch clip' in r: ks.add('tclip')
         elif re.search(r'\b(ace|[345]k|clutch)\b', r): ks.add('game')
     return ks

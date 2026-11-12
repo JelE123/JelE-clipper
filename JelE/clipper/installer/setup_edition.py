@@ -1,6 +1,6 @@
 # JelE Clipper setup: Light or Full. Run by the setup after the packages are installed.
 #   light: nothing extra, the speech model downloads the first time it is needed
-#   full:  graphics card support for the speech model (NVIDIA) and the speech models right away
+#   full:  graphics card support for the speech model, the speech models right away, and picture understanding (OCR, face)
 import os, sys, json, shutil, subprocess, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,6 +10,9 @@ os.makedirs(DATA, exist_ok=True)
 
 def say(*a):
     print(time.strftime('[%H:%M:%S]'), *a, flush=True)
+
+
+VISION_PKGS = ['rapidocr-onnxruntime', 'opencv-python-headless<5']   # plan F2.4 and F4.3
 
 
 def nvidia():
@@ -73,6 +76,9 @@ def main():
                 except Exception as e: say('Graphics card support could not be installed:', e, '- you can install it later in Settings > Captions'); ok = False
             else:
                 say('No graphics card found for the speech model: it runs on the processor')
+        say('Installing picture understanding (reading text on screen, following your face)')
+        r = subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-warn-script-location', '--disable-pip-version-check'] + VISION_PKGS)
+        if r.returncode != 0: say('Picture understanding could not be installed - you can install it later in Settings > Captions'); ok = False
         try:
             sys.path.insert(0, HERE)
             from faster_whisper.utils import download_model
