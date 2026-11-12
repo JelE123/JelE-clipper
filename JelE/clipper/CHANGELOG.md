@@ -2,6 +2,19 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.22 · 12 November 2026
+
+### New look and clearer menu (plan F1.5, F1.6 and F1.7)
+- One style for the whole app in the JelE Studio colors: one font (Inter), a few fixed text sizes and roundings, the brand orange on dark blue
+- The menu now has 5 items: Today, Moments, Editor, Shorts and Settings. Insights is now a tab inside Shorts, System is a tab inside Settings
+- Today is now a to-do list: only what needs you (OBS not connected, a recording that stopped halfway, new shorts to pick, shorts ready to post, a new version), each with the button that does it. When nothing needs you, it says so
+- The explanation at the top of Today only shows for new users
+- Editor is always in the menu. With nothing open it tells you how to start
+- Settings are split into 5 groups (Video and look, Captions, Finding clips, Posting and phone, Connections and app) and have a search field. Search also finds the Advanced settings
+- The setup now has 4 steps: OBS, your mic, your cam, and the optional extras together
+- New: "Set up OBS for me". One click (only when you click) and the Clipper sets OBS up for good captions: your mic on its own audio track 2, the game, music and Discord off that track, recording with both tracks, as MKV. It tells you exactly what it changed
+- Keys 1 to 5 jump to the 5 menu items
+
 ## 6.21 · 12 November 2026
 
 ### Your own logo

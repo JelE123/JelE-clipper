@@ -194,6 +194,53 @@ class OBS:
                 self.send('SetSceneItemEnabled', {'sceneName': 'JelE Mascotte', 'sceneItemId': self.marker_id, 'sceneItemEnabled': False})
 obs = OBS()
 
+
+# ---------------------------------------------------------------- 7.0: set up OBS for you (only after you click the button)
+MIC_KINDS = ('wasapi_input_capture', 'coreaudio_input_capture', 'pulse_input_capture', 'alsa_input_capture')
+def _pp(cat, name):
+    return (obs.req('GetProfileParameter', {'parameterCategory': cat, 'parameterName': name}) or {}).get('parameterValue')
+def obs_auto_setup():
+    """your mic on audio track 2 (and 1), the rest off track 2, recording with tracks 1 and 2, as MKV.
+    then the captions only listen to track 2: your voice, no game, no music, no Discord"""
+    if not obs.ok: return {'ok': False, 'why': 'OBS is not connected. Start OBS and fill in your OBS password first.'}
+    if (obs.req('GetRecordStatus') or {}).get('outputActive'): return {'ok': False, 'why': 'You are recording now. Stop the recording first, OBS does not allow these changes while it records.'}
+    sp = obs.req('GetSpecialInputs') or {}
+    inputs = (obs.req('GetInputList') or {}).get('inputs') or []
+    mics = [sp[k] for k in ('mic1', 'mic2', 'mic3', 'mic4') if sp.get(k)]
+    mics += [i['inputName'] for i in inputs if i.get('inputKind') in MIC_KINDS and i['inputName'] not in mics]
+    if not mics: return {'ok': False, 'why': 'I found no mic in OBS. Add your mic in OBS (Settings > Audio > Mic/Auxiliary Audio) and try again.'}
+    changes, notes = [], []
+    names = list(dict.fromkeys(mics + [sp[k] for k in ('desktop1', 'desktop2') if sp.get(k)] + [i['inputName'] for i in inputs]))
+    for n in names:
+        tr = (obs.req('GetInputAudioTracks', {'inputName': n}) or {}).get('inputAudioTracks')
+        if not tr: continue   # no sound in this source
+        want = dict(tr)
+        if n in mics: want['1'] = True; want['2'] = True
+        else: want['2'] = False
+        if want != tr:
+            obs.req('SetInputAudioTracks', {'inputName': n, 'inputAudioTracks': want})
+            changes.append(f'"{n}": on tracks 1 and 2' if n in mics else f'"{n}": off track 2 (track 2 is only for your mic)')
+    mode = _pp('Output', 'Mode') or 'Simple'
+    cat = 'AdvOut' if mode == 'Advanced' else 'SimpleOutput'
+    if cat == 'SimpleOutput' and (_pp('SimpleOutput', 'RecQuality') or 'Stream') == 'Stream':
+        notes.append('In OBS, Settings > Output > Recording: set "Recording Quality" to "High Quality" (not "Same as stream"), then click this button again. Only then can OBS record your mic on its own track.')
+    else:
+        try: cur = int(_pp(cat, 'RecTracks') or 1)
+        except ValueError: cur = 1
+        if cur & 3 != 3:
+            obs.req('SetProfileParameter', {'parameterCategory': cat, 'parameterName': 'RecTracks', 'parameterValue': str(cur | 3)})
+            changes.append('Recording: audio tracks 1 and 2 on')
+    fk = 'RecFormat2' if _pp(cat, 'RecFormat2') else 'RecFormat'
+    if (_pp(cat, fk) or '').lower() in ('mp4', 'mov', 'flv'):
+        obs.req('SetProfileParameter', {'parameterCategory': cat, 'parameterName': fk, 'parameterValue': 'mkv'})
+        changes.append('Recording format: MKV (does not break when your pc crashes, I turn it into MP4 myself)')
+    if not notes:
+        SET['mic_track'] = 2; save_settings(SET)
+        changes.append('Clipper: captions only listen to track 2 (your mic)')
+        if any(c.startswith('Recording') for c in changes): notes.append('Restart OBS once, so it uses the new recording settings.')
+    log('OBS set up: ' + ('; '.join(changes) or 'everything was already right'))
+    return {'ok': True, 'changes': changes, 'notes': notes, 'mics': mics}
+
 _CAMT = {'h': None}
 def cam_moved():
     """you moved or resized something in OBS: check the cam frame again (once things are still for 2 s)"""

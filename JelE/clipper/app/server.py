@@ -336,6 +336,7 @@ class H(BaseHTTPRequestHandler):
             restart_app(0.3) if b.get('restart') else threading.Thread(target=lambda: (time.sleep(0.3), os._exit(0)), daemon=True).start()
             return self.j({'ok': True})
         if p == '/api/shortcuts': return self.j({'ok': make_shortcuts(True)})
+        if p == '/api/obs-setup': return self.j(obs_auto_setup())
         if p == '/api/settings':
             SET.update({k: v for k, v in b.items() if k in DEFAULTS}); save_settings(SET); return self.j({'ok': True, 'settings': SET})
         if p == '/api/open':
