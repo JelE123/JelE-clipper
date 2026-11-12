@@ -83,13 +83,18 @@ class OBS:
         hello = json.loads(self.ws.recv())
         d = {'rpcVersion': 1, 'eventSubscriptions': (1 << 0) | (1 << 2) | (1 << 6) | (1 << 7) | (1 << 19)}   # general, scenes, outputs, scene items, transform changes
         a = hello['d'].get('authentication')
+        if a and not CFG.get('OBS_PASSWORD'):
+            self.why = 'OBS asks for a password. Fill in the password from OBS > Tools > WebSocket Server Settings > Show Connect Info, or turn off "Enable Authentication" there'
+            raise Exception(self.why)
         if a:
             sec = base64.b64encode(hashlib.sha256((CFG['OBS_PASSWORD'] + a['salt']).encode()).digest()).decode()
             d['authentication'] = base64.b64encode(hashlib.sha256((sec + a['challenge']).encode()).digest()).decode()
         self.ws.send(json.dumps({'op': 1, 'd': d}))
         msg = json.loads(self.ws.recv())
-        if msg.get('op') != 2: raise Exception('OBS refused the connection (is OBS_PASSWORD in config.js right?)')
-        self.ok = True; log('Connected to OBS')
+        if msg.get('op') != 2:
+            self.why = 'OBS refused the password. Copy it again from OBS > Tools > WebSocket Server Settings > Show Connect Info'
+            raise Exception(self.why)
+        self.ok = True; self.why = ''; log('Connected to OBS' + ('' if a else ' (no password needed)'))
         threading.Thread(target=self.after_connect, daemon=True).start()
     def after_connect(self):
         r = self.req('GetRecordStatus')

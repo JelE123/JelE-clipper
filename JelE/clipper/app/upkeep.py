@@ -453,7 +453,10 @@ def keys_test(k):
             for _ in range(8):
                 if obs.ok: break
                 time.sleep(1)
-            return {'ok': obs.ok, 'msg': 'OBS is connected' if obs.ok else 'OBS refuses, or is not running'}
+            if obs.ok: return {'ok': True, 'msg': 'OBS is connected' + ('' if CFG.get('OBS_PASSWORD') else ' (without a password)')}
+            why = getattr(obs, 'why', '') or ''
+            if 'password' in why: return {'ok': False, 'msg': why}
+            return {'ok': False, 'msg': 'OBS does not answer. Is OBS running, and is the WebSocket server on (OBS > Tools > WebSocket Server Settings > Enable WebSocket server)?'}
         if k in ('TWITCH_CLIENT_ID', 'TWITCH_CLIENT_SECRET'):
             if not (CFG.get('TWITCH_CLIENT_ID') and CFG.get('TWITCH_CLIENT_SECRET')): return {'ok': False, 'msg': 'Fill in both the Client ID and the Client Secret, then Save'}
             http_json('https://id.twitch.tv/oauth2/token', data=urllib.parse.urlencode({'client_id': CFG.get('TWITCH_CLIENT_ID', ''), 'client_secret': CFG.get('TWITCH_CLIENT_SECRET', ''), 'grant_type': 'client_credentials'}).encode())

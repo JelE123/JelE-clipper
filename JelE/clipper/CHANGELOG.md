@@ -2,6 +2,13 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.33 · 12 November 2026
+
+### OBS without a password
+- Fixed: there was no clear way to connect OBS without a password. The setup now has a button "My OBS has no password", and Settings > Keys has "OBS without password". Both remove a saved password and test the connection right away
+- When OBS has no password, the Keys list now says "not needed, connected" instead of "empty"
+- Clearer messages when OBS does not connect: OBS asks for a password, the password is wrong, or OBS does not answer at all (with where to turn on the WebSocket server)
+
 ## 6.32 · 12 November 2026
 
 ### Captions on the timeline (plan F3.3, first part)

@@ -1937,10 +1937,12 @@ const WSTEPS=[
  {t:'Connect OBS', body:async()=>{ const K=await api('/api/keys'), k=K.find(x=>x.key==='OBS_PASSWORD')||{};
    return `<h4>Connect OBS</h4><p>The Clipper talks to OBS to know when you record and where your cam is. You find the password in OBS under <b>Tools &gt; WebSocket Server Settings &gt; Show Connect Info</b>.</p>
    <div class="keyrow nosave" style="border:0"><label>OBS password<small>${k.set?'filled in':'not filled in yet'}</small></label><input type="password" id="wzPw" placeholder="${k.set?'filled in (leave empty = keep)':'paste your password here'}" autocomplete="off"><button class="btn" id="wzPwB">Save and test</button></div>
+   <div class="dim" style="font-size:12px;margin-top:6px">No password in OBS ("Enable Authentication" off)? Then you do not need one: <button class="btn sm" id="wzNoPw">My OBS has no password</button></div>
    <div id="wzPwR" style="margin-top:8px">${ST.obs?'<span class="pill2 ok">OBS is connected</span>':'<span class="pill2">Not connected yet</span>'}</div>
    <div class="wzauto"><h4>Let me set up OBS</h4><p>One click and I set OBS up for good captions: your mic on its own audio track (track 2), the game, music and Discord off that track, recording with both tracks, and as MKV (does not break in a crash). I change only these things, and only when you click.</p>
    <button class="btn pri" id="wzObs" ${ST.obs?'':'disabled title="Connect OBS first"'}>${ic('spark')}Set up OBS for me</button><div id="wzObsR" style="margin-top:10px"></div></div>`; },
   bind:()=>{ $('wzPwB').onclick=async()=>{ const v=$('wzPw').value; if(v) await api('/api/keys',{keys:{OBS_PASSWORD:v}}); $('wzPwR').innerHTML='<span class="pill2">Testing...</span>'; const r=await api('/api/keys-test',{key:'OBS_PASSWORD'}); $('wzPwR').innerHTML=`<span class="pill2 ${r.ok?'ok':''}">${esc(r.msg)}</span>`; $('wzPw').value=''; if(r.ok) $('wzObs').disabled=false; };
+   $('wzNoPw').onclick=async()=>{ await api('/api/keys',{keys:{OBS_PASSWORD:''},clear:['OBS_PASSWORD']}); $('wzPwR').innerHTML='<span class="pill2">Testing without a password...</span>'; const r=await api('/api/keys-test',{key:'OBS_PASSWORD'}); $('wzPwR').innerHTML=`<span class="pill2 ${r.ok?'ok':''}">${esc(r.msg)}</span>`; if(r.ok) $('wzObs').disabled=false; };
    $('wzObs').onclick=async()=>{ const b=$('wzObs'); b.disabled=true; $('wzObsR').innerHTML='<span class="pill2">Busy...</span>'; const r=await api('/api/obs-setup',{}); b.disabled=false;
      if(!r.ok){ $('wzObsR').innerHTML=`<span class="pill2">${esc(r.why||'Did not work')}</span>`; return; }
      if(r.settings) SETS=r.settings; else SETS.mic_track=2;
@@ -1999,14 +2001,15 @@ const KEY_GROUPS=[
 async function keysLoad(){ const K=await api('/api/keys'), el=$('keysBox'); if(!el) return;
   const row=k=>`<div class="keyrow"><label>${esc(k.label)}<small>${esc(k.help)}</small></label>
     <input class="nosave" data-key="${k.key}" ${k.secret?'type="password" autocomplete="off"':''} placeholder="${k.secret?(k.set?'filled in (leave empty = keep)':'not filled in yet'):''}" value="${k.secret?'':esc(k.value||'')}">
-    <span class="st2 ${k.set?(k.ok===false?'no':'on'):''}"><i></i>${k.set?(k.ok===false?'does not work':'filled in'):'empty'}</span></div>`;
+    <span class="st2 ${k.set?(k.ok===false?'no':'on'):(k.ok?'on':'')}"><i></i>${k.set?(k.ok===false?'does not work':'filled in'):(k.key==='OBS_PASSWORD'?(k.ok?'not needed, connected':'empty (fine if OBS has no password)'):'empty')}</span></div>`;
   const used=new Set();
   el.innerHTML=KEY_GROUPS.map(g=>{ const ks=g.keys.map(x=>K.find(k=>k.key===x)).filter(Boolean); ks.forEach(k=>used.add(k.key)); if(!ks.length) return '';
       return `<div class="kgrp"><div class="kgh"><b>${g.t}</b><span class="pill2">${g.need}</span></div>${g.what?`<div class="dim kgw">${g.what}</div>`:''}${g.how?`<details class="kgd"><summary>How do I get these?</summary>${g.how}</details>`:''}${ks.map(row).join('')}</div>`; }).join('')
     + K.filter(k=>!used.has(k.key)).map(row).join('')
-    +`<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn pri" id="keysSave">${ic('check')}Save</button><button class="btn" data-kt="OBS_PASSWORD">Test OBS</button><button class="btn" data-kt="HENRIK_KEY">Test match data</button><button class="btn" data-kt="TWITCH_CLIENT_SECRET">Test Twitch</button></div><div id="keysR" style="margin-top:10px"></div>`;
+    +`<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn pri" id="keysSave">${ic('check')}Save</button><button class="btn" data-kt="OBS_PASSWORD">Test OBS</button><button class="btn ghost" id="keysNoPw" title="Your OBS has no password (Enable Authentication off)">OBS without password</button><button class="btn" data-kt="HENRIK_KEY">Test match data</button><button class="btn" data-kt="TWITCH_CLIENT_SECRET">Test Twitch</button></div><div id="keysR" style="margin-top:10px"></div>`;
   $('keysSave').onclick=async()=>{ const vals={}; $$('[data-key]',el).forEach(i=>{ const k=K.find(x=>x.key===i.dataset.key); if(k.secret?i.value:i.value!==(k.value||'')) vals[i.dataset.key]=i.value; });
     const r=await api('/api/keys',{keys:vals}); toast(r.ok?'Keys saved (only on this PC)':'Saving failed'); keysLoad(); extraSettings(); };
+  $('keysNoPw').onclick=async()=>{ await api('/api/keys',{keys:{OBS_PASSWORD:''},clear:['OBS_PASSWORD']}); $('keysR').innerHTML='<span class="pill2">Testing without a password...</span>'; const r=await api('/api/keys-test',{key:'OBS_PASSWORD'}); $('keysR').innerHTML=`<span class="pill2 ${r.ok?'ok':''}">${esc(r.msg)}</span>`; keysLoad(); };
   $$('[data-kt]',el).forEach(b=>b.onclick=async()=>{ $('keysR').innerHTML='<span class="pill2">Testing...</span>'; const r=await api('/api/keys-test',{key:b.dataset.kt}); $('keysR').innerHTML=`<span class="pill2 ${r.ok?'ok':''}">${esc(r.msg)}</span>`; }); }
 async function updLoad(force){ const el=$('updBox'); if(!el) return; el.innerHTML='<div class="sk skrow"></div>';
   const r=await api('/api/update-check'+(force?'?force=1':''));
