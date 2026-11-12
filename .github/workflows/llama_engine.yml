@@ -19,17 +19,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get the newest llama.cpp release
+      - name: Get the newest llama.cpp build
         run: |
           set -e
-          gh release view --repo ggml-org/llama.cpp --json tagName,assets -q '.tagName' > ver.txt
-          echo "llama.cpp $(cat ver.txt)"
-          gh release view --repo ggml-org/llama.cpp --json assets -q '.assets[].name' > assets.txt
-          cat assets.txt
-          WIN=$(grep -i 'win' assets.txt | grep -i 'vulkan' | grep -i 'x64' | grep -E '\.zip$' | head -1)
-          LNX=$(grep -i 'ubuntu' assets.txt | grep -i 'x64' | grep -vi 'vulkan' | grep -E '\.(zip|tar\.gz)$' | head -1)
-          echo "windows: $WIN"; echo "linux: $LNX"
-          test -n "$WIN" && test -n "$LNX"
+          gh api 'repos/ggml-org/llama.cpp/releases?per_page=40' > rel.json
+          python3 - <<'EOF'
+          import json, re
+          rel = json.load(open('rel.json'))
+          for r in rel:
+              names = [a['name'] for a in r.get('assets', [])]
+              win = [n for n in names if re.search(r'win', n, re.I) and re.search(r'vulkan', n, re.I) and re.search(r'x64', n, re.I) and n.endswith('.zip')]
+              lnx = [n for n in names if re.search(r'ubuntu', n, re.I) and re.search(r'x64', n, re.I) and not re.search(r'vulkan|rocm|cuda|sycl|s390|arm', n, re.I) and re.search(r'\.(zip|tar\.gz)$', n)]
+              if win and lnx:
+                  open('ver.txt', 'w').write(r['tag_name']); open('win.txt', 'w').write(win[0]); open('lnx.txt', 'w').write(lnx[0])
+                  print('llama.cpp', r['tag_name'], win[0], lnx[0]); break
+          else:
+              raise SystemExit('no release with a Windows Vulkan and a Linux build found')
+          EOF
+          WIN=$(cat win.txt); LNX=$(cat lnx.txt)
           gh release download --repo ggml-org/llama.cpp "$(cat ver.txt)" -p "$WIN" -p "$LNX"
           mkdir -p win lnx
           unzip -q "$WIN" -d win
