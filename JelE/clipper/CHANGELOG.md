@@ -2,6 +2,12 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.62 · 13 November 2026
+
+- **Export screen: see what the apps put over your video.** "App buttons" shows the buttons and text of **TikTok, YouTube Shorts or Instagram Reels** exactly where they appear (likes, comments, share on the right, your name and post text at the bottom, the menu bar). On the pc screen you see YouTube: the buttons next to a vertical short, or the player bar under a horizontal video.
+- **Covered parts** shows only the borders of those areas, so you see if your captions, the killfeed or your face end up under a button.
+- Your choice (app and what to show) is remembered.
+
 ## 6.61 · 13 November 2026
 
 - Export screen: the phone stays upright with the horizontal version too, so you see how a 16:9 video really looks on a phone you hold normally (with black bars above and below).
