@@ -45,11 +45,23 @@ jobs:
           body = top.split('\n', 1)[1].strip()
           body += "\n\n**Install:** download JelE_update.zip, extract it over C:\\ and start the Clipper. On 6.0 or newer you can also update with one click through Settings > Updates.\n\n**New install:** download JelE_Clipper_Setup.exe (it can take a few minutes after the release before it is there). Windows may warn that the app is unknown: click More info > Run anyway."
           open('notes.md', 'w', encoding='utf-8').write(body)
+          open('prerelease.txt', 'w').write('1' if '(test)' in top.split('\n', 1)[0].lower() else '0')
+          # fingerprints of every file: the app downloads only what changed and checks each file
+          import os, hashlib, json
+          files = {}
+          for root, dirs, fs in os.walk('JelE'):
+              dirs[:] = [d for d in dirs if d not in ('__pycache__', 'data', 'tests')]
+              for f in fs:
+                  p = os.path.join(root, f); rel = os.path.relpath(p, 'JelE').replace(os.sep, '/')
+                  b = open(p, 'rb').read(); files[rel] = {'sha256': hashlib.sha256(b).hexdigest(), 'size': len(b)}
+          json.dump({'files': files}, open('manifest.json', 'w'))
           PY
 
       - name: Create release
         if: steps.v.outputs.exists == '0'
-        run: gh release create "v${{ steps.v.outputs.version }}" JelE_update.zip --target "$GITHUB_SHA" --title "JelE Clipper ${{ steps.v.outputs.version }}" --notes-file notes.md
+        run: |
+          PRE=""; if [ "$(cat prerelease.txt)" = "1" ]; then PRE="--prerelease"; fi
+          gh release create "v${{ steps.v.outputs.version }}" JelE_update.zip manifest.json --target "$GITHUB_SHA" --title "JelE Clipper ${{ steps.v.outputs.version }}" --notes-file notes.md $PRE
         env:
           GH_TOKEN: ${{ github.token }}
 

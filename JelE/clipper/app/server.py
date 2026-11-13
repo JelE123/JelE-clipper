@@ -74,7 +74,12 @@ class H(BaseHTTPRequestHandler):
             return self.j(s)
         if p == '/api/shorts':
             fs = sorted(glob.glob(os.path.join(OUT, '*.mp4')), key=os.path.getmtime, reverse=True); lib = lib_load()
-            return self.j([{'file': os.path.basename(f), 'size': os.path.getsize(f), 'at': os.path.getmtime(f), **lib.get(os.path.basename(f), {'status': 'goed'})} for f in fs])
+            vs_ = sorted(e['views'] for e in lib.values() if (e.get('views') or 0) > 0); med_ = vs_[len(vs_) // 2] if len(vs_) >= 5 else None
+            def pred_(e):   # a rough guess of the views, for shorts not posted yet (your median times how much your score model likes it)
+                if not med_ or (e.get('views') or 0) > 0 or not e.get('feat'): return None
+                p_ = taste2_prob(e['feat'])
+                return None if p_ is None else int(round(med_ * (0.4 + 1.6 * p_), -1 if med_ > 100 else 0))
+            return self.j([{'file': os.path.basename(f), 'size': os.path.getsize(f), 'at': os.path.getmtime(f), **lib.get(os.path.basename(f), {'status': 'goed'}), 'pred': pred_(lib.get(os.path.basename(f), {}))} for f in fs])
         if p == '/api/week': return self.j(week_stats())
         if p == '/api/fx-suggest':
             return self.j(fx_suggest(q['sid'][0], float(q['a'][0]), float(q['b'][0]), {'mid': q.get('mid', [None])[0]}))
@@ -93,6 +98,14 @@ class H(BaseHTTPRequestHandler):
             u = update_check(bool(q.get('force')))
             return self.j({'ok': bool(u.get('info')), 'current': VERSION, 'latest': (u.get('info') or {}).get('version'), 'notes': (u.get('info') or {}).get('notes', ''), 'newer': bool(u.get('newer')),
                            'why': u.get('error'), 'repo': SET.get('update_repo', ''), 'has_source': bool(SET.get('update_repo') or CFG.get('UPDATE_URL')), 'versions': versions_list(), 'busy': busy_reason()})
+        if p == '/api/refs':   # your own reference shorts (put them in the folder), to lay your short next to
+            os.makedirs(REF_DIR, exist_ok=True)
+            return self.j({'dir': REF_DIR, 'files': sorted(os.path.basename(f_) for f_ in glob.glob(os.path.join(REF_DIR, '*')) if f_.lower().endswith(('.mp4', '.mov', '.webm', '.mkv')))})
+        if p == '/srt':
+            f_ = os.path.join(SRT_DIR, os.path.splitext(os.path.basename(q['f'][0]))[0] + '.srt')
+            if not os.path.exists(f_): return self.j({'error': 'No captions file for this short (made without captions?)'}, 404)
+            return self.file(f_, 'application/x-subrip')
+        if p == '/ref': return self.file(os.path.join(REF_DIR, os.path.basename(q['f'][0])), 'video/mp4')
         if p == '/api/unsure': return self.j(load_unsure(q['sid'][0]))
         if p == '/api/unsure-opts': return self.j(load_opts(q['sid'][0]))
         if p == '/api/search': return self.j(search_said(q.get('q', [''])[0]))
@@ -145,6 +158,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/engine': return self.j(wcpp_status())
         if p == '/api/llm': return self.j(llm_status())
         if p == '/api/vision': return self.j(vision_status())
+        if p == '/api/space': return self.j(space_info())
         if p == '/api/ai-check': return self.j({**ai_check(), 'learned': learned_summary()})
         if p == '/api/learned': return self.j({g: learned_look(g) for g in GP.ORDER} if GP and SET.get('learn_look', True) else {})
         if p == '/api/games': return self.j({'games': GP.public() if GP else [], 'default': SET.get('default_game') or 'valorant'})
@@ -199,6 +213,9 @@ class H(BaseHTTPRequestHandler):
             s = load_sess(q['sid'][0]); ext = os.path.splitext(s['path'])[1].lower()
             if not q.get('full') and os.path.exists(proxy_path(s['id'])): return self.file(proxy_path(s['id']), 'video/mp4')
             return self.file(s['path'], 'video/mp4' if ext in ('.mp4', '.mov') else 'video/x-matroska' if ext == '.mkv' else 'video/mp4')
+        if p == '/api/emoji': return self.j(emoji_list())
+        if p.startswith('/emoji/'):
+            return self.file(os.path.join(HERE, 'emoji', os.path.basename(unquote(p[7:]))), 'image/png')
         if p == '/short':
             return self.file(os.path.join(OUT, os.path.basename(unquote(q['f'][0]))), 'video/mp4')
         return self.j({'error': 'unknown'}, 404)
@@ -331,7 +348,13 @@ class H(BaseHTTPRequestHandler):
                 SET['fixes'] = [x for x in (SET.get('fixes') or []) if x[0].lower() != a_.lower()] + [[a_, b_]]; save_settings(SET)
             return self.j({'ok': True, 'fixes': SET['fixes']})
         if p == '/api/analyse':
+            if b.get('relisten'):   # listen again (another language, a better model): the kept text is not reused
+                s_ = load_sess(b['sid']); s_['relisten'] = True; save_sess(s_)
             JOBS.put(('analyse', b['sid'])); return self.j({'ok': True})
+        if p == '/api/session-lang':   # the language of one stream
+            s_ = load_sess(b['sid']); lg_ = b.get('language') or ''
+            if lg_ and lg_ not in ('en', 'nl', 'auto', 'de', 'fr', 'es'): return self.j({'ok': False})
+            s_['language'] = lg_ or None; save_sess(s_); return self.j({'ok': True})
         if p == '/api/import':
             path = b.get('path', '').strip().strip('"')
             if not os.path.exists(path): return self.j({'error': 'File not found'}, 400)
@@ -371,10 +394,23 @@ class H(BaseHTTPRequestHandler):
                     if b.get('language'): job['language'] = b['language']
                 JOBS.put(('render', job)); n += 1
             return self.j({'ok': True, 'n': n})
+        if p == '/api/settings-reset':   # one group of settings back to the default (never the cam, keys, brand or your words)
+            G_ = {'clips': ('clip_len', 'max_clips', 'smart', 'chat_delay', 'brief', 'sounds', 'auto_shorts', 'auto_shorts_n', 'auto_zoom', 'twitch_clips', 'live_listen', 'live_clip', 'live_len', 'block_scenes',
+                            'speed_mode', 'doubt_check', 'ai_compare', 'match_story', 'ctx_cards', 'llm_two_stage', 'game_detect', 'learn_timing'),
+                  'cap': ('captions', 'whisper_model', 'language', 'mic_track', 'friends_track', 'friends_caps', 'friends_lang', 'friends_names', 'cap_fillers', 'game_words', 'speech_engine', 'mixed_lang', 'cap_loud', 'bleep'),
+                  'video': ('layout', 'cap_scale', 'progress_bar', 'endcard', 'jumpcut', 'sfx', 'fx_teaser', 'fx_replay', 'fx_killfeed', 'fx_stickers', 'voice_clean', 'cap_anim', 'frame_bg', 'divider', 'snap_words',
+                            'slowmo_not_replay', 'fx_freeze', 'templates', 'beat_sync', 'game_look', 'mic_denoise', 'blur_names', 'loud', 'cam_auto'),
+                  'post': ('platform', 'platforms', 'name_tpl', 'q_min', 'safe_zone', 'highlight_min'),
+                  'app': ('encoder', 'pause_live', 'parallel', 'proxy', 'pause_busy', 'low_priority', 'speech_process', 'update_channel', 'cleanup_days', 'remux')}.get(b.get('group'), ())
+            n_ = 0
+            for k_ in G_:
+                if k_ in DEFAULTS and SET.get(k_) != DEFAULTS[k_]: SET[k_] = json.loads(json.dumps(DEFAULTS[k_])); n_ += 1
+            save_settings(SET); return self.j({'ok': True, 'n': n_, 'settings': SET})
         if p == '/api/settings':
             SET.update({k: v for k, v in b.items() if k in DEFAULTS}); save_settings(SET); return self.j({'ok': True, 'settings': SET})
         if p == '/api/open':
-            target = OUT if b.get('what') == 'shorts' else MUSIC_DIR if b.get('what') == 'music' else sdir(b.get('sid', ''))
+            target = OUT if b.get('what') == 'shorts' else MUSIC_DIR if b.get('what') == 'music' else REF_DIR if b.get('what') == 'refs' else sdir(b.get('sid', ''))
+            os.makedirs(target, exist_ok=True)
             try:
                 if os.name == 'nt': os.startfile(target)
             except Exception: pass
@@ -386,6 +422,25 @@ class H(BaseHTTPRequestHandler):
             return self.j({'ok': True})
         if p == '/api/trash-restore': restore_short(os.path.basename(b.get('file', ''))); return self.j({'ok': True})
         if p == '/api/feedback': return self.j(feedback_add(b))
+        if p == '/api/demo':   # a practice stream
+            try: return self.j({'ok': True, 'sid': make_demo()})
+            except Exception as e: return self.j({'ok': False, 'why': str(e)[:140]})
+        if p == '/api/translate':   # captions of one clip in the other language (local AI)
+            if not llm_ready(): return self.j({'ok': False, 'why': 'This needs the local AI (Settings > Captions).'})
+            lines = [str(x) for x in (b.get('lines') or [])][:80]
+            r_ = translate_lines(lines, b.get('to') or 'en')
+            return self.j({'ok': bool(r_), 'lines': r_ or [], 'why': '' if r_ else 'The AI could not translate it. Try again.'})
+        if p == '/api/plan-fill':
+            if b.get('slots') is not None: SET['post_slots'] = str(b['slots'])[:60]; SET['auto_plan'] = bool(b.get('auto', True)); save_settings(SET)
+            return self.j({'ok': True, 'n': plan_fill()})
+        if p == '/api/firewall':   # phone access: one firewall rule for this app's port, only on private networks (Windows asks you for permission)
+            if os.name != 'nt': return self.j({'ok': False, 'why': 'Only needed on Windows'})
+            try:
+                args_ = f'advfirewall firewall add rule name="JelE Clipper" dir=in action=allow protocol=TCP localport={PORT} profile=private'
+                subprocess.Popen(['powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command', f"Start-Process netsh -ArgumentList '{args_}' -Verb RunAs -WindowStyle Hidden"], creationflags=NOWIN)
+                return self.j({'ok': True, 'why': 'Windows asks for permission: click Yes. Then try your phone again'})
+            except Exception as e: return self.j({'ok': False, 'why': str(e)[:120]})
+        if p == '/api/key-test': return self.j(key_test(b.get('which')))
         if p == '/api/doubt':   # the editor's 'Check unsure words'
             try: return self.j(doubt_range(b['sid'], float(b['a']), float(b['b'])))
             except Exception as e: traceback.print_exc(); return self.j({'ok': False, 'why': str(e)[:120]})

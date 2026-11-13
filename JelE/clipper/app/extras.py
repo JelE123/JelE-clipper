@@ -401,7 +401,7 @@ def worker():
         if r_: JOBS.waiting[threading.get_ident()] = dict(JOBS.meta(kind, arg), waiting=r_)   # still shown in the queue while it waits
         while r_:
             STATE['paused'] = r_
-            if r_ != said: log({'live': 'Heavy work waits until your stream or recording stops', 'disk': 'Less than 2 GB free on the disk: the work waits until there is room', 'busy': 'The pc is very busy, the work waits a moment'}[r_]); said = r_
+            if r_ != said: log({'live': 'Heavy work waits until your stream or recording stops', 'disk': 'Less than 2 GB free on the disk: the work waits until there is room', 'hot': 'Your graphics card is too warm: the work waits until it cooled down', 'busy': 'The pc is very busy, the work waits a moment'}[r_]); said = r_
             time.sleep(2); r_ = pause_reason(kind, arg)
         JOBS.waiting.pop(threading.get_ident(), None)
         STATE['paused'] = False
@@ -409,6 +409,11 @@ def worker():
         job = {'kind': kind, 'arg': arg if kind in ('analyse', 'remux', 'proxy') else {k: arg.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'hook')}, 'since': time.time(), 'stage': 'Starting', 'pct': 0, 'est': tempo_est(kind, arg)}
         STATE['job'] = job; t0 = time.time(); ok = False
         LANG_TL.v = arg.get('language') if isinstance(arg, dict) else None
+        if not LANG_TL.v:   # the language you set for this stream
+            try:
+                sid_ = arg if isinstance(arg, str) else (arg.get('sid') if isinstance(arg, dict) else None)
+                if sid_: LANG_TL.v = load_sess(sid_).get('language') or None
+            except Exception: pass
         if kind in ('analyse', 'remux', 'proxy'): use_game(arg)
         elif isinstance(arg, dict): use_game(arg.get('sid'), arg.get('start'))
         try:

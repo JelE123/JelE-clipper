@@ -127,7 +127,7 @@ DEFAULTS = {
     'kf_box': [1440, 80, 460, 170],     # where the killfeed is on a 1920x1080 recording
     'highlight_min': 8,                 # length of the YouTube highlights video in minutes
     'auto_preset': '',                  # style used for the automatic shorts
-    'v': 3,
+    'v': 4,
     'tag': '',                          # empty = twitch.tv/ + your channel from config.js
     'encoder': 'auto',                  # auto tries NVIDIA, AMD and Intel video encoding, then normal x264
     # 6.0
@@ -166,7 +166,7 @@ DEFAULTS = {
     'platform': 'tiktok',               # main platform: length and safe zones
     'platforms': ['tiktok', 'shorts', 'reels'],
     'tags_tiktok': '', 'tags_shorts': '', 'tags_reels': '',
-    'name_tpl': '{title}',              # file names: {title} {date} {time} {layout} (old Dutch names still work)
+    'name_tpl': '{date}_{game}_{title}',   # file names: {title} {date} {time} {layout} {game} (old Dutch names still work)
     'q_min': 70,                        # below this Postklaar-score a short gets a warning
     'safe_zone': '',                    # editor: show the safe zones of this platform
     # 6.3
@@ -175,6 +175,26 @@ DEFAULTS = {
     # 6.4
     'brands': [], 'brand_default': 'jele',   # brand profiles for the videos (the app itself stays JelE)
     'team_dir': '', 'team_name': '', 'team_auto': False,   # shared team folder (OneDrive, Google Drive)
+    # 6.53 and later
+    'doubt_check': True,                # unsure words are heard again and filled in
+    'mixed_lang': True,                 # an unsure bit is also tried in English
+    'cap_loud': True,                   # words you shout get the highlight colour
+    'friends_names': '',                # your friends' names (comma separated): help the speech model
+    'ai_compare': True,                 # the AI compares the best moments two at a time
+    'match_story': True,                # "the whole match in 60 seconds" story
+    'ctx_cards': 1,                     # context cards for strangers (more after "Hard to follow")
+    'slowmo_not_replay': True,          # slow motion where it happens instead of a replay at the end
+    'fx_freeze': True,                  # freeze frame on what you react to (fails, funny)
+    'mic_denoise': True,                # noise filter on your mic track
+    'beat_sync': True,                  # zooms on the beat of the music
+    'blur_names': False,                # blur other players' names when chat is shown big
+    'llm_two_stage': True,              # with both AI models: small filters, smart decides
+    'lang_asked': False,                # the first-time language question was answered
+    'speed_mode': 'normal',             # fast / normal / thorough
+    'cleanup_days': 0,                  # remove work copies and previews older than this (0 = never)
+    'update_channel': 'stable',         # stable or test (new versions first)
+    'game_look': True,                  # game picture a bit fresher per game (like a colour profile)
+    'templates': True,                  # edit template per kind of moment (clutch, funny, fail, rage)
 }
 SETTINGS_F = os.path.join(DATA, 'instellingen.json')
 def load_settings():
@@ -186,6 +206,9 @@ def load_settings():
     if saved.get('v', 1) < 3:   # 6.0.1: updates come from your GitHub repository
         if not saved.get('update_repo'): saved.pop('update_repo', None)
         saved['v'] = 3
+    if saved and saved.get('v', 1) < 4:   # 6.57: neat file names (date, game, title); you already chose a language before
+        if saved.get('name_tpl') in (None, '{title}', '{titel}'): saved['name_tpl'] = '{date}_{game}_{title}'
+        saved['lang_asked'] = True; saved['v'] = 4
     s.update(saved)
     return s
 def save_settings(s):

@@ -2,6 +2,34 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.57 · 13 November 2026
+
+**AI**
+- **1 vs many from the screen**: the agent pictures in Valorant's top bar (grey = dead) tell when you are the last one alive against 2 or more. Seen twice in a row before the peak, the moment gets "1v3" (an estimate; with match data the exact count is used).
+- **Which agent you play**: from your match data, else from the agent select screen. The AI uses it for the story, and the short gets a hashtag (#viper).
+- **Your face on cam**: smiling or laughing near the peak counts as a reaction.
+- **Voice up in cut shorts too**: your mic track now comes along when boring bits are cut out, so your voice stays on top of the game.
+- **Captions in another language**: pick a language under Captions in the editor; the local AI translates, the timing stays.
+- **Friends speak another language**: set it in Settings (Friends speak), their captions are heard in that language.
+- Noise filter before the speech model hears your voice.
+
+**Shorts**
+- **Emoji stickers** (Twemoji): a skull on a fail, crying-laughing on a funny moment, fire on a clutch. Pick one yourself in the sticker panel.
+- **Game crop follows the action**: where most happens on screen, pulled towards the crosshair.
+- Panels for the freeze frame, slow motion and "shown big" in the editor.
+
+**Posting**
+- **Post every day at...**: fill in your time(s) on the Shorts page. With "fill it by itself" on, every short that is ready gets the next free slot, best first. You get the reminder on your phone at that time.
+- **Expected views** on shorts you did not post yet: a rough guess from your views so far and your score model.
+
+**App**
+- **Search everything with Ctrl+K** (or the Search button): streams, shorts, settings and pages.
+- **Loading screen** with the logo while the app starts.
+- **Test button** next to your keys (match data, Twitch, OBS) with a clear message what is wrong.
+- **Allow in firewall** button when your phone cannot connect (Windows asks you once).
+- **Too warm**: heavy work waits when your graphics card is 85 °C or more (NVIDIA), and goes on when it cooled down.
+- New switches in Settings: emoji stickers, game crop, face on cam, agent detection.
+
 ## 6.56 · 12 November 2026
 
 **Picture and sound**

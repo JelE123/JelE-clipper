@@ -65,6 +65,9 @@ def pick_model(purpose='captions', cuda=None):
     name = SET.get('whisper_model', 'auto')
     if cuda is None: cuda = has_cuda()
     if name == 'auto': name = 'large-v3' if cuda else ('large-v3-turbo' if purpose == 'captions' and CORES >= 8 else 'small.en')
+    sm_ = SET.get('speed_mode') or 'normal'   # Fast: the light model for scanning; Thorough: the big model for everything
+    if purpose == 'scan' and sm_ == 'fast' and SET.get('whisper_model', 'auto') == 'auto': name = 'small.en'
+    if purpose == 'scan' and sm_ == 'thorough' and SET.get('whisper_model', 'auto') == 'auto': name = 'large-v3' if cuda else ('large-v3-turbo' if CORES >= 6 else 'medium.en')
     if name in _BAD_MODEL: name = 'medium.en' if purpose == 'captions' and 'medium.en' not in _BAD_MODEL else 'small.en'
     if cur_lang() != 'en': name = name.replace('.en', '')
     return name, cuda

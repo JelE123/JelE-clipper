@@ -240,3 +240,191 @@ def stream_cache(sid, name, key, fn, keep=400):
 def src_key(path):
     try: return [os.path.getsize(path), int(os.path.getmtime(path)), VERSION.split('.')[0]]
     except OSError: return [0, 0, VERSION]
+
+SPEED = {'fast': {'screen': 5, 'doubt': 40, 'judge': 12}, 'normal': {'screen': 15, 'doubt': 150, 'judge': 30}, 'thorough': {'screen': 30, 'doubt': 400, 'judge': 50}}
+def speed_n(k):
+    """how much work per search: Fast, Normal or Thorough (Settings)"""
+    return SPEED.get(SET.get('speed_mode') or 'normal', SPEED['normal'])[k]
+
+def best_loop_end(path, start, end):
+    """for a loop: the end point (in the last 2.5 s) whose picture looks most like the first picture and where it is quiet, so the jump back is smooth"""
+    try:
+        import numpy as np
+        def frames(a, b, fps=10):
+            r = subprocess.run([FF, '-v', 'error', '-ss', f'{a:.2f}', '-t', f'{b - a:.2f}', '-i', path, '-map', '0:v:0', '-vf', f'fps={fps},scale=64:36,format=gray', '-f', 'rawvideo', '-'], capture_output=True, creationflags=NOWIN)
+            n = len(r.stdout) // (64 * 36); return np.frombuffer(r.stdout[:n * 64 * 36], dtype=np.uint8).reshape(n, 36, 64).astype(np.float32) if n else None
+        f0 = frames(start, start + 0.2); fe = frames(max(start + 3, end - 2.5), end)
+        if f0 is None or fe is None or not len(fe): return end
+        env = clip_env(path, max(start + 3, end - 2.5), min(2.5, end - start - 3), 0.1)
+        best, bi = None, len(fe) - 1
+        for i in range(len(fe)):
+            d = float(((fe[i] - f0[0]) ** 2).mean()) / 255.0
+            q = float(env[min(len(env) - 1, i)]) if len(env) else 0
+            sc = d + max(0, q + 30) * 0.4   # loud = a bad place to jump
+            if best is None or sc < best: best, bi = sc, i
+        return round(max(start + 3, end - 2.5) + bi / 10.0, 2)
+    except Exception: return end
+
+# ---------------------------------------------------------------- how many views a moment like this usually gets
+def predict_views(keys):
+    """from the views you filled in: moments with the same labels -> 'high', 'normal' or 'low' (needs 6 shorts with views)"""
+    try:
+        vw = [e for e in lib_load().values() if (e.get('views') or 0) > 0 and e.get('sid')][-80:]
+        if len(vw) < 6: return None
+        lv = lambda e: math.log10(e['views'] + 1); avg = sum(lv(e) for e in vw) / len(vw)
+        ks = set(keys or []); num = den = 0.0
+        for e in vw:
+            f = set(feat_of(e) or [])
+            if not f: continue
+            sim = len(ks & f) / max(1, len(ks | f))
+            if sim > 0.2: num += sim * (lv(e) - avg); den += sim
+        if den < 0.5: return None
+        d = num / den
+        return 'high' if d > 0.25 else 'low' if d < -0.25 else 'normal'
+    except Exception: return None
+
+# ---------------------------------------------------------------- the stream in two sentences
+def stream_summary(moments, stories, port=None):
+    if not moments: return ''
+    types = collections.Counter(((m.get('brief') or {}).get('type') or 'moment') for m in moments)
+    rule = f"{len(moments)} moments: " + ', '.join(f'{n} {k}' for k, n in types.most_common(4)) + (f", and {len(stories)} stor{'y' if len(stories) == 1 else 'ies'} that link moments" if stories else '') + '.'
+    if not port: return rule
+    try:
+        rows = '\n'.join(f"- {int(m['t'] // 60)}:{int(m['t'] % 60):02d} {((m.get('brief') or {}).get('about') or m.get('title') or '')[:80]}" for m in sorted(moments, key=lambda m: m['t'])[:15])
+        a = llm_chat([{'role': 'system', 'content': 'Summarise a gaming stream in at most 2 short sentences for the streamer, plain and friendly, no hashtags, no emojis.'},
+                      {'role': 'user', 'content': 'Moments of the stream:\n' + rows}], 90, 0.4, port)
+        a = re.sub(r'\s+', ' ', a or '').strip()
+        return a[:280] if len(a) > 20 else rule
+    except Exception: return rule
+
+# ---------------------------------------------------------------- captions in another language (local AI)
+def translate_lines(lines, to='en', port=None):
+    """['line', ...] -> the same lines in the other language (one per line), or None"""
+    port = port or llm_start()
+    if not port or not lines: return None
+    name = {'en': 'English', 'nl': 'Dutch'}.get(to, 'English')
+    body = '\n'.join(f'{i + 1}. {l}' for i, l in enumerate(lines[:60]))
+    a = llm_chat([{'role': 'system', 'content': f'Translate these caption lines of a gaming clip to {name}. Keep it short and natural, like the streamer talks. Keep game names (agents, weapons, maps) as they are. Answer with the same numbered list, one line per number, nothing else.'},
+                  {'role': 'user', 'content': body}], 900, 0.2, port)
+    out = {}
+    for ln in (a or '').splitlines():
+        m = re.match(r'\s*(\d+)[.)]\s*(.+)', ln)
+        if m: out[int(m.group(1)) - 1] = m.group(2).strip()
+    if len(out) < max(1, len(lines[:60]) * 0.7): return None
+    return [out.get(i, l) for i, l in enumerate(lines[:60])] + lines[60:]
+
+# ---------------------------------------------------------------- a demo stream to try the app without streaming first
+def make_demo():
+    """a 70 second practice video (made here, no footage of anyone), with two Clip presses, so you can try every step"""
+    d_ = os.path.join(DATA, 'demo'); os.makedirs(d_, exist_ok=True); out = os.path.join(d_, 'demo_stream.mp4')
+    if not os.path.exists(out):
+        vf = ("drawbox=x=0:y=0:w=iw:h=ih:color=0x0b1020@0.35:t=fill,drawtext=text='DEMO STREAM':x=40:y=40:fontsize=52:fontcolor=white,"
+              "drawtext=text='Round %{eif\\:1+t/20\\:d}':x=(w-tw)/2:y=30:fontsize=40:fontcolor=white,"
+              "drawtext=text='KILLED BY':x=(w-tw)/2:y=h/3:fontsize=70:fontcolor=white:enable='between(t,52,58)',"
+              "drawbox=x=1460:y=80:w=420:h=60:color=black@0.5:t=fill:enable='between(t,18,26)',"
+              "drawtext=text='You  [Vandal]  Enemy':x=1480:y=95:fontsize=30:fontcolor=white:enable='between(t,18,26)'")
+        af = "aevalsrc='0.25*sin(2*PI*220*t)*between(mod(t,9),0,0.25)+0.6*sin(2*PI*660*t)*between(t,20,20.4)+0.6*sin(2*PI*600*t)*between(t,45,46)':s=48000:d=70"
+        r = run(['-y', '-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=30:d=70', '-f', 'lavfi', '-i', af, '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+                 '-c:a', 'aac', '-shortest', out], capture_output=True, text=True, errors='replace')
+        if not os.path.exists(out): raise RuntimeError('making the demo failed: ' + (r.stderr or '')[-200:])
+    s = new_session(title='Demo stream (practice)', path=out, start=time.time())
+    sid = s['id'] if isinstance(s, dict) else s
+    s = load_sess(sid); s['demo'] = True; s['markers'] = [{'t': 21.0, 'src': 'paneel', 'note': 'demo'}, {'t': 46.0, 'src': 'paneel', 'note': 'demo'}]; save_sess(s)
+    JOBS.put(('analyse', sid)); return sid
+
+REF_DIR = os.path.join(DATA, 'voorbeeldshorts')   # reference shorts you like (only for yourself)
+
+# ---------------------------------------------------------------- the Test button next to every key (the keys never leave config.js)
+def key_test(which):
+    try:
+        if which == 'henrik':
+            key, name, tag = CFG.get('HENRIK_KEY'), CFG.get('RIOT_NAME'), CFG.get('RIOT_TAG')
+            if not key: return {'ok': False, 'why': 'No HenrikDev key in config.js'}
+            if not (name and tag): return {'ok': False, 'why': 'Your Riot name and tag are missing in config.js'}
+            d = http_json(f'https://api.henrikdev.xyz/valorant/v2/account/{urllib.parse.quote(name)}/{urllib.parse.quote(tag)}', {'Authorization': key})
+            return {'ok': bool((d or {}).get('data')), 'why': 'Works: your account was found' if (d or {}).get('data') else 'The key works, but your account was not found'}
+        if which == 'twitch':
+            cid, sec = CFG.get('TWITCH_CLIENT_ID'), CFG.get('TWITCH_CLIENT_SECRET')
+            if not (cid and sec): return {'ok': False, 'why': 'No Twitch app in config.js'}
+            tok = http_json('https://id.twitch.tv/oauth2/token', data=urllib.parse.urlencode({'client_id': cid, 'client_secret': sec, 'grant_type': 'client_credentials'}).encode()).get('access_token')
+            return {'ok': bool(tok), 'why': 'Works: Twitch said yes' if tok else 'Twitch said no'}
+        if which == 'obs':
+            ok = bool(getattr(obs, 'ok', False))
+            return {'ok': ok, 'why': 'Connected to OBS' if ok else 'Not connected: is OBS open and the websocket on (Tools > WebSocket Server Settings)?'}
+    except urllib.error.HTTPError as e:
+        return {'ok': False, 'why': {401: 'The key is wrong (401)', 403: 'The key is not allowed (403)', 404: 'Not found (404): check your name and tag', 429: 'Too many tries, wait a minute'}.get(e.code, f'Error {e.code}')}
+    except Exception as e: return {'ok': False, 'why': 'No connection: ' + str(e)[:80]}
+    return {'ok': False, 'why': 'Unknown key'}
+
+# ---------------------------------------------------------------- captions in another language (the local AI translates, the timing stays)
+def translate_words(words, to='en'):
+    """words [(a, b, text, ...)] -> the same lines in another language. each line keeps its time; the new words share it evenly"""
+    if not words or not llm_ready(): return words
+    lines = []; cur = []
+    for w in words:
+        if cur and (w[0] - cur[-1][1] > 0.5 or len(cur) >= 10 or re.search(r'[.!?]$', cur[-1][2])): lines.append(cur); cur = []
+        cur.append(w)
+    if cur: lines.append(cur)
+    name = {'en': 'English', 'nl': 'Dutch', 'de': 'German', 'fr': 'French', 'es': 'Spanish'}.get(to, to)
+    src = '\n'.join(f'{i + 1}. ' + ' '.join(x[2] for x in ln if x[2] != UNCLEAR) for i, ln in enumerate(lines))
+    msg = [{'role': 'system', 'content': f'Translate gaming stream captions into casual spoken {name}. Keep names of agents, weapons and players. Keep it short. Answer only JSON like {{"1": "...", "2": "..."}}.'},
+           {'role': 'user', 'content': src}]
+    try:
+        r = llm_chat(msg, 900, 0.2, llm_start()); m = re.search(r'\{.*\}', r or '', re.S); d = json.loads(m.group(0)) if m else {}
+    except Exception: traceback.print_exc(); return words
+    out = []
+    for i, ln in enumerate(lines):
+        tx = str(d.get(str(i + 1)) or '').split()
+        if not tx: out += ln; continue
+        a, b = ln[0][0], ln[-1][1]; step = (b - a) / len(tx)
+        out += [(round(a + k * step, 2), round(a + (k + 1) * step, 2), t_) + tuple(ln[0][3:]) for k, t_ in enumerate(tx)]
+    return out
+
+# ---------------------------------------------------------------- a posting plan that fills itself
+def plan_fill(lib=None, days=7):
+    """every short that is ready to post (and not planned) gets the next free time slot ("every day at 18:00"). best ones first"""
+    slots = [x.strip() for x in str(SET.get('post_slots') or '').replace(';', ',').split(',') if re.fullmatch(r'\d{1,2}:\d{2}', x.strip())]
+    if not slots: return 0
+    own = lib is None; lib = lib if lib is not None else lib_load(); now = time.time()
+    taken = {round(e['plan_at'] / 60) for e in lib.values() if e.get('plan_at')}
+    free = []
+    for d in range(days + 1):
+        base = time.localtime(now + d * 86400)
+        for sl in slots:
+            hh, mm = map(int, sl.split(':'))
+            t = time.mktime((base.tm_year, base.tm_mon, base.tm_mday, hh, mm, 0, 0, 0, -1))
+            if t > now + 600 and round(t / 60) not in taken: free.append(t)
+    free.sort(); n = 0
+    ready = sorted([(fn, e) for fn, e in lib.items() if e.get('status') == 'goed' and not e.get('plan_at') and not e.get('posted_on') and not e.get('archived') and not e.get('test')],
+                   key=lambda x: -(x[1].get('score') or 0))
+    for (fn, e), t in zip(ready, free):
+        e['plan_at'] = t; e['plan_done'] = False; e['plan_auto'] = True; short_settle(e); n += 1
+    if n and own: lib_save(lib)
+    return n
+
+def predict_views(e):
+    """a rough guess of the views a short will get: your median views, times how much your score model likes this kind of moment"""
+    try:
+        vs = sorted(x['views'] for x in lib_load().values() if (x.get('views') or 0) > 0)
+        if len(vs) < 5: return None
+        med = vs[len(vs) // 2]; p = taste2_prob(feat_of(e) or [])
+        if p is None: return None
+        return int(round(med * (0.4 + 1.6 * p), -1 if med > 100 else 0))
+    except Exception: return None
+
+def action_x(path, start, dur, default=0.5):
+    """where the action is, left to right (0..1): the columns with the most movement over the clip, pulled towards the middle
+    (in shooters the crosshair, and so the action, is in the middle). stays at default when nothing stands out"""
+    import numpy as np
+    W, H = 320, 180
+    r = subprocess.run([FF, '-hide_banner', '-loglevel', 'error', '-ss', f'{max(0, start):.2f}', '-t', f'{max(1, dur):.2f}', '-i', path, '-map', '0:v:0',
+                        '-vf', f'fps=4,scale={W}:{H}', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], capture_output=True, creationflags=NOWIN)
+    n = len(r.stdout) // (W * H)
+    if n < 4: return default
+    f = np.frombuffer(r.stdout[:n * W * H], dtype=np.uint8).reshape(n, H, W).astype(np.int16)
+    d = np.abs(np.diff(f, axis=0))[:, int(H * 0.12):int(H * 0.88), :]   # leave out the top and bottom HUD
+    col = d.mean(axis=(0, 1)); col = np.convolve(col, np.ones(41) / 41, mode='same')
+    x = np.arange(W) / W; score = col * np.exp(-((x - 0.5) ** 2) / (2 * 0.18 ** 2))
+    if col.max() < 3 or score.max() < 1.3 * np.median(score): return default
+    best = float(np.argmax(score)) / W
+    return round(min(0.75, max(0.25, 0.5 + (best - 0.5) * 0.7)), 3)

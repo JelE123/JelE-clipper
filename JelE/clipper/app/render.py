@@ -54,7 +54,29 @@ def overview(sid, n=800):
         if 0 <= i < n: chat[i] += 1
     return {'dur': dur, 'peaks': peaks, 'chat': chat, 'markers': [m['t'] for m in s.get('markers', [])],
             'moments': [{'id': m['id'], 'start': m['start'], 'end': m['end']} for m in s.get('moments', [])], 'has_words': bool(load_transcript(sid)),
-            'game': [{'t': e['t'], 'label': e['label'], 'round': e.get('round'), 'weapon': e.get('weapon', '')} for e in s.get('game_events', [])], 'kills': s.get('game_kills', [])}
+            'game': [{'t': e['t'], 'label': e['label'], 'round': e.get('round'), 'weapon': e.get('weapon', '')} for e in s.get('game_events', [])], 'kills': s.get('game_kills', []),
+            **overview_bands(sid, s)}
+
+def overview_bands(sid, s):
+    """what the app saw over the whole stream, as bands: talking, fights (gunshots), laughing and screaming"""
+    out = {'talk': [[round(x['a'], 1), round(x['b'], 1)] for x in (s.get('talk') or [])][:300], 'fights': [], 'laughs': []}
+    try:
+        d = json.load(open(os.path.join(sdir(sid), 'cache_sound.json'), encoding='utf-8'))
+        res = list(d.values())[-1]; step = 0.5
+        def runs(flag, minlen):
+            segs = []; a = None
+            for i, r in enumerate(res):
+                on = flag(i, r)
+                if on and a is None: a = i
+                if not on and a is not None:
+                    if (i - a) * step >= minlen: segs.append([round(a * step, 1), round(i * step, 1)])
+                    a = None
+            return segs[:400]
+        sh = [r.get('shots', 0) for r in res]
+        out['fights'] = runs(lambda i, r: sum(sh[max(0, i - 3):i + 3]) >= 3, 2)
+        out['laughs'] = runs(lambda i, r: r.get('laugh', 0) > 0.45 or r.get('scream', 0) > 0.5, 1)
+    except Exception: pass
+    return out
 
 def words_for(sid, job, path, start, dur, work):
     """the words you kept in the editor, else what was heard during the analysis, else listen now"""
@@ -73,6 +95,7 @@ def words_for(sid, job, path, start, dur, work):
     prog('Listening to what you say', 4); wav = os.path.join(work, 'a.wav'); extract_wav(path, start, dur, wav)
     return [(a + start, b + start, w) for a, b, w in transcribe(wav, 'captions', lambda f: prog(None, 5 + 25 * f))]
 
+AGENT_TL = threading.local()
 def post_text(hook, words):
     """a ready-to-paste title, description and hashtags for TikTok / YouTube Shorts / Reels"""
     said = ' '.join(w[2] for w in words if w[2] != UNCLEAR).lower()
@@ -80,6 +103,8 @@ def post_text(hook, words):
     tags = ((SET.get('game_hashtags') or {}).get(g) or (SET.get('hashtags') if g == 'valorant' else '') or P.get('hashtags') or '').split()
     for k, v in (P.get('word_tags') or {}).items():
         if re.search(r'\b' + re.escape(k) + r'\b', said) and v not in tags: tags.insert(2, v)
+    ag_ = getattr(AGENT_TL, 'v', None)
+    if ag_ and ('#' + ag_.lower()) not in tags: tags.insert(min(len(tags), 2), '#' + re.sub(r'\W', '', ag_.lower()))   # the agent you played
     if g == 'valorant' and gamewords:   # the agent, weapon or map you talk about gets its own hashtag (#viper, #operator)
         for nm in list(gamewords.AGENTS)[:40] + gamewords.WEAPONS + gamewords.MAPS:
             if len(nm) >= 4 and re.search(r'\b' + re.escape(nm.lower()) + r'\b', said):
@@ -129,10 +154,15 @@ def render(job):
 def _render(job):
     sid = job['sid']; s = load_sess(sid); path = s['path']
     start = float(job['start']); end = float(job['end']); dur = max(1.0, end - start)
+    if job.get('loop') and not job.get('parts') and dur > 8 and not job.get('preview'):   # the best point to jump back to the start
+        e2_ = best_loop_end(s['path'], start, end)
+        if abs(e2_ - end) > 0.05: log(f'Loop: ends {end - e2_:.1f} s earlier, where it flows best into the start'); end = e2_; dur = max(1.0, end - start)
     base_name = job.get('title') or s['title'] + '_' + fmt(start).replace(':', 'm')
     tpl = (SET.get('name_tpl') or '{title}').replace('{titel}', '{title}').replace('{datum}', '{date}').replace('{tijd}', '{time}').replace('{indeling}', '{layout}')
     if not job.get('test') and not job.get('preview') and tpl != '{title}':
-        base_name = tpl.replace('{title}', base_name).replace('{date}', time.strftime('%Y-%m-%d')).replace('{time}', time.strftime('%H%M')).replace('{layout}', job.get('layout') or SET.get('layout', 'split'))
+        try: g_ = game_for(sid, start) or ''
+        except Exception: g_ = ''
+        base_name = tpl.replace('{title}', base_name).replace('{date}', time.strftime('%Y-%m-%d')).replace('{time}', time.strftime('%H%M')).replace('{layout}', job.get('layout') or SET.get('layout', 'split')).replace('{game}', g_).replace('__', '_')
     name = re.sub(r'[^\w-]+', '_', base_name).strip('_')[:70] or 'short'
     work = os.path.join(sdir(sid), 'tmp_' + uuid.uuid4().hex[:6]); os.makedirs(work, exist_ok=True)
     dst = os.path.join(OUT, f'{name}.mp4'); i = 2
@@ -142,7 +172,7 @@ def _render(job):
         fx = job.get('fx')
         if fx is None and not job.get('parts'): fx = fx_suggest(sid, start, end, job)   # automatic shorts get the suggested effects
         fx = fx or {}
-        ws = []; ztimes = []; cuts_at = []; prepared = False; kf_times = []; stickers = []; chapters = []; focus = []
+        ws = []; ztimes = []; cuts_at = []; prepared = False; MEZZ_MIC = False; kf_times = []; stickers = []; chapters = []; focus = []
         teaser_len = 0.0; replay_at = None; replay_len = 0.0
         if job.get('parts'):   # montage / highlights: several moments glued together
             prog('Preparing the montage', 3); parts = []; tt = 0.0
@@ -208,7 +238,10 @@ def _render(job):
                         else: segs.append((path, start + x_, start + y_, v_)); cur_ = y_
                     if b_ - cur_ > 0.04: segs.append((path, start + cur_, start + b_, 1.0))
                 if rp: segs.append((path, start + rp['a'], start + rp['b'], rp['speed']))
-                path = make_mezz(segs, work); prepared = True
+                mic0_ = 0
+                if SET.get('voice_up', True) and len(audio_tracks(path)) > 1:   # your mic track comes along, so the voice stays up in cut shorts too
+                    mt0_ = int(SET.get('mic_track') or 0); mic0_ = (stream_of(path, mt0_) if mt0_ > 0 else find_mic(path)[0]) or 0
+                path = make_mezz(segs, work, mic0_); prepared = True; MEZZ_MIC = mic0_ > 1
                 main_len = sum(b_ - a_ for a_, b_ in keep) + extra_(1e9)
                 mp = lambda t_: teaser_len + remap(t_, keep) + extra_(t_)
                 for k_, x_, y_, v_ in ins_:
@@ -242,6 +275,9 @@ def _render(job):
         cx, cy, cw, ch = [int(v * k) for v in cam]
         if layout == 'split' and cw < 20: layout = 'gameonly'
         OW, OH = (1920, 1080) if layout == 'landscape' else (1080, 1920); FRAME_INPUTS = 0
+        try: gl_ = game_for(sid, o_start) if SET.get('game_look', True) else None
+        except Exception: gl_ = None
+        LK = ({'valorant': 'eq=saturation=1.12:contrast=1.04', 'cs2': 'eq=saturation=1.1:contrast=1.05', 'fortnite': 'eq=saturation=1.08:contrast=1.03'}.get(gl_, 'eq=saturation=1.06:contrast=1.03') + ',') if gl_ else ''   # a colour profile per game
         style = job.get('style') or SET.get('cap_style') or 'jele'
         caps = None; prog('Preparing', 25)
         # from here on every time is "seconds into the short"; the input starts at `start`
@@ -256,6 +292,10 @@ def _render(job):
                     fw = [(float(w[0]), float(w[1]), censor(str(w[2])) if job.get('bleep') and SWEAR.match(str(w[2])) else str(w[2]), 'f') for w in job['friend_words'] if w[2] != UNCLEAR and start <= float(w[0]) < end and (replay_at is None or float(w[0]) - start < replay_at)]
                     mine = [w for w in cws if not any(f_[0] - 0.15 <= w[0] <= f_[1] + 0.15 and w[2].lower() == f_[2].lower() for f_ in fw)]   # the same word heard on both tracks: keep it once, as theirs
                     cws = sorted(mine + fw, key=lambda w: w[0])
+                if job.get('cap_lang') and job['cap_lang'] not in ('', 'same', cur_lang()):   # captions in another language: the local AI translates them
+                    try:
+                        prog('Translating the captions', 31); cws = translate_words(cws, job['cap_lang'])
+                    except Exception: traceback.print_exc()
                 EMPH_TL.v = set()
                 if SET.get('cap_loud', True) and not prepared and not job.get('parts'):   # the words you shout get the highlight colour
                     try: EMPH_TL.v = loud_words(path, start, end, cws, work)
@@ -263,7 +303,7 @@ def _render(job):
                 prog('Drawing the captions', 32)
                 cap_scale = float(job.get('cap_scale') or SET.get('cap_scale') or 1.0)
                 ec_on = job.get('endcard', SET.get('endcard', True)) and dur > 6 and not job.get('loop')
-                caps = caption_track(cws, start if not prepared and not job.get('parts') else 0.0, dur - 2.2 if ec_on else dur, work, style, OW, int(300 * max(1.0, cap_scale)), cap_scale, job.get('cap_anim') or SET.get('cap_anim') or 'pop')
+                caps = caption_track(cws, start if not prepared and not job.get('parts') else 0.0, dur - 2.2 if ec_on else dur, work, style, OW, int(300 * max(1.0, cap_scale)), cap_scale, job.get('cap_anim') or fx.get('cap_anim') or SET.get('cap_anim') or 'pop')
             except Exception: log('Captions failed, making it without'); traceback.print_exc()
         zev = zoom_pick(ztimes, dur) if job.get('zoom', SET.get('auto_zoom', True)) else []
         if replay_at is not None: zev = [z for z in zev if z < replay_at]
@@ -273,9 +313,12 @@ def _render(job):
         inputs = ['-ss', f'{start:.3f}', '-t', f'{dur:.3f}', '-i', path]
         tag_y = OH - 120
         game_x = float(job['game_x']) if job.get('game_x') is not None else SET['game_x']
+        if job.get('game_x') is None and SET.get('action_crop', True) and layout in ('split', 'gameonly') and not job.get('preview'):
+            try: game_x = action_x(path, 0 if prepared else start, min(dur, 40), game_x)   # the game crop sits where the action is (most movement, near the crosshair)
+            except Exception: traceback.print_exc()
         if layout == 'gameonly':
             g_h = sh; g_w = int(sh * 1080 / 1920); gx = int(max(0, min(sw - g_w, game_x * sw - g_w / 2)))
-            f = f"[0:v]crop={g_w}:{g_h}:{gx}:0,scale=1080:1920:flags=lanczos{zp(1080, 1920)},setsar=1[base]"
+            f = f"[0:v]crop={g_w}:{g_h}:{gx}:0,{LK}scale=1080:1920:flags=lanczos{zp(1080, 1920)},setsar=1[base]"
             cap_y = 1300; hook_y = 120; kf_pos = (1080 - 40, 330)
         elif layout == 'frame':
             fh = 608; bgk = job.get('bg') or SET.get('frame_bg') or 'blur'; rnd = job.get('round', SET.get('frame_round', False)); brd = job.get('border', SET.get('frame_border', False))
@@ -298,7 +341,7 @@ def _render(job):
             FRAME_INPUTS = nin - 1
             hook_y = (1920 - fh) // 2 - 210; cap_y = (1920 + fh) // 2 + 170; tag_y = 1920 - 190; kf_pos = (1080 - 30, (1920 + fh) // 2 + 20)
         elif layout == 'landscape':
-            f = f"[0:v]scale=1920:1080:flags=lanczos{zp(1920, 1080)},setsar=1[base]"
+            f = f"[0:v]{LK}scale=1920:1080:flags=lanczos{zp(1920, 1080)},setsar=1[base]"
             cap_y = 880; hook_y = 30; kf_pos = (1920 - 40, 120)
         else:
             top_h = int(1080 * ch / max(1, cw))
@@ -316,7 +359,7 @@ def _render(job):
                     if fc: camcrop = f"crop={fc[0]}:{fc[1]}:x='{fc[2]}':y='{fc[3]}'"; log('Cam follows your face')
                 except Exception: traceback.print_exc()
             f = (f"[0:v]split=2[a][b];[a]{camcrop},scale=1080:{top_h}:flags=lanczos,setsar=1[cam];"
-                 f"[b]crop={g_w}:{g_h}:{gx}:0,scale=1080:{bot_h}:flags=lanczos,unsharp=5:5:0.6{zp(1080, bot_h)},setsar=1[game];[cam][game]vstack=2[stk];" +
+                 f"[b]crop={g_w}:{g_h}:{gx}:0,{LK}scale=1080:{bot_h}:flags=lanczos,unsharp=5:5:0.6{zp(1080, bot_h)},setsar=1[game];[cam][game]vstack=2[stk];" +
                  (f"[stk]drawbox=x=0:y={top_h-4}:w=1080:h=8:color={BHEX()}:t=fill[base]" if job.get('divider', SET.get('divider', True)) else "[stk]null[base]"))
             cap_y = top_h + int(bot_h * 0.55); hook_y = top_h - 200; kf_pos = (1080 - 30, top_h + 40)
         if job.get('cap_y') is not None: cap_y = int(float(job['cap_y']) * OH)
@@ -414,6 +457,7 @@ def _render(job):
             if SET.get('voice_up', True) and not prepared and not job.get('parts') and len(audio_tracks(path)) > 1:
                 mt_ = int(SET.get('mic_track') or 0)
                 ms_ = (stream_of(path, mt_) if mt_ > 0 else find_mic(path)[0]) or 0
+            elif SET.get('voice_up', True) and prepared and MEZZ_MIC and len(audio_tracks(path)) > 1: ms_ = 2   # the cut-up video carries your mic as its 2nd track
             if ms_ > 1:
                 dn_ = ',afftdn=nf=-28:tn=1' if SET.get('mic_denoise', True) else ''   # fan and keyboard noise out of your mic (only your mic track)
                 f += (f";[0:a:{ms_ - 1}]{a_fx},highpass=f=90{dn_},acompressor=threshold=0.06:ratio=3:attack=5:release=150,volume=0.5,afade=t=in:d=0.12[vk]"
@@ -472,8 +516,8 @@ def _render(job):
         mo = next((m for m in s.get('moments', []) if m.get('id') == job.get('mid')), {})
         lib = lib_load(); lib[os.path.basename(dst)] = {'test': bool(job.get('test')), 'sid': sid, 'mid': job.get('mid'), 'start': o_start, 'end': o_end, 'layout': layout, 'style': style, 'fx': fx, 'dur': round(dur, 1),
             'title': job.get('hook') or mo.get('title') or '', 'auto': bool(job.get('auto')), 'status': 'nieuw' if job.get('auto') else 'goed',
-            'reasons': mo.get('reasons', []), 'score': mo.get('score', 0), 'session': s.get('title'), 'at': time.time(), 'game': cur_game(), 'cover_t': cover_frame(s, mo, o_start, o_end),
-            'post': post_text(job.get('hook') or mo.get('title') or '', ws or [tuple(w) for w in (job.get('words') or mo.get('words') or [])]),
+            'reasons': mo.get('reasons', []), 'score': mo.get('score', 0), 'session': s.get('title'), 'at': time.time(), 'game': cur_game(), 'cover_t': cover_frame(s, mo, o_start, o_end), 'feat': mo.get('feat'), 'agent': mo.get('agent'),
+            'post': (setattr(AGENT_TL, 'v', mo.get('agent')) or post_text)(job.get('hook') or mo.get('title') or '', ws or [tuple(w) for w in (job.get('words') or mo.get('words') or [])]),
             'opts': {k: job.get(k) for k in ('cap_y', 'cap_scale', 'game_x', 'cam_h', 'progress', 'endcard', 'zoom', 'captions', 'jumpcut', 'sfx', 'voice')}, 'montage': bool(job.get('parts')), 'kind': job.get('kind', 'short')}
         if chapters:   # highlights: chapters for the YouTube description
             lib[os.path.basename(dst)]['post']['description'] = 'Chapters:\n' + '\n'.join(f'{fmt(ct)} {cl}' for ct, cl in chapters) + '\n\n' + lib[os.path.basename(dst)]['post']['description']

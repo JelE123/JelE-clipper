@@ -206,8 +206,12 @@ def friend_words(path, a, b, work):
     wav = os.path.join(work, 'fr.wav')
     r = run(['-y', '-ss', f'{max(0, a):.2f}', '-t', f'{b - a:.2f}', '-i', path, '-map', f'0:a:{st_ - 1}', '-vn', '-af', 'highpass=f=70,lowpass=f=7800', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', wav], capture_output=True)
     if not os.path.exists(wav): return []
-    try: return [[round(x + a, 2), round(y + a, 2), w] for x, y, w in transcribe(wav, 'captions') if w != UNCLEAR]
+    fl_ = (SET.get('friends_lang') or '').strip(); old_ = getattr(LANG_TL, 'v', None)
+    try:
+        if fl_: LANG_TL.v = fl_   # your friends can speak another language than you (you Dutch, a friend English)
+        return [[round(x + a, 2), round(y + a, 2), w] for x, y, w in transcribe(wav, 'captions') if w != UNCLEAR]
     except Exception: traceback.print_exc(); return []
+    finally: LANG_TL.v = old_
 _AF_OK = {'ok': True}
 def extract_wav(path, start, dur, out):
     amap = mic_map(path); _WAVMIC[out] = bool(amap)
@@ -215,7 +219,7 @@ def extract_wav(path, start, dur, out):
     tail = ['-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', out]
     if _AF_OK['ok']:
         # clean the voice a bit: rumble out, quiet words up. helps the speech model
-        r = run(base + ['-af', 'highpass=f=70,lowpass=f=7800,dynaudnorm=f=200:g=11'] + tail, capture_output=True, text=True, errors='replace')
+        r = run(base + ['-af', 'highpass=f=70,lowpass=f=7800,afftdn=nf=-25,dynaudnorm=f=200:g=11'] + tail, capture_output=True, text=True, errors='replace')
         if r.returncode == 0 and os.path.exists(out) and os.path.getsize(out) > 1000: return True
         if getattr(LIVE_TL, 'on', False) or getattr(LIVE_TL, 'reading', False): return False   # a file that is still being recorded: try again later
         _AF_OK['ok'] = False; log('Audio filter does not work with this ffmpeg, continuing without it:', (r.stderr or '').strip()[-200:])
@@ -262,6 +266,7 @@ def analyse(sid):
     path = s.get('path')
     if not path or not os.path.exists(path):
         s['status'] = 'recording not found'; save_sess(s); log('Recording not found:', path); return
+    relisten_ = bool(s.pop('relisten', None))
     s['status'] = 'analyseren'; save_sess(s); log('Analysing:', os.path.basename(path)); prog('Checking audio and chat', 2)
     GAME_TL.v = game_quick(s)['id']
     dur = probe_duration(path); step = 0.5
@@ -315,7 +320,7 @@ def analyse(sid):
         live = live_cache(sid, path); reused = 0
         tkey_ = {'src': src_key(path), 'lang': cur_lang(), 'model': SET.get('whisper_model', 'auto'), 'v': 1}
         try:   # searched before with the same settings: reuse what was heard (with the unsure words already filled in)
-            if not s.get('relisten') and json.load(open(os.path.join(sdir(sid), 'transcript_key.json'), encoding='utf-8')) == tkey_:
+            if not relisten_ and json.load(open(os.path.join(sdir(sid), 'transcript_key.json'), encoding='utf-8')) == tkey_:
                 ALL = [tuple(w) for w in json.load(open(os.path.join(sdir(sid), 'transcript.json'), encoding='utf-8'))]; UNSURE = load_unsure(sid)
                 if ALL: a0 = dur + 1; log('Reusing what was heard last time (same video, same settings)')
         except Exception: pass
@@ -541,6 +546,13 @@ def analyse(sid):
                 prog('Looking at the picture', 75 + 23 * (n + 1) / len(cands))
                 st, en = c.get('start', 0), c.get('end', 0)
                 if en - st < 2: continue
+                if SET.get('smile_scan', True) and not c.get('no_cam'):   # your face on cam: smiling or laughing near the peak counts as a reaction
+                    try:
+                        cam_ = cam_at(s, st) if SET.get('cam_auto', True) else SET['cam']; sw_, _ = probe_size(path); k_ = sw_ / 1920.0
+                        rc_ = tuple(int(v * k_) for v in cam_)
+                        sm_ = stream_cache(sid, 'smile', [src_key(path), round(c['t'] - 4, 1), rc_], lambda: smile_scan(path, max(0, c['t'] - 4), 9, rc_))
+                        if len(sm_) >= 2 and 'you smiled on cam' not in c['reasons']: c['reasons'].append('you smiled on cam'); c['score'] = round(c['score'] * 1.1 + 0.3, 1); c['smile'] = len(sm_)
+                    except Exception: pass
                 vs_ = stream_cache(sid, 'vision', [src_key(path), round(max(0, st - 1), 1), round(min(dur, en + 4), 1), gid, 2], lambda: vision_scan(path, max(0, st - 1), min(dur, en + 4), gid)); c['_scan'] = vs_
                 j = vision_judge(vs_, st, en + 4, c['t'])
                 if not j: continue
@@ -568,18 +580,27 @@ def analyse(sid):
         vi_ = c.get('vision') or {}
         if vi_.get('events') or vi_.get('dead_at'): ev_ = True
         if not ev_ and not c.get('said'): c['no_evidence'] = True
+    # which agent you play (the agent select screen), for the AI's story, the title and the hashtags
+    if cands and (GAME_TL.v or '') == 'valorant' and SET.get('agent_scan', True) and ((md or {}).get('agents') or (vision_ok() and (SET.get('speed_mode') or 'normal') != 'fast')):
+        try:
+            ags_ = (md or {}).get('agents') or stream_cache(sid, 'agents', [src_key(path), round(dur)], lambda: agent_scan(path, dur))   # match data knows it, else the agent select screen
+            for c in cands:
+                pre_ = [a_ for t_, a_ in ags_ if t_ <= c['t']]
+                if pre_: c['agent'] = pre_[-1]
+            if ags_: log('You played ' + ', '.join(dict.fromkeys(a_ for _, a_ in ags_)))
+        except Exception: traceback.print_exc()
     # what is this moment about? a timeline of everything that happens (what you say, shots, laughing, the screen, chat),
     # then the story: where it starts making sense, the payoff, where the reaction is over, and the edit that belongs to it
     if cands and SET.get('brief', True):
         try:
-            top = sorted(cands, key=lambda c: -c['score'])[:int(SET.get('llm_judge_n') or 30)]
+            top = sorted(cands, key=lambda c: -c['score'])[:int(speed_n('judge') if (SET.get('speed_mode') or 'normal') != 'normal' else (SET.get('llm_judge_n') or 30))]
             port = (llm_use('small') if llm_two() else llm_start()) if llm_ready() and SET.get('llm_judge', True) else 0   # both models there: the small one reads all 30 fast
             gname = (GP.get(GAME_TL.v or '') or {}).get('name', GAME_TL.v or '') if GP else (GAME_TL.v or '')
             for n, c in enumerate(top):
                 if c.get('said'): continue   # "clip that" moments keep the cut around what you asked
                 prog('Working out what each moment is about', 86 + 4 * (n + 1) / len(top))
                 texts_ = []
-                if n < int(SET.get('screen_text_n') or 15) and vision_ok():   # the text on screen around it: chat messages, killfeed
+                if n < int(SET.get('screen_text_n') or speed_n('screen')) and vision_ok():   # the text on screen around it: chat messages, killfeed
                     try: texts_ = stream_cache(sid, 'screen', [src_key(path), round(max(0, c['t'] - 60), 1), round(min(dur, c['t'] + 12), 1)], lambda: screen_texts(path, max(0, c['t'] - 60), min(dur, c['t'] + 12)))
                     except Exception: traceback.print_exc()
                     nm_ = []   # names on the screen (chat, killfeed): the doubt check uses them to spell names right
@@ -593,6 +614,7 @@ def analyse(sid):
                     kb_ = killer_name(texts_)
                     if kb_: c['killed_by'] = kb_   # the death screen says who killed you: used for revenge stories
                 lines, items, a0 = moment_timeline(c, ALL or c.get('words') or [], why, step, c.get('_scan'), snd, max(0, c['t'] - 60), c['t'] + 15, texts_)
+                if c.get('agent'): lines.insert(0, f"The streamer plays {c['agent']}.")
                 rb_ = brief_rules(c, items, a0, c['t'])
                 b_ = brief_merge(llm_brief(c, lines, a0, gname, SET.get('language') or 'en', port) if port else {}, rb_, items)
                 if not b_: continue
@@ -698,7 +720,7 @@ def analyse(sid):
         try:
             prog('Checking unsure words', 99)
             nms_ = [n_ for m in moments for n_ in (m.get('screen_names') or [])]
-            new_, left_, opts_, nfix_ = doubt_pass(sid, path, ALL, load_unsure(sid), [(m['start'] - 1, m['end'] + 1) for m in moments], nms_, budget=150)
+            new_, left_, opts_, nfix_ = doubt_pass(sid, path, ALL, load_unsure(sid), [(m['start'] - 1, m['end'] + 1) for m in moments], nms_, budget=speed_n('doubt'))
             if nfix_ or opts_:
                 ALL = new_
                 json.dump(ALL, open(os.path.join(sdir(sid), 'transcript.json'), 'w', encoding='utf-8'))
@@ -790,6 +812,10 @@ def analyse(sid):
     s['no_good'] = no_good
     try:
         s['best5'] = best_with_variety(moments); s['baseline'] = stream_baseline(sid, ALL, dur)
+        for m in moments:
+            pv_ = predict_views(m.get('feat'))
+            if pv_: m['pred'] = pv_   # how a moment like this usually does (from the views you filled in)
+        s['summary'] = stream_summary(moments, stories, llm_start() if (llm_ready() and SET.get('llm_judge', True)) else None)
         tl_ = set(s.get('tclip_learned') or [])
         for m in moments:   # a viewer clipped it: the personal model learns that this kind of moment is good
             if 'tclip' in (m.get('feat') or []) and int(m['t']) not in tl_: taste2_note(m['feat'], True); tl_.add(int(m['t']))

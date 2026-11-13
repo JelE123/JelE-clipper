@@ -38,12 +38,22 @@ def sfx_files():
     return {'boom': save('boom.wav', boom + click), 'whoosh': save('whoosh.wav', whoosh)}
 
 MUSIC_DIR = os.path.join(HERE, 'muziek'); os.makedirs(MUSIC_DIR, exist_ok=True)
+def emoji_list(): return sorted(os.path.basename(f)[:-4] for f in glob.glob(os.path.join(HERE, 'emoji', '*.png')))
 def music_list():
     return sorted(os.path.basename(f) for f in glob.glob(os.path.join(MUSIC_DIR, '*')) if f.lower().endswith(('.mp3', '.wav', '.m4a', '.ogg', '.flac')))
 
 def sticker_png(folder, text, kind='stamp', W=1080, i=0):
     """a stamp like ACE / NO WAY (tilted, orange), a chapter label, or the big WAIT FOR IT / REPLAY text"""
     from PIL import Image, ImageDraw, ImageFilter
+    if kind == 'emoji':   # a picture emoji (Twemoji, in the emoji folder): skull, joy, fire...
+        ep = os.path.join(HERE, 'emoji', re.sub(r'[^a-z0-9]', '', str(text).lower()) + '.png')
+        if os.path.exists(ep):
+            sz = int(230 * (W / 1080 if W < 1500 else 0.85)); em = Image.open(ep).convert('RGBA').resize((sz, sz), Image.LANCZOS)
+            em = em.rotate(-8 if i % 2 == 0 else 7, resample=Image.BICUBIC, expand=True)
+            sh = Image.new('RGBA', em.size, (0, 0, 0, 0)); sh.paste((0, 0, 0, 110), mask=em.split()[3]); sh = sh.filter(ImageFilter.GaussianBlur(7))
+            out = Image.new('RGBA', (em.width + 16, em.height + 16), (0, 0, 0, 0)); out.alpha_composite(sh, (6, 10)); out.alpha_composite(em, (0, 0))
+            p = os.path.join(folder, f'sticker_emoji_{i}.png'); out.save(p); return p
+        kind = 'stamp'
     text = re.sub(r'\s+', ' ', str(text).strip().upper())[:28] or 'NO WAY'
     big = {'teaser': 150, 'replay': 110, 'stamp': 120, 'pill': 80, 'chapter': 58}.get(kind, 110) * (W / 1080 if W < 1500 else 0.85)
     f = font(int(big), 'tag' if kind == 'chapter' else 'caption'); tmp = ImageDraw.Draw(Image.new('RGBA', (1, 1)))
@@ -131,6 +141,20 @@ def fx_suggest(sid, start, end, job=None):
                 else: fx['replay'] = {'a': round(max(0, ra - 1.6), 2), 'b': round(min(dur, ra + 0.8), 2), 'speed': 0.5}
         if SET.get('fx_freeze', True) and cz is not None and br.get('type') in ('fail', 'funny', 'reaction', 'rage') and not fx.get('focus') and 1.0 < cz < dur - 2:
             fx['freeze'] = {'t': round(cz, 2), 'len': 0.8, 'text': 'WAIT...'}   # the picture stops for a second on what you react to
+    # a template per kind of moment: its own pace, sound and text (clutch, funny, fail, rage)
+    TPL = {'clutch': {'cap_anim': 'pop', 'music': 'hype', 'stamp': 'CLUTCH'}, 'skill': {'cap_anim': 'pop', 'music': 'hype'},
+           'funny': {'cap_anim': 'bounce', 'music': 'funny'}, 'fail': {'cap_anim': 'bounce', 'music': 'funny', 'stamp': 'FAIL'},
+           'rage': {'cap_anim': 'word', 'music': 'tension', 'stamp': 'RAGE'}}
+    tp = TPL.get(br.get('type')) if SET.get('templates', True) else None
+    if tp and peak is not None:
+        fx['template'] = br.get('type'); fx['cap_anim'] = tp['cap_anim']
+        if not fx.get('music_mood'): fx['music_mood'] = tp['music']; fx['music_file'] = music_for_mood(tp['music'])
+        real_ = tp.get('stamp') != 'CLUTCH' or 'round_win' in ((mm or {}).get('vision') or {}).get('events', []) or 'clutch' in str(((mm or {}).get('game') or {}).get('label', '')).lower()
+        em_ = {'fail': 'skull', 'funny': 'joy', 'clutch': 'fire', 'skill': 'fire', 'rage': 'angry', 'reaction': 'scream'}.get(br.get('type'))
+        if em_ and SET.get('emoji', True) and peak + 0.2 < dur - 0.8 and not any(x.get('kind') == 'emoji' for x in fx.get('stickers', [])):   # an emoji that fits the kind of moment
+            fx.setdefault('stickers', []).append({'t': round(peak + 0.2, 2), 'dur': 1.4, 'text': em_, 'x': 0.8, 'y': 0.42, 'kind': 'emoji'})
+        if tp.get('stamp') and real_ and not any(x.get('kind') == 'stamp' for x in fx.get('stickers', [])) and peak + 0.3 < dur - 1:
+            fx.setdefault('stickers', []).append({'t': round(peak + 0.3, 2), 'dur': 1.6, 'text': tp['stamp'], 'x': 0.5, 'y': 0.3, 'kind': 'stamp'})
     return fx
 
 def clip_peak(s, ws, start, end):
@@ -149,8 +173,10 @@ def clip_peak(s, ws, start, end):
     if mk: return max(0.5, mk[0] - 1.0), 'marker'
     return (dur * 0.7 if dur > 4 else None), 'guess'
 
-def make_mezz(parts, work):
-    """glue pieces of recordings into one temporary video (for montages and for cutting out dead air)"""
+def make_mezz(parts, work, mic=0):
+    """glue pieces of recordings into one temporary video (for montages and for cutting out dead air).
+    mic > 1: your mic track comes along as a second sound track, so 'voice up' also works in cut shorts"""
+    if mic > 1 and len({pt[0] for pt in parts}) != 1: mic = 0
     def one(i, pt):
         p, a, b = pt[:3]; sp = pt[3] if len(pt) > 3 else 1.0
         out = os.path.join(work, f'part{i}.mp4')
@@ -159,7 +185,7 @@ def make_mezz(parts, work):
             L = max(0.2, b - a)
             r = run(['-y', '-ss', f'{a:.3f}', '-i', p, '-f', 'lavfi', '-t', f'{L:.3f}', '-i', 'anullsrc=r=48000:cl=stereo',
                      '-filter_complex', f'[0:v:0]trim=end_frame=1,{vf},loop=loop=-1:size=1:start=0,setpts=N/60/TB,fps=60,trim=duration={L:.3f}[v]',
-                     '-map', '[v]', '-map', '1:a', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '15', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2', '-t', f'{L:.3f}', out],
+                     '-map', '[v]', '-map', '1:a'] + (['-map', '1:a'] if mic > 1 else []) + ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '15', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2', '-t', f'{L:.3f}', out],
                     capture_output=True, text=True, errors='replace')
             if r.returncode != 0 or not os.path.exists(out): raise RuntimeError('making a freeze frame failed: ' + (r.stderr or '')[-200:])
             return out
@@ -173,7 +199,7 @@ def make_mezz(parts, work):
         ln_ = (b - a) / max(sp, 0.01)
         if ln_ > 0.2: af += f',afade=t=in:d=0.015,afade=t=out:st={max(0.0, ln_ - 0.02):.3f}:d=0.02'   # no click on the cut
         thr = str(max(2, CORES // min(len(parts), 3)))
-        r = run(['-y', '-ss', f'{a:.3f}', '-t', f'{b - a:.3f}', '-i', p, '-map', '0:v:0', '-map', '0:a:0?', '-vf', vf, '-af', af,
+        r = run(['-y', '-ss', f'{a:.3f}', '-t', f'{b - a:.3f}', '-i', p, '-map', '0:v:0', '-map', '0:a:0?'] + (['-map', f'0:a:{mic - 1}?'] if mic > 1 else []) + ['-vf', vf, '-af', af,
                  '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '15', '-threads', thr, '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2', out], capture_output=True, text=True, errors='replace')
         if r.returncode != 0 or not os.path.exists(out): raise RuntimeError('making a piece failed: ' + (r.stderr or '')[-200:])
         return out
@@ -187,6 +213,26 @@ def make_mezz(parts, work):
     out = os.path.join(work, 'mezz.mp4')
     r = run(['-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', out], capture_output=True, text=True, errors='replace')
     if r.returncode != 0: raise RuntimeError('joining the pieces failed: ' + (r.stderr or '')[-200:])
+    # the sound runs on softly over a cut (120 ms), so a cut never sounds like a hard click
+    if len(parts) > 1 and SET.get('audio_overlap', True):
+        try:
+            T = 0.0; tails = []
+            for i, pt in enumerate(parts):
+                p_, a_, b_ = pt[:3]; sp_ = pt[3] if len(pt) > 3 else 1.0
+                T += (b_ - a_) if sp_ == 0 else (b_ - a_) / max(sp_, 0.01)
+                nxt = parts[i + 1] if i + 1 < len(parts) else None
+                if nxt and sp_ == 1.0 and (nxt[3] if len(nxt) > 3 else 1.0) != 0 and abs(nxt[1] - b_) > 0.3: tails.append((p_, b_, T))
+            tails = tails[:20]
+            if tails:
+                ins = ['-i', out]; fl = []
+                for k, (p_, b_, T_) in enumerate(tails, 1):
+                    ins += ['-ss', f'{b_:.3f}', '-t', '0.16', '-i', p_]
+                    fl.append(f"[{k}:a:0]aformat=sample_rates=48000:channel_layouts=stereo,afade=t=out:st=0:d=0.14,volume=0.8,adelay={int(T_ * 1000)}|{int(T_ * 1000)}[t{k}]")
+                fl.append('[0:a]' + ''.join(f'[t{k}]' for k in range(1, len(tails) + 1)) + f'amix=inputs={len(tails) + 1}:duration=first:normalize=0[a]')
+                out2 = os.path.join(work, 'mezz2.mp4')
+                r2 = run(['-y'] + ins + ['-filter_complex', ';'.join(fl), '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', out2], capture_output=True, text=True, errors='replace')
+                if r2.returncode == 0 and os.path.exists(out2): return out2
+        except Exception: traceback.print_exc()
     return out
 
 def music_beats(mfile, offset, dur):
@@ -300,7 +346,7 @@ def match_events(s):
     url = f'https://api.henrikdev.xyz/valorant/v4/matches/{reg}/pc/{urllib.parse.quote(name)}/{urllib.parse.quote(tag)}?size=10'
     try: data = http_json(url, {'Authorization': key}).get('data') or []
     except Exception as e: log('Could not fetch match data:', e); return None
-    evs = []; kills_me = []; off = float(SET.get('match_offset') or 0)
+    evs = []; kills_me = []; agents = []; off = float(SET.get('match_offset') or 0)
     for m in data:
         md = m.get('metadata') or {}
         st = md.get('started_at') or md.get('game_start_patched')
@@ -314,6 +360,8 @@ def match_events(s):
         me = next((p for p in players if str(p.get('name', '')).lower() == name.lower() and str(p.get('tag', '')).lower() == tag.lower()), None)
         if not me: continue
         mypu = me.get('puuid'); myteam = me.get('team_id') or me.get('team')
+        ag_ = (me.get('agent') or {}).get('name') if isinstance(me.get('agent'), dict) else (me.get('character') or me.get('agent'))
+        if ag_: agents.append([ms + off - t0, str(ag_)])   # the agent you played in this match
         team_of = {p.get('puuid'): (p.get('team_id') or p.get('team')) for p in players}
         mapname = ((md.get('map') or {}).get('name') if isinstance(md.get('map'), dict) else md.get('map')) or ''
         rounds = m.get('rounds') or []
@@ -347,7 +395,7 @@ def match_events(s):
                 evs.append({'t0': ms + ts[0] + off - t0, 't': ms + ts[-1] + off - t0, 'label': label, 'strength': strength, 'round': rn + 1,
                             'map': mapname, 'weapon': mine[-1][3] if mine else ''})
     log(f'Matchdata: {len(evs)} big moments found ({len(kills_me)} of them your kills)')
-    return {'events': evs, 'kills': kills_me}
+    return {'events': evs, 'kills': kills_me, 'agents': sorted(agents)}
 
 def twitch_clip_times(s):
     """clips viewers made on Twitch during this recording"""

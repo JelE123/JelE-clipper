@@ -98,14 +98,20 @@ def update_source():
         repo = re.sub(r'^(https?://)?(www\.)?github\.com/', '', repo).strip('/')
         repo = '/'.join(repo.split('/')[:2])
         if not re.match(r'^[\w.-]+/[\w.-]+$', repo): raise ValueError('Enter the repository as name/repo, for example jele/jele-clipper')
-        try: r = http_json(f'https://api.github.com/repos/{repo}/releases/latest', headers={'Accept': 'application/vnd.github+json'})
+        try:
+            if (SET.get('update_channel') or 'stable') == 'test':   # test channel: the newest release, also test versions
+                rs_ = http_json(f'https://api.github.com/repos/{repo}/releases?per_page=8', headers={'Accept': 'application/vnd.github+json'})
+                r = next((x for x in rs_ if not x.get('draft') and any(a.get('name', '').lower().endswith('.zip') for a in x.get('assets', []))), None) or {}
+            else: r = http_json(f'https://api.github.com/repos/{repo}/releases/latest', headers={'Accept': 'application/vnd.github+json'})
         except urllib.error.HTTPError as e:
             if e.code == 404: raise ValueError(f'No release found on GitHub yet ({repo}). Is the repository public?')
             if e.code == 403: raise ValueError('GitHub is not allowing checks for a while. Try again in an hour.')
             raise
         asset = next((a for a in r.get('assets', []) if a.get('name', '').lower().endswith('.zip')), None)
         if not asset: raise ValueError('The newest release on GitHub has no zip')
-        return {'version': (r.get('tag_name') or '').lstrip('vV'), 'notes': r.get('body') or '', 'url': asset['browser_download_url'], 'source': 'github'}
+        man_ = next((a for a in r.get('assets', []) if a.get('name', '').lower() == 'manifest.json'), None)
+        return {'version': (r.get('tag_name') or '').lstrip('vV'), 'notes': r.get('body') or '', 'url': asset['browser_download_url'], 'source': 'github',
+                'manifest': man_['browser_download_url'] if man_ else None, 'tag': r.get('tag_name'), 'repo': repo, 'test': bool(r.get('prerelease'))}
     if CFG.get('UPDATE_URL'):
         mf = http_json(CFG['UPDATE_URL']); return {'version': str(mf.get('version')), 'notes': mf.get('notes', ''), 'url': mf['url'], 'source': 'url'}
     return None
@@ -124,6 +130,8 @@ def update_check(force=False):
 def update_loop():
     time.sleep(30)
     while True:
+        try: cleanup_old()
+        except Exception: pass
         if SET.get('update_repo') or CFG.get('UPDATE_URL'):
             u = update_check(True)
             if u.get('newer'): log(f"New version available: {u['info']['version']} (Settings > Updates)")
@@ -144,21 +152,43 @@ def install_update():
     if UPD['busy']: return {'ok': False, 'why': 'The update is already running'}
     UPD['busy'] = True
     try:
-        import zipfile, io
-        req = urllib.request.Request(info['url'], headers={'User-Agent': 'JelE-Clipper/' + VERSION})
-        data = urllib.request.urlopen(req, timeout=180).read()
-        z = zipfile.ZipFile(io.BytesIO(data))
-        files = []
-        for m in z.infolist():
-            rel = m.filename.split('/', 1)[1] if m.filename.startswith('JelE/') else m.filename
-            if not rel or m.is_dir() or '..' in rel or rel.startswith('/'): continue
-            if os.path.basename(rel).lower() == 'config.js' or rel.replace('\\', '/').startswith('clipper/data/'): continue
-            files.append((m, rel))
-        if not any(rel.replace('\\', '/') == 'clipper/clipper.py' for _, rel in files): raise ValueError('This zip is not a JelE Clipper update')
+        import zipfile, io, hashlib
+        UA = {'User-Agent': 'JelE-Clipper/' + VERSION}
+        def get_(url, t=180): return urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=t).read()
+        def ok_rel(rel): return rel and '..' not in rel and not rel.startswith('/') and os.path.basename(rel).lower() != 'config.js' and not rel.replace('\\', '/').startswith('clipper/data/')
+        files = []   # (rel, bytes)
+        man = None
+        if info.get('manifest'):   # small updates: only the files that changed, each checked against its fingerprint (sha256)
+            try: man = json.loads(get_(info['manifest'], 60).decode('utf-8'))
+            except Exception: man = None
+        if man and isinstance(man.get('files'), dict):
+            changed = []
+            for rel, meta in man['files'].items():
+                if not ok_rel(rel): continue
+                cur = os.path.join(ROOT, rel.replace('/', os.sep))
+                try: same = os.path.getsize(cur) == meta['size'] and hashlib.sha256(open(cur, 'rb').read()).hexdigest() == meta['sha256']
+                except OSError: same = False
+                if not same: changed.append(rel)
+            if changed and len(changed) <= max(8, len(man['files']) // 2) and info.get('tag') and info.get('repo'):
+                for rel in changed:
+                    b_ = get_(f"https://raw.githubusercontent.com/{info['repo']}/{info['tag']}/JelE/{rel}", 60)
+                    if hashlib.sha256(b_).hexdigest() != man['files'][rel]['sha256']: raise ValueError('A downloaded file does not match its fingerprint. The update was stopped, nothing changed.')
+                    files.append((rel, b_))
+                log(f'Small update: {len(changed)} changed files instead of the whole zip')
+        if not files:
+            data = get_(info['url'])
+            z = zipfile.ZipFile(io.BytesIO(data))
+            for m in z.infolist():
+                rel = m.filename.split('/', 1)[1] if m.filename.startswith('JelE/') else m.filename
+                if m.is_dir() or not ok_rel(rel): continue
+                b_ = z.read(m)
+                if man and rel in man.get('files', {}) and hashlib.sha256(b_).hexdigest() != man['files'][rel]['sha256']: raise ValueError('The download does not match its fingerprints. The update was stopped, nothing changed.')
+                files.append((rel, b_))
+            if not any(rel.replace('\\', '/') == 'clipper/clipper.py' for rel, _ in files): raise ValueError('This zip is not a JelE Clipper update')
         # 1: copy of everything this update changes, so you can always go back
         bk = os.path.join(VERS_DIR, f'v{VERSION}_{time.strftime("%Y%m%d_%H%M%S")}.zip'); added = []
         with zipfile.ZipFile(bk, 'w', zipfile.ZIP_DEFLATED) as bz:
-            for _, rel in files:
+            for rel, _ in files:
                 cur = os.path.join(ROOT, rel.replace('/', os.sep))
                 if os.path.exists(cur): bz.write(cur, rel)
                 else: added.append(rel)
@@ -169,9 +199,9 @@ def install_update():
             except OSError: pass
         json.dump({'from': VERSION, 'to': info['version'], 'backup': bk, 'at': time.time()}, open(UPD_PENDING, 'w', encoding='utf-8'))
         # 2: the new files
-        for m, rel in files:
+        for rel, b_ in files:
             dst = os.path.join(ROOT, rel.replace('/', os.sep)); os.makedirs(os.path.dirname(dst), exist_ok=True)
-            with open(dst, 'wb') as fh: fh.write(z.read(m))
+            with open(dst, 'wb') as fh: fh.write(b_)
         log(f'Update to {info["version"]} installed ({len(files)} files). Restarting.')
         restart_app(); return {'ok': True, 'version': info['version']}
     except Exception as e:
@@ -188,6 +218,34 @@ def restart_app(delay=1.5):
         else: subprocess.Popen([sys.executable] + sys.argv, cwd=HERE)
         os._exit(0)
     threading.Thread(target=go, daemon=True).start()
+
+def space_info():
+    """how much room the work copies, previews and shorts take, and what is free"""
+    def size_(paths):
+        n = 0
+        for p_ in paths:
+            try: n += os.path.getsize(p_)
+            except OSError: pass
+        return n
+    work = glob.glob(os.path.join(SESS, '*', 'werkkopie.mp4')) + glob.glob(os.path.join(DATA, 'voorbeeld', '*.mp4')) + glob.glob(os.path.join(SESS, '*', 'tmp_*', '*'))
+    try: free = shutil.disk_usage(OUT).free
+    except OSError: free = 0
+    return {'ok': True, 'work_gb': round(size_(work) / 1e9, 1), 'shorts_gb': round(size_(glob.glob(os.path.join(OUT, '*.mp4'))) / 1e9, 1), 'free_gb': round(free / 1e9, 1)}
+def cleanup_old():
+    """work copies and previews older than your setting go (your recordings and shorts never)"""
+    days = int(SET.get('cleanup_days') or 0)
+    if days <= 0: return 0
+    lim = time.time() - days * 86400; n = 0
+    for p_ in glob.glob(os.path.join(SESS, '*', 'werkkopie.mp4')) + glob.glob(os.path.join(DATA, 'voorbeeld', '*.mp4')):
+        try:
+            if os.path.getmtime(p_) < lim: os.remove(p_); n += 1
+        except OSError: pass
+    for d_ in glob.glob(os.path.join(SESS, '*', 'tmp_*')):
+        try:
+            if os.path.getmtime(d_) < lim: shutil.rmtree(d_, ignore_errors=True); n += 1
+        except OSError: pass
+    if n: log(f'Cleaned up {n} old work files (Settings > Updates and space)')
+    return n
 
 def versions_list():
     out = []

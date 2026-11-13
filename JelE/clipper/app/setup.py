@@ -287,6 +287,11 @@ def planner():
     while True:
         try:
             lib = lib_load(); now = time.time(); ch = False
+            if SET.get('auto_plan') and SET.get('post_slots'):   # the plan fills itself with shorts that are ready
+                try:
+                    n_ = plan_fill(lib)
+                    if n_: ch = True; log(f'Posting plan: {n_} short(s) planned in your time slots')
+                except Exception: traceback.print_exc()
             for fn, e in lib.items():
                 if e.get('plan_at') and not e.get('plan_done') and e['plan_at'] <= now:
                     p_ = e.get('post') or {}

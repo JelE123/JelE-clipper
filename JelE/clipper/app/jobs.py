@@ -120,6 +120,25 @@ def guard_loop():
         if c is not None: _CPU['hist'].append(c)
         time.sleep(5)
 
+_HOT = {'at': 0, 't': None}
+def gpu_temp():
+    """the graphics card's temperature in °C when it can be read (NVIDIA via nvidia-smi, else None). measured at most every 20 s"""
+    if time.time() - _HOT['at'] < 20: return _HOT['t']
+    _HOT['at'] = time.time(); t = None
+    try:
+        exe = shutil.which('nvidia-smi')
+        if exe:
+            r = subprocess.run([exe, '--query-gpu=temperature.gpu', '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=4, creationflags=NOWIN)
+            vals = [int(x) for x in re.findall(r'\d+', r.stdout or '')]
+            t = max(vals) if vals else None
+        elif os.path.exists('/sys/class/drm'):
+            for f in glob.glob('/sys/class/drm/card*/device/hwmon/hwmon*/temp1_input'):
+                try: t = max(t or 0, int(open(f).read().strip()) // 1000)
+                except Exception: pass
+    except Exception: t = None
+    _HOT['t'] = t; return t
+def pc_hot(): return (gpu_temp() or 0) >= int(SET.get('hot_limit') or 85)
+
 def pc_busy():
     """the pc is already at its limit (a heavy game, an export): new heavy work waits a moment.
     only counts when none of our own work is running, so the clipper never waits for itself"""
@@ -143,6 +162,7 @@ def pause_reason(kind=None, arg=None):
     if light or STATE.get('run_live'): return None
     if SET.get('pause_live', True) and is_live(): return 'live'
     if SET.get('pause_busy', True) and pc_busy(): return 'busy'
+    if SET.get('pause_busy', True) and pc_hot(): return 'hot'   # the graphics card is too warm: wait until it cooled down
     return None
 
 def paused(): return bool(pause_reason())

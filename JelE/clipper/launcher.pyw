@@ -77,13 +77,13 @@ def find_browser():
     return shutil.which('msedge') or shutil.which('google-chrome') or shutil.which('chromium')
 
 
-def open_window():
+def open_window(url=None):
     """the Clipper in its own window, without tabs or an address bar (Edge app mode, on every Windows pc)"""
     b = find_browser()
     if b:
         prof = os.path.join(DATA, 'venster')
         try:
-            subprocess.Popen([b, f'--app={URL}', f'--user-data-dir={prof}', '--window-size=1440,920', '--no-first-run',
+            subprocess.Popen([b, f'--app={url or URL}', f'--user-data-dir={prof}', '--window-size=1440,920', '--no-first-run',
                               '--no-default-browser-check', '--disable-features=Translate'], creationflags=NOWIN)
             return
         except OSError:
@@ -199,8 +199,12 @@ def main():
         return
     if not os.path.exists(os.path.join(DATA, 'requirements.hash')): deps()   # first start: the packages must be there before the Clipper runs
     g = threading.Thread(target=guard, daemon=True); g.start()
+    sp_ = os.path.join(HERE, 'splash.html')
+    if not QUIET and os.path.exists(sp_) and find_browser():   # a loading screen with the logo right away; it opens the app as soon as it is ready
+        open_window('file:///' + sp_.replace(os.sep, '/')); opened = True
+    else: opened = False
     if wait_ready():
-        if not QUIET: open_window()
+        if not QUIET and not opened: open_window()
     else:
         note('clipper did not start within 60 s'); show_problem()
     deps()                       # new packages after an update, while you already work
