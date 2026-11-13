@@ -2,6 +2,10 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.61 · 13 November 2026
+
+- Export screen: the phone stays upright with the horizontal version too, so you see how a 16:9 video really looks on a phone you hold normally (with black bars above and below).
+
 ## 6.60 · 13 November 2026
 
 A new way of working with your clips: watch first, export when you want.
