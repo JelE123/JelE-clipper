@@ -326,18 +326,28 @@ def feedback_add(b):
     if 'confusing' in rs: SET['ctx_cards'] = min(3, int(SET.get('ctx_cards') or 1) + 1); save_settings(SET)   # more context cards from now on
     return {'ok': True, 'learn': lr}
 
-def analysis_report():
-    """a zip with what the clipper found and what you thought of it: no videos, no passwords or keys. for tuning the AI on your streams"""
+def analysis_report(sid=None, notes=''):
+    """a zip with what the clipper found and what you thought of it: no videos, no passwords or keys. for tuning the AI on your streams.
+    one stream (sid, else the newest) goes in full: everything heard, the sounds, the screen, chat, every candidate moment and why it was kept or dropped"""
     import zipfile
     os.makedirs(REPORT_DIR, exist_ok=True); out = os.path.join(REPORT_DIR, f'JelE_analysis_report_{time.strftime("%Y%m%d_%H%M")}.zip')
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+        if notes: z.writestr('notes.txt', str(notes)[:20000])
+        try:
+            ss_ = sorted(list_sess(), key=lambda x: -(x.get('start') or 0)); sid = sid or (ss_[0]['id'] if ss_ else None)
+            if sid:
+                d_ = sdir(sid)
+                for fn in os.listdir(d_):
+                    if fn.endswith(('.json', '.jsonl', '.txt', '.csv')) and os.path.getsize(os.path.join(d_, fn)) < 40_000_000: z.write(os.path.join(d_, fn), f'full_stream/{fn}')
+        except Exception: traceback.print_exc()
         if os.path.exists(FEEDBACK_F): z.write(FEEDBACK_F, 'feedback.jsonl')
         safe = {k: v for k, v in SET.items() if not re.search(r'key|secret|token|password|pass|ntfy|phone_key|jwt', k, re.I)}
         z.writestr('settings.json', json.dumps(safe, indent=1, default=str))
         for s_ in sorted(list_sess(), key=lambda x: -(x.get('start') or 0))[:6]:
             s = load_sess(s_['id'])
             keep = {k: s.get(k) for k in ('id', 'title', 'duration', 'game', 'mic', 'sounds', 'game_events', 'talk', 'status', 'rec_tracks')}
-            keep['moments'] = [{k: m.get(k) for k in ('id', 't', 'start', 'end', 'score', 'reasons', 'title', 'hooks', 'text', 'vision', 'manual')} for m in s.get('moments', [])]
+            keep['moments'] = [{k: m.get(k) for k in ('id', 't', 'start', 'end', 'score', 'reasons', 'title', 'hooks', 'text', 'vision', 'manual', 'brief', 'ai', 'evidence', 'feat', 'no_evidence')} for m in s.get('moments', [])]
+            keep['candidates'] = s.get('cands_debug', [])
             keep['markers'] = s.get('markers', [])
             z.writestr(f"sessions/{s['id']}.json", json.dumps(keep, indent=1, default=str))
         shorts = [{k: x.get(k) for k in ('file', 'title', 'sid', 'mid', 'status', 'views', 'auto', 'reasons', 'dur', 'q', 'learned', 'posted_on')} for x in _lib_items()]

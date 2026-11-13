@@ -450,7 +450,7 @@ class H(BaseHTTPRequestHandler):
             elif b.get('heard'): word_learn_add(b.get('heard'), b.get('fixed'), b.get('prev', ''), b.get('next', ''))
             return self.j({'ok': True, 'learned': {h: {f: e['n'] for f, e in fs.items()} for h, fs in word_learn().items()}})
         if p == '/api/analysis-report':
-            f_ = analysis_report()
+            f_ = analysis_report(b.get('sid'), b.get('notes', ''))
             try:
                 if os.name == 'nt': subprocess.Popen(['explorer', '/select,', f_])
             except Exception: pass

@@ -2443,11 +2443,22 @@ function rmApply(){ const v=localStorageGet('rm')||'auto'; document.documentElem
 if($('sSafe')) $('sSafe').onchange=async()=>{ const r=await api('/api/safe',{on:$('sSafe').value==='true'}); toast(r.on?'Safe mode on':'Safe mode off'); poll(); };
 if($('sRm')) $('sRm').onchange=()=>{ localStorageSet('rm',$('sRm').value); rmApply(); };
 
+// ---- analysis report: one stream in full plus your notes (which moments were good), to tune the AI on real streams
+function anaOpen(){ let m=$('anaM'); if(!m){ m=document.createElement('div'); m.className='modal'; m.id='anaM'; document.body.appendChild(m); }
+  const L=(SESSIONS||[]).slice().sort((a,b)=>(b.start||0)-(a.start||0)).slice(0,15);
+  m.innerHTML=`<div class="box2" style="width:min(560px,95vw)"><h3 class="disp">Analysis report <button class="btn sm ghost" onclick="$('anaM').classList.remove('on')">${ic('x')}</button></h3>
+    <p class="dim" style="font-size:12.5px;margin:0 0 12px">Everything the app heard and saw in one stream, every moment it considered and why it kept or dropped it. No video, no keys or passwords.</p>
+    <label class="dim" style="font-size:12px">Stream</label><select id="anaS" style="width:100%;margin:4px 0 12px">${L.map(x=>`<option value="${x.id}">${esc(x.title||x.id)}</option>`).join('')}</select>
+    <label class="dim" style="font-size:12px">Your notes (the most useful part)</label>
+    <textarea id="anaN" style="width:100%;height:170px;margin-top:4px" placeholder="Good moments (time in the video and what happens):\n0:42:10  clutch 1v3 on B, I scream\n1:05:30  toxic guy in chat, I read it out\n\nBad moments the app picked and why:\n0:12:00  just talking in the lobby"></textarea>
+    <button class="btn pri" id="anaMk" style="width:100%;justify-content:center;margin-top:12px">${ic('down')}Make report</button></div>`;
+  m.classList.add('on'); $('anaMk').onclick=()=>{ m.classList.remove('on'); anaMake($('anaS').value,$('anaN').value); }; }
 // ---- error report
 async function repInit(){ const el=$('repBox'); if(!el) return;
   el.innerHTML=`<textarea id="repNote" placeholder="What were you doing when it went wrong? (can be empty)"></textarea>
    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn pri" id="repGo">${ic('down')}Make error report</button><button class="btn" id="anaGo" title="What the clipper found in your last streams and what you thought of the clips. No videos, no passwords or keys. Send it to get the AI tuned to your streams">${ic('chart')}Analysis report</button><span class="dim" style="font-size:12px">No passwords or keys. ${ST.n_errors?`<b style="color:var(--tx)">${ST.n_errors}</b> error${ST.n_errors===1?'':'s'} since start.`:''}</span></div><div id="repR" style="margin-top:10px"></div>`;
-  $('anaGo').onclick=async()=>{ $('anaGo').disabled=true; const r=await api('/api/analysis-report',{}); $('anaGo').disabled=false;
+  $('anaGo').onclick=()=>anaOpen();
+  window.anaMake=async(sid,notes)=>{ $('anaGo').disabled=true; const r=await api('/api/analysis-report',{sid,notes}); $('anaGo').disabled=false;
     $('repR').innerHTML=r.ok?`<div class="bn ok" style="animation:none"><div class="bic">${ic('check')}</div><div><b>Analysis report ready.</b> <span>${esc(r.file)}: what I found in your last 6 streams and your feedback, without videos or keys. Send it to tune the AI to your streams.</span></div><div class="acts"><a class="btn sm pri" href="/rapport?f=${encodeURIComponent(r.file)}" download>${ic('down')}Download</a></div></div>`:'<span class="pill2">Did not work</span>'; };
   $('repGo').onclick=async()=>{ $('repGo').disabled=true; const r=await api('/api/report',{note:$('repNote').value,open:true}); $('repGo').disabled=false;
     $('repR').innerHTML=r.ok?`<div class="bn ok" style="animation:none"><div class="bic">${ic('check')}</div><div><b>Report ready.</b> <span>${esc(r.file)}</span></div><div class="acts"><a class="btn sm pri" href="/rapport?f=${encodeURIComponent(r.file)}" download>${ic('down')}Download</a></div></div>`:'<span class="pill2">Did not work</span>'; }; }

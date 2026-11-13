@@ -2,6 +2,10 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.58 · 13 November 2026
+
+- **Better analysis report** (Settings > System > Analysis report): pick a stream and write which moments were good (with the time) and which were bad. The report now has that stream in full: everything heard, the sounds, the screen, chat, and every moment the app considered with why it kept or dropped it. Still no video, no keys, no passwords. This is what's needed to tune the AI on your real streams.
+
 ## 6.57 · 13 November 2026
 
 **AI**

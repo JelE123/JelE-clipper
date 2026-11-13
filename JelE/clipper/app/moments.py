@@ -699,6 +699,11 @@ def analyse(sid):
                 if sw_: log(f'The AI compared the best moments side by side and changed the order {sw_} time(s)')
         except Exception: traceback.print_exc()
     # what the AI threw out stays out. nothing good enough? then no moments, and the app says so (no forced bad clips)
+    try:   # every candidate and what happened to it, for the analysis report (tuning on your real streams)
+        cdbg_ = [{'t': round(c['t'], 1), 'start': round(c.get('start', 0), 1), 'end': round(c.get('end', 0), 1), 'score': c.get('score'), 'drop': bool(c.get('drop')),
+                  'reasons': c.get('reasons', [])[:8], 'ai': c.get('ai'), 'type': (c.get('brief') or {}).get('type'), 'about': (c.get('brief') or {}).get('about'),
+                  'no_evidence': c.get('no_evidence'), 'text': (c.get('text') or '')[:200]} for c in cands]
+    except Exception: cdbg_ = []
     kept_ = [c for c in cands if not c.get('drop')]
     if len(kept_) < len(cands): log(f'The AI threw out {len(cands) - len(kept_)} moments that are not good enough')
     no_good = None
@@ -808,7 +813,7 @@ def analyse(sid):
                                 'title': 'THE WHOLE MATCH IN 60 SECONDS', 'hook': 'THE WHOLE MATCH IN 60 SECONDS', 'parts': parts_, 'mids': [m['id'] for m in mt_[:len(parts_)]]})
         if stories: log(f'Found {len(stories)} stories: moments that belong together')
     except Exception: traceback.print_exc()
-    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['stories'] = [x for x in s.get('stories', []) if x.get('edited')] + stories;   # stories you made yourself stay
+    s = load_sess(sid); s['moments'] = moments + [m for m in s.get('moments', []) if m.get('manual')]; s['stories'] = [x for x in s.get('stories', []) if x.get('edited')] + stories; s['cands_debug'] = cdbg_;   # stories you made yourself stay
     s['no_good'] = no_good
     try:
         s['best5'] = best_with_variety(moments); s['baseline'] = stream_baseline(sid, ALL, dur)
