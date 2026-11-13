@@ -2,6 +2,17 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.59 · 13 November 2026
+
+First cleanup round: less on screen, the focus back on good moments.
+
+- **Emoji stickers are gone.** The freeze frame and the "FAIL" stamp are off too (no more gimmicks added by themselves).
+- **Settings are shorter**: the AI's inner switches are gone (they just work). "Edit for you" is under Advanced.
+- **The editor uses the whole screen again**: the steps sit on the right, next to the video, instead of far below.
+- **Stream page**: Highlights, Montage, Folder and Remove are under **More**.
+- Moment cards show at most 3 reasons, without the generic "you often keep clips like this".
+- The Search button in the sidebar is gone (Ctrl+K still works).
+
 ## 6.58 · 13 November 2026
 
 - **Better analysis report** (Settings > System > Analysis report): pick a stream and write which moments were good (with the time) and which were bad. The report now has that stream in full: everything heard, the sounds, the screen, chat, and every moment the app considered with why it kept or dropped it. Still no video, no keys, no passwords. This is what's needed to tune the AI on your real streams.

@@ -139,7 +139,7 @@ def fx_suggest(sid, start, end, job=None):
             if ra < dur - 0.4:
                 if SET.get('slowmo_not_replay', True): fx['slowmo'] = {'a': round(max(0, ra - 0.5), 2), 'b': round(min(dur, ra + 0.6), 2), 'speed': 0.5}   # slow it down right where it happens
                 else: fx['replay'] = {'a': round(max(0, ra - 1.6), 2), 'b': round(min(dur, ra + 0.8), 2), 'speed': 0.5}
-        if SET.get('fx_freeze', True) and cz is not None and br.get('type') in ('fail', 'funny', 'reaction', 'rage') and not fx.get('focus') and 1.0 < cz < dur - 2:
+        if SET.get('fx_freeze', False) and cz is not None and br.get('type') in ('fail', 'funny', 'reaction', 'rage') and not fx.get('focus') and 1.0 < cz < dur - 2:
             fx['freeze'] = {'t': round(cz, 2), 'len': 0.8, 'text': 'WAIT...'}   # the picture stops for a second on what you react to
     # a template per kind of moment: its own pace, sound and text (clutch, funny, fail, rage)
     TPL = {'clutch': {'cap_anim': 'pop', 'music': 'hype', 'stamp': 'CLUTCH'}, 'skill': {'cap_anim': 'pop', 'music': 'hype'},
@@ -151,9 +151,9 @@ def fx_suggest(sid, start, end, job=None):
         if not fx.get('music_mood'): fx['music_mood'] = tp['music']; fx['music_file'] = music_for_mood(tp['music'])
         real_ = tp.get('stamp') != 'CLUTCH' or 'round_win' in ((mm or {}).get('vision') or {}).get('events', []) or 'clutch' in str(((mm or {}).get('game') or {}).get('label', '')).lower()
         em_ = {'fail': 'skull', 'funny': 'joy', 'clutch': 'fire', 'skill': 'fire', 'rage': 'angry', 'reaction': 'scream'}.get(br.get('type'))
-        if em_ and SET.get('emoji', True) and peak + 0.2 < dur - 0.8 and not any(x.get('kind') == 'emoji' for x in fx.get('stickers', [])):   # an emoji that fits the kind of moment
+        if em_ and SET.get('emoji', False) and peak + 0.2 < dur - 0.8 and not any(x.get('kind') == 'emoji' for x in fx.get('stickers', [])):   # an emoji that fits the kind of moment
             fx.setdefault('stickers', []).append({'t': round(peak + 0.2, 2), 'dur': 1.4, 'text': em_, 'x': 0.8, 'y': 0.42, 'kind': 'emoji'})
-        if tp.get('stamp') and real_ and not any(x.get('kind') == 'stamp' for x in fx.get('stickers', [])) and peak + 0.3 < dur - 1:
+        if SET.get('stamps', False) and tp.get('stamp') and real_ and not any(x.get('kind') == 'stamp' for x in fx.get('stickers', [])) and peak + 0.3 < dur - 1:
             fx.setdefault('stickers', []).append({'t': round(peak + 0.3, 2), 'dur': 1.6, 'text': tp['stamp'], 'x': 0.5, 'y': 0.3, 'kind': 'stamp'})
     return fx
 

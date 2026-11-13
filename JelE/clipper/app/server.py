@@ -213,9 +213,6 @@ class H(BaseHTTPRequestHandler):
             s = load_sess(q['sid'][0]); ext = os.path.splitext(s['path'])[1].lower()
             if not q.get('full') and os.path.exists(proxy_path(s['id'])): return self.file(proxy_path(s['id']), 'video/mp4')
             return self.file(s['path'], 'video/mp4' if ext in ('.mp4', '.mov') else 'video/x-matroska' if ext == '.mkv' else 'video/mp4')
-        if p == '/api/emoji': return self.j(emoji_list())
-        if p.startswith('/emoji/'):
-            return self.file(os.path.join(HERE, 'emoji', os.path.basename(unquote(p[7:]))), 'image/png')
         if p == '/short':
             return self.file(os.path.join(OUT, os.path.basename(unquote(q['f'][0]))), 'video/mp4')
         return self.j({'error': 'unknown'}, 404)
