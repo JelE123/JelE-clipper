@@ -79,7 +79,7 @@ class H(BaseHTTPRequestHandler):
                 if not med_ or (e.get('views') or 0) > 0 or not e.get('feat'): return None
                 p_ = taste2_prob(e['feat'])
                 return None if p_ is None else int(round(med_ * (0.4 + 1.6 * p_), -1 if med_ > 100 else 0))
-            return self.j([{'file': os.path.basename(f), 'size': os.path.getsize(f), 'at': os.path.getmtime(f), **lib.get(os.path.basename(f), {'status': 'goed'}), 'pred': pred_(lib.get(os.path.basename(f), {}))} for f in fs])
+            return self.j([{'file': os.path.basename(f), 'size': os.path.getsize(f), 'at': os.path.getmtime(f), **lib.get(os.path.basename(f), {'status': 'goed'}), 'pred': pred_(lib.get(os.path.basename(f), {}))} for f in fs if not (lib.get(os.path.basename(f)) or {}).get('wide_of')])
         if p == '/api/week': return self.j(week_stats())
         if p == '/api/fx-suggest':
             return self.j(fx_suggest(q['sid'][0], float(q['a'][0]), float(q['b'][0]), {'mid': q.get('mid', [None])[0]}))
@@ -213,8 +213,20 @@ class H(BaseHTTPRequestHandler):
             s = load_sess(q['sid'][0]); ext = os.path.splitext(s['path'])[1].lower()
             if not q.get('full') and os.path.exists(proxy_path(s['id'])): return self.file(proxy_path(s['id']), 'video/mp4')
             return self.file(s['path'], 'video/mp4' if ext in ('.mp4', '.mov') else 'video/x-matroska' if ext == '.mkv' else 'video/mp4')
-        if p == '/short':
-            return self.file(os.path.join(OUT, os.path.basename(unquote(q['f'][0]))), 'video/mp4')
+        if p == '/short':   # dl=1: a download with a clear name (lands in your Downloads folder)
+            f_ = os.path.basename(unquote(q['f'][0]))
+            nice_ = None
+            if q.get('dl'):
+                e_ = lib_load().get(f_) or {}
+                nice_ = re.sub(r'[\\/:*?"<>|]+', '', (e_.get('title') or os.path.splitext(f_)[0]).strip())[:60] or 'short'
+                nice_ = f"{nice_}{' (wide)' if e_.get('layout') == 'landscape' else ''}.mp4"
+            return self.file(os.path.join(OUT, f_), 'video/mp4', dl=nice_)
+        if p == '/api/job':   # how far one short is (the export screen waits for it)
+            jid_ = q.get('id', [''])[0]; d_ = (STATE.get('byjid') or {}).get(jid_)
+            if d_: return self.j({'done': True, **d_})
+            j_ = STATE['job'] or {}
+            if (j_.get('arg') or {}).get('jid') == jid_: return self.j({'done': False, 'running': True, 'pct': j_.get('pct', 0), 'stage': j_.get('stage', '')})
+            return self.j({'done': False, 'running': False, 'waiting': JOBS.qsize()})
         return self.j({'error': 'unknown'}, 404)
     def do_PUT(self):
         """drag a video into the app: it is copied into the clipper's import folder"""
@@ -258,10 +270,11 @@ class H(BaseHTTPRequestHandler):
             save_sess(s_); log(f'Game of {s_["title"]}: {gprof(game_quick(s_)["id"])["name"]}')
             return self.j({'ok': True, 'game_info': game_info(s_)})
         if p == '/api/render':
-            JOBS.put(('render', {'sid': b['sid'], 'start': b['start'], 'end': b['end'], 'title': b.get('title', ''), 'hook': b.get('hook', ''), 'captions': b.get('captions', SET['captions']), 'mid': b.get('mid'), 'layout': b.get('layout'), 'style': b.get('style'), 'words': b.get('words'), 'zoom': b.get('zoom', SET.get('auto_zoom', True)), 'variant': b.get('variant'), 'replace': b.get('replace'),
+            jid_ = uuid.uuid4().hex[:10]
+            (JOBS.put_front if b.get('now') else JOBS.put)(('render', {'sid': b['sid'], 'start': b['start'], 'end': b['end'], 'title': b.get('title', ''), 'hook': b.get('hook', ''), 'captions': b.get('captions', SET['captions']), 'mid': b.get('mid'), 'layout': b.get('layout'), 'style': b.get('style'), 'words': b.get('words'), 'zoom': b.get('zoom', SET.get('auto_zoom', True)), 'variant': b.get('variant'), 'replace': b.get('replace'),
                                   'cap_y': b.get('cap_y'), 'cap_scale': b.get('cap_scale'), 'game_x': b.get('game_x'), 'cam_h': b.get('cam_h'), 'progress': b.get('progress'), 'endcard': b.get('endcard'),
                                   'jumpcut': b.get('jumpcut', SET.get('jumpcut', True)), 'sfx': b.get('sfx', SET.get('sfx', True)), 'fx': b.get('fx'), 'voice': b.get('voice'), 'music': b.get('music'),
-                                  **{k: b.get(k) for k in RENDER_EXTRA if k in b}})); return self.j({'ok': True, 'queue': JOBS.qsize()})
+                                  **{k: b.get(k) for k in RENDER_EXTRA if k in b}, 'jid': jid_})); return self.j({'ok': True, 'queue': JOBS.qsize(), 'jid': jid_})
         if p == '/api/preview':   # quick, small version of the end result
             pid = uuid.uuid4().hex[:8]
             job = {k: b.get(k) for k in ('sid', 'start', 'end', 'hook', 'captions', 'mid', 'layout', 'style', 'words', 'zoom', 'cap_y', 'cap_scale', 'game_x', 'cam_h', 'progress', 'endcard', 'jumpcut', 'sfx', 'fx', 'voice', 'music') + RENDER_EXTRA if k in b}
@@ -377,6 +390,22 @@ class H(BaseHTTPRequestHandler):
             if not llm_ready(): return self.j({'ok': False, 'why': 'The local AI model is not installed (Settings > System).'})
             t = llm_titles(b.get('text', ''), b.get('reasons') or [], (GP.get(b.get('game')) or {}).get('name', '') if GP else '', SET.get('language') or 'en')
             return self.j({'ok': bool(t), 'titles': t, 'why': '' if t else 'The AI model did not give an answer.'})
+        if p == '/api/exported':   # you downloaded it from the export screen
+            lib = lib_load(); f_ = os.path.basename(b.get('file') or '')
+            if f_ in lib:
+                lib[f_]['exported'] = time.time()
+                if lib[f_].get('status') == 'nieuw': lib[f_]['status'] = 'goed'
+                lib_save(lib)
+            return self.j({'ok': True})
+        if p == '/api/wide':   # the export screen: the same short, horizontal (16:9), for YouTube and screens
+            lib = lib_load(); f_ = os.path.basename(b.get('file') or ''); e = lib.get(f_)
+            if not e or not e.get('sid'): return self.j({'ok': False, 'why': 'This short cannot be made again'})
+            if e.get('wide') and os.path.exists(os.path.join(OUT, e['wide'])): return self.j({'ok': True, 'file': e['wide']})
+            job = dict(e.get('job') or {k: e.get(k) for k in ('sid', 'start', 'end', 'title', 'style', 'fx', 'mid')})
+            for k in ('replace', 'auto', 'live', 'preview', 'remake_of', 'cam_h', 'game_x'): job.pop(k, None)
+            jid_ = uuid.uuid4().hex[:10]
+            job.update(layout='landscape', wide_of=f_, jid=jid_, title=(e.get('title') or 'short') + '_wide'); job.setdefault('hook', e.get('title') or '')
+            JOBS.put_front(('render', job)); return self.j({'ok': True, 'jid': jid_})
         if p == '/api/remake':   # make shorts again with the newest version; your own edits stay, the old short stays too
             lib = lib_load(); n = 0
             for f in b.get('files') or []:

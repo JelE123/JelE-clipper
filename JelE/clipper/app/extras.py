@@ -406,7 +406,7 @@ def worker():
         JOBS.waiting.pop(threading.get_ident(), None)
         STATE['paused'] = False
         STATE['cancel'] = False; STATE['why'] = None
-        job = {'kind': kind, 'arg': arg if kind in ('analyse', 'remux', 'proxy') else {k: arg.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'hook')}, 'since': time.time(), 'stage': 'Starting', 'pct': 0, 'est': tempo_est(kind, arg)}
+        job = {'kind': kind, 'arg': arg if kind in ('analyse', 'remux', 'proxy') else {k: arg.get(k) for k in ('sid', 'start', 'end', 'title', 'layout', 'hook', 'jid', 'mid', 'preview')}, 'since': time.time(), 'stage': 'Starting', 'pct': 0, 'est': tempo_est(kind, arg)}
         STATE['job'] = job; t0 = time.time(); ok = False
         LANG_TL.v = arg.get('language') if isinstance(arg, dict) else None
         if not LANG_TL.v:   # the language you set for this stream
@@ -459,7 +459,8 @@ def worker():
                         raw = STATE.get('why') or ''
                         why = 'Stopped.' if raw in ('gestopt', 'stopped') else friendly(raw, job.get('stage', ''))
                         if raw not in ('gestopt', 'stopped'): note_error('making short (' + str(job.get('stage')) + ')', raw)
-                    STATE['done'].append({'file': os.path.basename(p) if p else None, 'ok': bool(p), 'at': time.time(), 'why': why, 'title': arg.get('hook') or arg.get('title') or ''})
+                    STATE['done'].append({'file': os.path.basename(p) if p else None, 'ok': bool(p), 'at': time.time(), 'why': why, 'title': arg.get('hook') or arg.get('title') or '', 'auto': bool(arg.get('auto') or arg.get('jid'))})
+                    if arg.get('jid'): STATE.setdefault('byjid', {})[arg['jid']] = {'file': os.path.basename(p) if p else None, 'ok': bool(p), 'why': why}
             if ok and kind != 'download' and not (isinstance(arg, dict) and arg.get('test')): tempo_note(kind, arg, time.time() - job['since'])
         except Exception:
             tb = traceback.format_exc(); print(tb, file=sys.stderr); note_error(kind + ' (' + str(job.get('stage')) + ')', tb)
@@ -471,6 +472,7 @@ def worker():
                 STATE['previews'][arg['preview']] = {'ok': False, 'file': None, 'why': friendly(tb, job.get('stage', '')), 'at': time.time()}
             elif kind == 'render':
                 STATE['done'].append({'file': None, 'ok': False, 'at': time.time(), 'why': friendly(tb, job.get('stage', '')), 'title': arg.get('hook') or arg.get('title') or ''})
+                if arg.get('jid'): STATE.setdefault('byjid', {})[arg['jid']] = {'file': None, 'ok': False, 'why': friendly(tb, job.get('stage', ''))}
         STATE['job'] = None; JOBS.done()
         if kind == 'analyse' and SET.get('proxy', True):
             try: PROXYQ.put(arg)

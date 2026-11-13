@@ -2,6 +2,18 @@
 
 Everything that changed per version. The newest version is at the top.
 
+## 6.60 · 13 November 2026
+
+A new way of working with your clips: watch first, export when you want.
+
+- **Every good moment becomes a ready short right after your stream** (not just the best 3). On the Moments page the card says "Short ready": move your mouse over it to watch the short itself.
+- **Edit** opens that short with its own settings. **Export** opens the export screen.
+- **Export screen**: see how your short looks **on a phone and on a pc screen (1920 × 1080)**, side by side, playing together. Switch between **Vertical 9:16** (TikTok, Shorts, Reels) and **Horizontal 16:9** (YouTube, screens): the horizontal version is made right there.
+- **Download** puts the short in **your Downloads folder**, with its title as the file name. No more digging in a folder.
+- From the editor: changed nothing? You go straight to the export screen. Changed something? The short is made again first (it replaces the old one) and you see the progress in the export screen.
+- Short cards on the Shorts page: **Export**, **Edit** and **More** (post text, schedule, cover, compare, pack, captions, delete) instead of nine buttons.
+- No more pop-up for every automatic short (only when one fails).
+
 ## 6.59 · 13 November 2026
 
 First cleanup round: less on screen, the focus back on good moments.

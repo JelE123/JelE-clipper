@@ -103,7 +103,7 @@ DEFAULTS = {
     'sounds': True, 'vision': True, 'vision_auto_done': False, 'face_follow': True, 'voice_up': True,
     'loud': True,                       # make the short as loud as other TikToks/Shorts
     'auto_shorts': True,                # make shorts of the best moments by itself after a stream (they land in the inbox)
-    'auto_shorts_n': 3,
+    'auto_shorts_n': 99,                # 99 = every good moment
     'cam_auto': True,                   # read where the cam frame sits from OBS at the start of every recording
     'auto_zoom': True,                  # punch in on the gameplay when you shout ("no way", "let's go") or press the clip button
     'progress_bar': False,              # thin orange bar at the top that fills up (people watch till the end)
@@ -127,7 +127,7 @@ DEFAULTS = {
     'kf_box': [1440, 80, 460, 170],     # where the killfeed is on a 1920x1080 recording
     'highlight_min': 8,                 # length of the YouTube highlights video in minutes
     'auto_preset': '',                  # style used for the automatic shorts
-    'v': 4,
+    'v': 5,
     'tag': '',                          # empty = twitch.tv/ + your channel from config.js
     'encoder': 'auto',                  # auto tries NVIDIA, AMD and Intel video encoding, then normal x264
     # 6.0
@@ -209,6 +209,9 @@ def load_settings():
     if saved and saved.get('v', 1) < 4:   # 6.57: neat file names (date, game, title); you already chose a language before
         if saved.get('name_tpl') in (None, '{title}', '{titel}'): saved['name_tpl'] = '{date}_{game}_{title}'
         saved['lang_asked'] = True; saved['v'] = 4
+    if saved and saved.get('v', 1) < 5:   # 6.60: every good moment becomes a ready short right away (you watch it, edit it, export it)
+        if saved.get('auto_shorts_n') in (None, 3, '3'): saved['auto_shorts_n'] = 99
+        saved['auto_shorts'] = True; saved['v'] = 5
     s.update(saved)
     return s
 def save_settings(s):
